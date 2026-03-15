@@ -1,3 +1,5 @@
+import "./style.css";
+
 (() => {
   const CONTAINER_SELECTORS = [
     "#article",
@@ -9,87 +11,37 @@
   const BUTTON_CLASS = "rp-copy-code-button";
   const COPIED_CLASS = "is-copied";
   const ERROR_CLASS = "is-error";
-  const STYLE_ID = "rp-copy-code-style";
-  const LINE_NUMBER_ROW_SELECTOR = ".hljs-ln-code .hljs-ln-line";
-
-  const STYLE_TEXT = `
-      .${WRAPPER_CLASS} {
-        position: relative;
-      }
-
-      .${BUTTON_CLASS} {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        z-index: 10;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 56px;
-        height: 32px;
-        padding: 0 12px;
-        border: 1px solid rgba(240, 246, 252, 0.16);
-        border-radius: 6px;
-        background: rgba(33, 38, 45, 0.92);
-        color: #c9d1d9;
-        font-size: 12px;
-        font-weight: 500;
-        line-height: 1;
-        letter-spacing: 0;
-        cursor: pointer;
-        user-select: none;
-        opacity: 0;
-        transition:
-          opacity 0.18s ease,
-          background-color 0.18s ease,
-          border-color 0.18s ease,
-          color 0.18s ease;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-      }
-
-      .${WRAPPER_CLASS}:hover .${BUTTON_CLASS},
-      .${WRAPPER_CLASS}:focus-within .${BUTTON_CLASS} {
-        opacity: 1;
-      }
-
-      .${BUTTON_CLASS}:hover {
-        background: #30363d;
-        border-color: rgba(240, 246, 252, 0.28);
-        color: #f0f6fc;
-      }
-
-      .${BUTTON_CLASS}:focus-visible {
-        opacity: 1;
-        outline: 2px solid #2f81f7;
-        outline-offset: 2px;
-      }
-
-      .${BUTTON_CLASS}.${COPIED_CLASS} {
-        background: rgba(35, 134, 54, 0.18);
-        border-color: rgba(63, 185, 80, 0.45);
-        color: #3fb950;
-        opacity: 1;
-      }
-
-      .${BUTTON_CLASS}.${ERROR_CLASS} {
-        background: rgba(248, 81, 73, 0.16);
-        border-color: rgba(248, 81, 73, 0.4);
-        color: #ff7b72;
-        opacity: 1;
-      }
-
-      @media (hover: none) {
-        .${BUTTON_CLASS} {
-          opacity: 1;
-        }
-      }
-    `;
+  const LINE_TEXT_SELECTORS = [
+    ".hljs-ln-code .hljs-ln-line",
+    ".hljs-ln-code",
+  ] as const;
 
   const BUTTON_TEXT = "Copy";
   const SUCCESS_TEXT = "Copied";
   const ERROR_TEXT = "Error";
   const RESET_DELAY = 2000;
+
+  function normalizeLineBreaks(text: string): string {
+    return text.replace(/\r\n?/g, "\n");
+  }
+
+  function getTextBySelectors(
+    root: ParentNode,
+    selectors: readonly string[],
+  ): string | null {
+    for (const selector of selectors) {
+      const elements = root.querySelectorAll<HTMLElement>(selector);
+      if (elements.length === 0) continue;
+
+      return elements.length === 1
+        ? (elements[0].textContent ?? "")
+        : Array.from(elements)
+            .map((element) => element.textContent ?? "")
+            .join("\n");
+    }
+
+    return null;
+  }
 
   function getArticleContainer(): HTMLElement | null {
     for (const selector of CONTAINER_SELECTORS) {
@@ -98,16 +50,6 @@
     }
 
     return null;
-  }
-
-  function injectStyle(): void {
-    if (document.getElementById(STYLE_ID)) return;
-
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = STYLE_TEXT;
-
-    document.head.appendChild(style);
   }
 
   function setButtonState(
@@ -124,13 +66,15 @@
   }
 
   async function copyText(text: string): Promise<void> {
+    const normalizedText = normalizeLineBreaks(text);
+
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(normalizedText);
       return;
     }
 
     const textarea = document.createElement("textarea");
-    textarea.value = text;
+    textarea.value = normalizedText;
     textarea.setAttribute("readonly", "");
     textarea.style.position = "fixed";
     textarea.style.top = "-9999px";
@@ -150,21 +94,10 @@
 
   function getCodeText(pre: HTMLElement): string {
     const code = pre.querySelector<HTMLElement>("code");
-    if (!code) {
-      return "";
-    }
+    if (!code) return "";
 
-    const lineNumberRows = code.querySelectorAll<HTMLElement>(
-      LINE_NUMBER_ROW_SELECTOR,
-    );
-
-    if (lineNumberRows.length > 0) {
-      return Array.from(lineNumberRows)
-        .map((line) => line.textContent ?? "")
-        .join("\n");
-    }
-
-    return code.textContent ?? "";
+    const lineText = getTextBySelectors(code, LINE_TEXT_SELECTORS);
+    return normalizeLineBreaks(lineText ?? code.textContent ?? "");
   }
 
   function createButton(pre: HTMLElement): HTMLButtonElement {
@@ -203,17 +136,14 @@
   }
 
   function enhanceCodeBlocks(article: HTMLElement): void {
-    const preElements = article.querySelectorAll<HTMLElement>("pre");
-
-    preElements.forEach((pre) => {
-      if (pre.dataset.copyCodeReady === "true") return;
-      if (!pre.querySelector("code")) return;
+    article.querySelectorAll<HTMLElement>("pre").forEach((pre) => {
+      if (pre.dataset.copyCodeReady === "true" || !pre.querySelector("code")) {
+        return;
+      }
 
       pre.dataset.copyCodeReady = "true";
       pre.classList.add(WRAPPER_CLASS);
-
-      const button = createButton(pre);
-      pre.appendChild(button);
+      pre.appendChild(createButton(pre));
     });
   }
 
@@ -221,7 +151,6 @@
     const article = getArticleContainer();
     if (!article) return;
 
-    injectStyle();
     enhanceCodeBlocks(article);
   }
 

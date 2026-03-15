@@ -58,7 +58,7 @@ describe("copy-code plugin", () => {
     expect(buttons).toHaveLength(1);
   });
 
-  it("injects the style element only once", async () => {
+  it("does not add duplicate copy buttons when loaded more than once", async () => {
     document.body.innerHTML = `
       <div id="article">
         <pre><code>const a = 1;</code></pre>
@@ -68,8 +68,11 @@ describe("copy-code plugin", () => {
     await loadPlugin(() => import("./index.ts"));
     await loadPlugin(() => import("./index.ts"));
 
-    const styles = document.querySelectorAll("#rp-copy-code-style");
-    expect(styles).toHaveLength(1);
+    const buttons = screen.getAllByRole("button", { name: "Copy code" });
+    const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
+
+    expect(buttons).toHaveLength(1);
+    expect(wrappers).toHaveLength(1);
   });
 
   it("copies code text with Clipboard API and shows success state", async () => {
@@ -242,5 +245,66 @@ describe("copy-code plugin", () => {
     const button = screen.getByRole("button", { name: "Copy code" });
     expect(button).toBeInTheDocument();
     expect(button).toHaveTextContent("Copy");
+  });
+});
+
+it("preserves line breaks when copying plain code blocks", async () => {
+  document.body.innerHTML = `
+      <div id="article">
+        <pre><code>const a = 1;\nconst b = 2;\nreturn a + b;</code></pre>
+      </div>
+    `;
+
+  await loadPlugin(() => import("./index.ts"));
+
+  const button = screen.getByRole("button", { name: "Copy code" });
+
+  await fireEvent.click(button);
+
+  await waitFor(() => {
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "const a = 1;\nconst b = 2;\nreturn a + b;",
+    );
+    expect(button).toHaveTextContent("Copied");
+  });
+});
+
+it("preserves line breaks when copying code blocks rendered with highlightjs line numbers", async () => {
+  document.body.innerHTML = `
+      <div id="article">
+        <pre>
+          <code>
+            <table class="hljs-ln">
+              <tbody>
+                <tr>
+                  <td class="hljs-ln-numbers" data-line-number="1"></td>
+                  <td class="hljs-ln-code"><span class="hljs-ln-line">const a = 1;</span></td>
+                </tr>
+                <tr>
+                  <td class="hljs-ln-numbers" data-line-number="2"></td>
+                  <td class="hljs-ln-code"><span class="hljs-ln-line">const b = 2;</span></td>
+                </tr>
+                <tr>
+                  <td class="hljs-ln-numbers" data-line-number="3"></td>
+                  <td class="hljs-ln-code"><span class="hljs-ln-line">return a + b;</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </code>
+        </pre>
+      </div>
+    `;
+
+  await loadPlugin(() => import("./index.ts"));
+
+  const button = screen.getByRole("button", { name: "Copy code" });
+
+  await fireEvent.click(button);
+
+  await waitFor(() => {
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "const a = 1;\nconst b = 2;\nreturn a + b;",
+    );
+    expect(button).toHaveTextContent("Copied");
   });
 });
