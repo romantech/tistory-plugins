@@ -1,6 +1,6 @@
 # tistory-plugins
 
-티스토리 HTML 편집기에서 외부 스크립트로 불러와 사용할 수 있는 플러그인 저장소입니다. GitHub에 배포한 뒤 jsDelivr CDN을 통해 사용할 수 있습니다.
+티스토리 HTML 편집기에서 외부 스크립트로 불러와 사용할 수 있는 플러그인 저장소입니다. 각 플러그인은 jsDelivr CDN을 통해 사용할 수 있습니다.
 
 ## 저장소
 
@@ -14,14 +14,10 @@
 
 ## 플러그인
 
-- [`inline-code`](src/inline-code)
-  - 용도: 백틱으로 감싼 텍스트를 `<code>`로 변환합니다.
-  - 문서: [src/inline-code/README.md](src/inline-code/README.md)
-  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/src/inline-code/index.js`
-- [`katex`](src/katex)
-  - 용도: `$...$`, `$$...$$` 수식을 KaTeX로 렌더링합니다.
-  - 문서: [src/katex/README.md](src/katex/README.md)
-  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/src/katex/index.js`
+| 플러그인 | 용도 | 문서 |
+|---|---|---|
+| [`inline-code`](src/inline-code) | 백틱으로 감싼 텍스트를 `<code>`로 변환합니다. | [README](src/inline-code/README.md) |
+| [`katex`](src/katex) | `$...$`, `$$...$$` 수식을 KaTeX로 렌더링합니다. | [README](src/katex/README.md) |
 
 ## 버전 정책
 
