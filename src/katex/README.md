@@ -9,7 +9,8 @@
 
 ## 사용 방법
 
-티스토리 HTML 편집기에서 아래 코드를 붙여넣습니다.
+
+티스토리 HTML 편집기에서 아래 스크립트를 붙여넣습니다. `@<tag>` 부분은 사용할 버전 태그로 변경합니다. (예: `@0.1.1`)
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<tag>/src/katex/index.js"></script>
