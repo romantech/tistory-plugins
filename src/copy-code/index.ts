@@ -10,6 +10,7 @@
   const COPIED_CLASS = "is-copied";
   const ERROR_CLASS = "is-error";
   const STYLE_ID = "rp-copy-code-style";
+  const LINE_NUMBER_ROW_SELECTOR = ".hljs-ln-code .hljs-ln-line";
 
   const STYLE_TEXT = `
       .${WRAPPER_CLASS} {
@@ -156,7 +157,21 @@
 
   function getCodeText(pre: HTMLElement): string {
     const code = pre.querySelector<HTMLElement>("code");
-    return code?.textContent ?? pre.textContent ?? "";
+    if (!code) {
+      return "";
+    }
+
+    const lineNumberRows = code.querySelectorAll<HTMLElement>(
+      LINE_NUMBER_ROW_SELECTOR,
+    );
+
+    if (lineNumberRows.length > 0) {
+      return Array.from(lineNumberRows)
+        .map((line) => line.textContent ?? "")
+        .join("\n");
+    }
+
+    return code.textContent ?? "";
   }
 
   function createButton(pre: HTMLElement): HTMLButtonElement {
