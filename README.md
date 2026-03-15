@@ -17,27 +17,14 @@
 - [`inline-code`](src/inline-code)
   - 용도: 백틱으로 감싼 텍스트를 `<code>`로 변환합니다.
   - 문서: [src/inline-code/README.md](src/inline-code/README.md)
-  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<tag>/src/inline-code/index.js`
+  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/src/inline-code/index.js`
 - [`katex`](src/katex)
   - 용도: `$...$`, `$$...$$` 수식을 KaTeX로 렌더링합니다.
   - 문서: [src/katex/README.md](src/katex/README.md)
-  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<tag>/src/katex/index.js`
-
-## 배포 절차
-
-```bash
-git add .
-git commit -m "feat: ..."
-git push origin main
-
-git tag -a <tag> -m "Release <tag>"
-git push origin <tag>
-
-gh release create <tag> --verify-tag --title "<tag>"
-```
+  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/src/katex/index.js`
 
 ## 버전 정책
 
 - `main`: 개발 및 테스트용
-- `v0.1.0` 같은 태그: 운영 배포용
-- 운영 환경에서는 `main` 대신 태그 버전을 사용합니다.
+- `@latest`: 기본 배포용 CDN 경로
+- 버전을 고정하려면 `@0.1.0` 같은 태그를 사용합니다.

@@ -1,0 +1,153 @@
+name: Auto Tag on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+concurrency:
+  group: auto-tag-main
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    permissions:
+      contents: write
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Validate signing secrets
+        env:
+          TAG_SIGNING_GPG_PRIVATE_KEY: ${{ secrets.TAG_SIGNING_GPG_PRIVATE_KEY }}
+          TAG_SIGNING_GPG_PASSPHRASE: ${{ secrets.TAG_SIGNING_GPG_PASSPHRASE }}
+          TAG_SIGNING_PASSPHRASE_REQUIRED: ${{ vars.TAG_SIGNING_PASSPHRASE_REQUIRED }}
+          TAG_SIGNING_NAME: ${{ secrets.TAG_SIGNING_NAME }}
+          TAG_SIGNING_EMAIL: ${{ secrets.TAG_SIGNING_EMAIL }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${TAG_SIGNING_GPG_PRIVATE_KEY:-}" ]]; then
+            echo "Missing secret: TAG_SIGNING_GPG_PRIVATE_KEY"
+            exit 1
+          fi
+
+          if [[ -z "${TAG_SIGNING_NAME:-}" ]]; then
+            echo "Missing secret: TAG_SIGNING_NAME"
+            exit 1
+          fi
+
+          if [[ -z "${TAG_SIGNING_EMAIL:-}" ]]; then
+            echo "Missing secret: TAG_SIGNING_EMAIL"
+            exit 1
+          fi
+
+          passphrase_required="${TAG_SIGNING_PASSPHRASE_REQUIRED:-false}"
+          passphrase_required="$(echo "${passphrase_required}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${passphrase_required}" == "1" || "${passphrase_required}" == "true" || "${passphrase_required}" == "yes" ]]; then
+            if [[ -z "${TAG_SIGNING_GPG_PASSPHRASE:-}" ]]; then
+              echo "Missing secret: TAG_SIGNING_GPG_PASSPHRASE (required because TAG_SIGNING_PASSPHRASE_REQUIRED is enabled)"
+              exit 1
+            fi
+          fi
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@e89d40939c28e39f97cf32126055eeae86ba74ec # v6.3.0
+        with:
+          gpg_private_key: ${{ secrets.TAG_SIGNING_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.TAG_SIGNING_GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_tag_gpgsign: true
+          git_committer_name: ${{ secrets.TAG_SIGNING_NAME }}
+          git_committer_email: ${{ secrets.TAG_SIGNING_EMAIL }}
+
+      - name: Create or reuse patch tag
+        id: tagging
+        env:
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          TAG_SIGNING_NAME: ${{ secrets.TAG_SIGNING_NAME }}
+          TAG_SIGNING_EMAIL: ${{ secrets.TAG_SIGNING_EMAIL }}
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+
+          target_sha="${MERGE_SHA:?merge_commit_sha is empty; refusing to tag moving main HEAD.}"
+          if ! git cat-file -e "${target_sha}^{commit}" 2>/dev/null; then
+            echo "Target commit ${target_sha} is not available in the checkout."
+            exit 1
+          fi
+
+          existing_line="$(git tag --points-at "${target_sha}" | awk 'match($0,/^(v\.?)?[0-9]+\.[0-9]+(\.[0-9]+)?$/){raw=$0;ver=$0;sub(/^v\.?/,"",ver);n=split(ver,a,/\./);if(n==2){ver=ver".0"};print ver" "raw}' | sort -V | tail -n1 || true)"
+          if [[ -n "${existing_line}" ]]; then
+            existing_tag="${existing_line#* }"
+            echo "tag=${existing_tag}" >> "${GITHUB_OUTPUT}"
+            echo "tag_created=false" >> "${GITHUB_OUTPUT}"
+            echo "Found existing release tag ${existing_tag} on ${target_sha}. Skipping tag creation."
+            exit 0
+          fi
+
+          latest_line="$(git tag -l | awk 'match($0,/^(v\.?)?[0-9]+\.[0-9]+(\.[0-9]+)?$/){raw=$0;ver=$0;sub(/^v\.?/,"",ver);n=split(ver,a,/\./);if(n==2){ver=ver".0"};print ver" "raw}' | sort -V | tail -n1 || true)"
+
+          if [[ -n "${latest_line}" ]]; then
+            latest_version="${latest_line%% *}"
+          else
+            latest_version="0.0.0"
+          fi
+
+          IFS='.' read -r major minor patch <<< "${latest_version}"
+          next_patch=$((patch + 1))
+          next_tag="${major}.${minor}.${next_patch}"
+
+          if git rev-parse -q --verify "refs/tags/${next_tag}" >/dev/null; then
+            existing_target="$(git rev-list -n1 "${next_tag}")"
+            echo "Tag ${next_tag} already exists at ${existing_target}; refusing to reuse a different release tag."
+            exit 1
+          fi
+
+          git config user.name "${TAG_SIGNING_NAME}"
+          git config user.email "${TAG_SIGNING_EMAIL}"
+
+          if ! git tag -s "${next_tag}" "${target_sha}" -m "${next_tag}"; then
+            echo "Failed to create a signed tag. If your key has a passphrase, set TAG_SIGNING_GPG_PASSPHRASE."
+            exit 1
+          fi
+
+          git push origin "${next_tag}"
+
+          echo "tag=${next_tag}" >> "${GITHUB_OUTPUT}"
+          echo "tag_created=true" >> "${GITHUB_OUTPUT}"
+          echo "Created ${next_tag} at ${target_sha}"
+
+      - name: Create GitHub Release (if missing)
+        if: steps.tagging.outputs.tag != ''
+        uses: actions/github-script@v7
+        env:
+          TAG_NAME: ${{ steps.tagging.outputs.tag }}
+        with:
+          script: |
+            const tag = process.env.TAG_NAME;
+            const { owner, repo } = context.repo;
+
+            try {
+              await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+              core.info(`Release for ${tag} already exists. Skipping.`);
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                name: tag,
+                generate_release_notes: true
+              });
+              core.info(`Created release for ${tag}.`);
+            }
