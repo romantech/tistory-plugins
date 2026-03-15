@@ -1,6 +1,6 @@
+import { loadPlugin } from "@test/load-plugin";
 import { screen } from "@testing-library/dom";
 import { describe, expect, it } from "vitest";
-import { loadPlugin } from "../../test/load-plugin.js";
 
 describe("inline-code plugin", () => {
   it("wraps backtick-delimited text in code tags", async () => {

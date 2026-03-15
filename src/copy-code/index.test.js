@@ -1,6 +1,6 @@
-import {fireEvent, screen, waitFor} from "@testing-library/dom";
-import {beforeEach, describe, expect, it, vi} from "vitest";
-import {loadPlugin} from "../../test/load-plugin.js";
+import { loadPlugin } from "@test/load-plugin";
+import { fireEvent, screen, waitFor } from "@testing-library/dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("copy-code plugin", () => {
   beforeEach(() => {
