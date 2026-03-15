@@ -1,3 +1,19 @@
+type RenderMathInElement = (
+  element: HTMLElement,
+  options: {
+    delimiters: Array<{ left: string; right: string; display: boolean }>;
+    ignoredTags: string[];
+    throwOnError: boolean;
+    strict: boolean;
+  },
+) => void;
+
+type KatexState = typeof globalThis & {
+  __tistoryPluginsKatexLoadPromise?: Promise<void>;
+  katex?: unknown;
+  renderMathInElement?: RenderMathInElement;
+};
+
 (() => {
   const ARTICLE_SELECTORS = [
     "#article",
@@ -10,13 +26,13 @@
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
   const LOAD_PROMISE_KEY = "__tistoryPluginsKatexLoadPromise";
 
-  function findArticle() {
+  function findArticle(): HTMLElement | undefined {
     return ARTICLE_SELECTORS.map((selector) =>
-      document.querySelector(selector),
-    ).find(Boolean);
+      document.querySelector<HTMLElement>(selector),
+    ).find((article): article is HTMLElement => article !== null);
   }
 
-  function ensureStylesheet() {
+  function ensureStylesheet(): void {
     if (document.getElementById(STYLESHEET_ID)) return;
 
     const link = document.createElement("link");
@@ -27,7 +43,7 @@
     document.head.appendChild(link);
   }
 
-  function loadScript(id, src) {
+  function loadScript(id: string, src: string): Promise<void> {
     const existing = document.getElementById(id);
     if (existing) {
       return new Promise((resolve, reject) => {
@@ -36,7 +52,7 @@
           return;
         }
 
-        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("load", () => resolve(), { once: true });
         existing.addEventListener(
           "error",
           () => reject(new Error(`Failed to load ${src}`)),
@@ -68,8 +84,8 @@
     });
   }
 
-  function ensureKatexAssets() {
-    const state = globalThis;
+  function ensureKatexAssets(): Promise<void> {
+    const state = globalThis as KatexState;
     if (state[LOAD_PROMISE_KEY]) return state[LOAD_PROMISE_KEY];
 
     ensureStylesheet();
@@ -96,7 +112,7 @@
     return state[LOAD_PROMISE_KEY];
   }
 
-  async function initKatexPlugin() {
+  async function initKatexPlugin(): Promise<void> {
     const article = findArticle();
     if (!article || article.dataset.katexRendered === "true") return;
 
@@ -107,9 +123,10 @@
       return;
     }
 
-    if (typeof globalThis.renderMathInElement !== "function") return;
+    const state = globalThis as KatexState;
+    if (typeof state.renderMathInElement !== "function") return;
 
-    globalThis.renderMathInElement(article, {
+    state.renderMathInElement(article, {
       delimiters: [
         { left: "$$", right: "$$", display: true },
         { left: "$", right: "$", display: false },

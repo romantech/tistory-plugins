@@ -1,4 +1,4 @@
-name: Auto Tag on PR Merge
+name: Sync Dist and Release
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  tag:
+  release:
     permissions:
       contents: write
     if: github.event.pull_request.merged == true
@@ -21,6 +21,38 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dist assets
+        run: pnpm build
+
+      - name: Commit dist changes if needed
+        run: |
+          set -euo pipefail
+
+          git add -fA dist
+
+          if git diff --cached --quiet; then
+            echo "dist is up to date"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git commit -m "🤖 build: sync dist assets"
+          git push origin HEAD:main
 
       - name: Validate signing secrets
         env:
@@ -69,15 +101,17 @@ jobs:
       - name: Create or reuse patch tag
         id: tagging
         env:
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
           TAG_SIGNING_NAME: ${{ secrets.TAG_SIGNING_NAME }}
           TAG_SIGNING_EMAIL: ${{ secrets.TAG_SIGNING_EMAIL }}
         run: |
           set -euo pipefail
 
           git fetch --tags --force
+          git fetch origin main --force
+          git checkout main
+          git reset --hard origin/main
 
-          target_sha="${MERGE_SHA:?merge_commit_sha is empty; refusing to tag moving main HEAD.}"
+          target_sha="$(git rev-parse HEAD)"
           if ! git cat-file -e "${target_sha}^{commit}" 2>/dev/null; then
             echo "Target commit ${target_sha} is not available in the checkout."
             exit 1

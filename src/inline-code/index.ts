@@ -5,7 +5,7 @@
   const BLOCKED_SELECTOR = "code, pre, script, style, textarea";
   const INLINE_CODE_PATTERN = /`([^`\n]+)`/;
 
-  function collectTextNodes(container) {
+  function collectTextNodes(container: ParentNode): Text[] {
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         const parent = node.parentElement;
@@ -20,16 +20,18 @@
       },
     });
 
-    const textNodes = [];
+    const textNodes: Text[] = [];
     while (walker.nextNode()) {
-      textNodes.push(walker.currentNode);
+      if (walker.currentNode instanceof Text) {
+        textNodes.push(walker.currentNode);
+      }
     }
 
     return textNodes;
   }
 
-  function wrapInlineCode(textNode) {
-    const parts = textNode.textContent.split(/`([^`\n]+)`/);
+  function wrapInlineCode(textNode: Text): void {
+    const parts = textNode.textContent?.split(/`([^`\n]+)`/) ?? [];
     if (parts.length === 1) return;
 
     const fragment = document.createDocumentFragment();
@@ -45,15 +47,15 @@
       fragment.appendChild(code);
     });
 
-    textNode.parentNode.replaceChild(fragment, textNode);
+    textNode.parentNode?.replaceChild(fragment, textNode);
   }
 
-  function initInlineCodePlugin() {
-    const container = document.querySelector(CONTAINER_SELECTOR);
+  function initInlineCodePlugin(): void {
+    const container = document.querySelector<HTMLElement>(CONTAINER_SELECTOR);
     if (!container) return;
 
     collectTextNodes(container).forEach((textNode) => {
-      if (!INLINE_CODE_PATTERN.test(textNode.textContent)) return;
+      if (!INLINE_CODE_PATTERN.test(textNode.textContent ?? "")) return;
       wrapInlineCode(textNode);
     });
   }
