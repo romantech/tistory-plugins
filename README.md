@@ -26,6 +26,7 @@
 |---|---|---|
 | [`inline-code`](src/inline-code) | 백틱으로 감싼 텍스트를 `<code>`로 변환합니다. | [README](src/inline-code/README.md) |
 | [`katex`](src/katex) | `$...$`, `$$...$$` 수식을 KaTeX로 렌더링합니다. | [README](src/katex/README.md) |
+| [`copy-code`](src/copy-code) | 코드블록 우측 상단에 복사 버튼을 추가합니다. | [README](src/copy-code/README.md) |
 
 ## 버전 정책
 

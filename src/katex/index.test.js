@@ -1,6 +1,6 @@
+import { loadPlugin } from "@test/load-plugin";
 import { screen } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
-import { loadPlugin } from "../../test/load-plugin.js";
 
 describe("katex plugin", () => {
   it("renders math inside the detected article container", async () => {
