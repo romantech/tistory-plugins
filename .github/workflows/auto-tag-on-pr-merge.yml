@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (with tags)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: main
@@ -126,7 +126,7 @@ jobs:
 
       - name: Create GitHub Release (if missing)
         if: steps.tagging.outputs.tag != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           TAG_NAME: ${{ steps.tagging.outputs.tag }}
         with:
