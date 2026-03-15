@@ -9,8 +9,16 @@
 
 ## 구조
 
-- `src`: 플러그인별 폴더
+- `src`: 플러그인별 TypeScript 소스
+- `dist`: jsDelivr에서 불러오는 minified JavaScript 출력물
 - 필요 시 각 플러그인 폴더에 `README.md` 설명을 추가합니다.
+
+## 개발
+
+- `pnpm build`: `src/**/*.ts`를 `dist/**/index.min.js`로 빌드합니다.
+- `pnpm check`: Biome 검사
+- `pnpm typecheck`: TypeScript 타입 검사
+- `pnpm test:run`: Vitest 테스트 실행
 
 ## 플러그인
 
