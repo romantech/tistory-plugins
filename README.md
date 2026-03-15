@@ -1,28 +1,40 @@
 # tistory-plugins
 
-jsDelivr를 통해 불러와 티스토리 HTML 편집기에서 사용할 수 있는 스크립트 모음입니다.
+티스토리 HTML 편집기에서 외부 스크립트로 불러와 사용할 수 있는 플러그인 저장소입니다.
+GitHub에 배포한 뒤 jsDelivr CDN을 통해 불러와 사용할 수 있습니다.
+
+## 저장소
+
+- GitHub: https://github.com/romantech/tistory-plugins
+- Releases: https://github.com/romantech/tistory-plugins/releases
 
 ## 구조
 
-- `src`: 브라우저에서 바로 실행할 수 있는 독립형 스크립트
+- `src`: 플러그인별 폴더
+- 필요 시 각 스크립트 폴더에 설명용 `README.md`를 함께 둡니다.
 
-## 현재 플러그인
+## 플러그인
 
-- `inline-code.js`: 본문에서 백틱으로 감싼 텍스트를 `<code>`로 감쌉니다.
+- [`inline-code`](src/inline-code)
+  - 설명: 백틱으로 감싼 텍스트를 `<code>`로 변환합니다.
+  - 문서: [src/inline-code/README.md](src/inline-code/README.md)
+  - jsDelivr: `https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<tag>/src/inline-code/index.js`
 
-## 사용 방법
-
-이 저장소를 GitHub에 올린 뒤, 티스토리 HTML 편집 영역에서 아래처럼 스크립트를 불러오면 됩니다.
-
-```html
-<script src="https://cdn.jsdelivr.net/gh/<github-user>/tistory-plugins@main/src/inline-code.js"></script>
-```
-
-업데이트를 배포할 때는 `main` 대신 태그를 사용해야 캐시를 더 안정적으로 관리할 수 있습니다.
-
-## 개발 명령
+## 배포 절차
 
 ```bash
-pnpm format
-pnpm check
+git add .
+git commit -m "feat: ..."
+git push origin main
+
+git tag -a <tag> -m "Release <tag>"
+git push origin <tag>
+
+gh release create <tag> --verify-tag --title "<tag>"
 ```
+
+## 버전 정책
+
+- `main`: 개발 및 테스트용
+- `v0.1.0` 같은 태그: 운영 배포용
+- 운영에서는 `main` 대신 태그 버전을 사용합니다.
