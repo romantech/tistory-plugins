@@ -30,5 +30,8 @@
 티스토리 HTML 편집기에서 아래 스크립트를 붙여 넣습니다.
 
 ```html
+<!-- 코드블록 복사 버튼 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.css">
+<!-- 코드블록 복사 버튼 JS -->
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.js"></script>
 ```
