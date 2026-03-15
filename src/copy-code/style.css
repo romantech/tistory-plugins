@@ -4,20 +4,20 @@
 
 .rp-copy-code-button {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
+  top: 0.625rem;
+  right: 0.625rem;
   z-index: 10;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 56px;
-  height: 32px;
-  padding: 0 12px;
+  min-width: 44px;
+  height: 26px;
+  padding: 0 6px 2px;
   border: 1px solid rgba(240, 246, 252, 0.16);
-  border-radius: 6px;
-  background: rgba(33, 38, 45, 0.92);
+  border-radius: 5px;
+  background: rgba(33, 38, 45, 0.55);
   color: #c9d1d9;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0;
@@ -29,8 +29,8 @@
     background-color 0.18s ease,
     border-color 0.18s ease,
     color 0.18s ease;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
 }
 
 .rp-copy-code-wrapper:hover .rp-copy-code-button,
@@ -39,7 +39,7 @@
 }
 
 .rp-copy-code-button:hover {
-  background: #30363d;
+  background: rgba(48, 54, 61, 0.68);
   border-color: rgba(240, 246, 252, 0.28);
   color: #f0f6fc;
 }
@@ -51,14 +51,14 @@
 }
 
 .rp-copy-code-button.is-copied {
-  background: rgba(35, 134, 54, 0.18);
+  background: rgba(35, 134, 54, 0.22);
   border-color: rgba(63, 185, 80, 0.45);
   color: #3fb950;
   opacity: 1;
 }
 
 .rp-copy-code-button.is-error {
-  background: rgba(248, 81, 73, 0.16);
+  background: rgba(248, 81, 73, 0.2);
   border-color: rgba(248, 81, 73, 0.4);
   color: #ff7b72;
   opacity: 1;
