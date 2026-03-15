@@ -35,13 +35,13 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const buttons = screen.getAllByRole("button", { name: "코드 복사" });
+    const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
 
     expect(buttons).toHaveLength(2);
     expect(wrappers).toHaveLength(2);
-    expect(buttons[0]).toHaveTextContent("복사");
-    expect(buttons[1]).toHaveTextContent("복사");
+    expect(buttons[0]).toHaveTextContent("Copy");
+    expect(buttons[1]).toHaveTextContent("Copy");
   });
 
   it("does not add a button when pre does not contain code", async () => {
@@ -54,7 +54,7 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const buttons = screen.getAllByRole("button", { name: "코드 복사" });
+    const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(1);
   });
 
@@ -83,7 +83,7 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const button = screen.getByRole("button", { name: "코드 복사" });
+    const button = screen.getByRole("button", { name: "Copy code" });
 
     await fireEvent.click(button);
 
@@ -91,14 +91,14 @@ describe("copy-code plugin", () => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
         "const a = 1;",
       );
-      expect(button).toHaveTextContent("복사됨");
+      expect(button).toHaveTextContent("Copied");
       expect(button).toHaveClass("is-copied");
     });
 
     vi.advanceTimersByTime(2000);
 
     await waitFor(() => {
-      expect(button).toHaveTextContent("복사");
+      expect(button).toHaveTextContent("Copy");
     });
 
     expect(button).not.toHaveClass("is-copied");
@@ -115,20 +115,20 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const button = screen.getByRole("button", { name: "코드 복사" });
+    const button = screen.getByRole("button", { name: "Copy code" });
 
     await fireEvent.click(button);
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
-      expect(button).toHaveTextContent("실패");
+      expect(button).toHaveTextContent("Error");
       expect(button).toHaveClass("is-error");
     });
 
     vi.advanceTimersByTime(2000);
 
     await waitFor(() => {
-      expect(button).toHaveTextContent("복사");
+      expect(button).toHaveTextContent("Copy");
     });
 
     expect(button).not.toHaveClass("is-error");
@@ -157,13 +157,13 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const button = screen.getByRole("button", { name: "코드 복사" });
+    const button = screen.getByRole("button", { name: "Copy code" });
 
     await fireEvent.click(button);
 
     await waitFor(() => {
       expect(execCommandSpy).toHaveBeenCalledWith("copy");
-      expect(button).toHaveTextContent("복사됨");
+      expect(button).toHaveTextContent("Copied");
       expect(button).toHaveClass("is-copied");
     });
   });
@@ -186,19 +186,19 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const button = screen.getByRole("button", { name: "코드 복사" });
+    const button = screen.getByRole("button", { name: "Copy code" });
 
     await fireEvent.click(button);
 
     await waitFor(() => {
-      expect(button).toHaveTextContent("실패");
+      expect(button).toHaveTextContent("Error");
       expect(button).toHaveClass("is-error");
     });
 
     vi.advanceTimersByTime(2000);
 
     await waitFor(() => {
-      expect(button).toHaveTextContent("복사");
+      expect(button).toHaveTextContent("Copy");
     });
   });
 
@@ -212,7 +212,7 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const buttons = screen.getAllByRole("button", { name: "코드 복사" });
+    const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(1);
   });
 
@@ -225,9 +225,9 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const button = screen.getByRole("button", { name: "코드 복사" });
+    const button = screen.getByRole("button", { name: "Copy code" });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent("복사");
+    expect(button).toHaveTextContent("Copy");
   });
 
   it("works with .tt_article_useless_p_margin container too", async () => {
@@ -239,8 +239,8 @@ describe("copy-code plugin", () => {
 
     await loadPlugin(() => import("./index.ts"));
 
-    const button = screen.getByRole("button", { name: "코드 복사" });
+    const button = screen.getByRole("button", { name: "Copy code" });
     expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent("복사");
+    expect(button).toHaveTextContent("Copy");
   });
 });

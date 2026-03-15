@@ -39,10 +39,8 @@
         cursor: pointer;
         user-select: none;
         opacity: 0;
-        transform: translateY(-2px);
         transition:
           opacity 0.18s ease,
-          transform 0.18s ease,
           background-color 0.18s ease,
           border-color 0.18s ease,
           color 0.18s ease;
@@ -53,7 +51,6 @@
       .${WRAPPER_CLASS}:hover .${BUTTON_CLASS},
       .${WRAPPER_CLASS}:focus-within .${BUTTON_CLASS} {
         opacity: 1;
-        transform: translateY(0);
       }
 
       .${BUTTON_CLASS}:hover {
@@ -64,7 +61,6 @@
 
       .${BUTTON_CLASS}:focus-visible {
         opacity: 1;
-        transform: translateY(0);
         outline: 2px solid #2f81f7;
         outline-offset: 2px;
       }
@@ -74,7 +70,6 @@
         border-color: rgba(63, 185, 80, 0.45);
         color: #3fb950;
         opacity: 1;
-        transform: translateY(0);
       }
 
       .${BUTTON_CLASS}.${ERROR_CLASS} {
@@ -82,20 +77,18 @@
         border-color: rgba(248, 81, 73, 0.4);
         color: #ff7b72;
         opacity: 1;
-        transform: translateY(0);
       }
 
       @media (hover: none) {
         .${BUTTON_CLASS} {
           opacity: 1;
-          transform: translateY(0);
         }
       }
     `;
 
-  const BUTTON_TEXT = "복사";
-  const SUCCESS_TEXT = "복사됨";
-  const ERROR_TEXT = "실패";
+  const BUTTON_TEXT = "Copy";
+  const SUCCESS_TEXT = "Copied";
+  const ERROR_TEXT = "Error";
   const RESET_DELAY = 2000;
 
   function getArticleContainer(): HTMLElement | null {
@@ -179,7 +172,7 @@
     button.type = "button";
     button.className = BUTTON_CLASS;
     button.textContent = BUTTON_TEXT;
-    button.setAttribute("aria-label", "코드 복사");
+    button.setAttribute("aria-label", "Copy code");
 
     let resetTimer: number | undefined;
 
