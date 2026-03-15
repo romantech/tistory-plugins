@@ -5,8 +5,8 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "format": "biome format --write .",
-    "check": "biome check .",
-    "build": "esbuild src/inline-code/index.ts src/katex/index.ts --bundle --minify --platform=browser --target=es2022 --format=iife --outbase=src --outdir=dist --entry-names=[dir]/index.min",
+    "check": "biome check . --write",
+    "build": "node esbuild.config.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run"
