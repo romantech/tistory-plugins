@@ -10,8 +10,10 @@
   const COPIED_CLASS = "is-copied";
   const ERROR_CLASS = "is-error";
   const STYLE_ID = "rp-copy-code-style";
-  const LINE_NUMBER_ROW_SELECTOR = ".hljs-ln-code .hljs-ln-line";
-  const LINE_NUMBER_CELL_SELECTOR = ".hljs-ln-code";
+  const LINE_TEXT_SELECTORS = [
+    ".hljs-ln-code .hljs-ln-line",
+    ".hljs-ln-code",
+  ] as const;
 
   const STYLE_TEXT = `
       .${WRAPPER_CLASS} {
@@ -96,29 +98,39 @@
     return text.replace(/\r\n?/g, "\n");
   }
 
-  function getJoinedText(elements: NodeListOf<HTMLElement>): string {
-    return Array.from(elements)
-      .map((element) => element.textContent ?? "")
-      .join("\n");
-  }
+  function getTextBySelectors(
+    root: ParentNode,
+    selectors: readonly string[],
+  ): string | null {
+    for (const selector of selectors) {
+      const elements = root.querySelectorAll<HTMLElement>(selector);
+      if (elements.length === 0) continue;
 
-  function getArticleContainer(): HTMLElement | null {
-    for (const selector of CONTAINER_SELECTORS) {
-      const element = document.querySelector<HTMLElement>(selector);
-      if (element) return element;
+      return elements.length === 1
+        ? (elements[0].textContent ?? "")
+        : Array.from(elements)
+            .map((element) => element.textContent ?? "")
+            .join("\n");
     }
 
     return null;
   }
 
+  function getArticleContainer(): HTMLElement | null {
+    return (
+      CONTAINER_SELECTORS.map((selector) =>
+        document.querySelector<HTMLElement>(selector),
+      ).find((element): element is HTMLElement => element !== null) ?? null
+    );
+  }
+
   function injectStyle(): void {
     if (document.getElementById(STYLE_ID)) return;
 
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
-    style.textContent = STYLE_TEXT;
-
-    document.head.appendChild(style);
+    document.head.insertAdjacentHTML(
+      "beforeend",
+      `<style id="${STYLE_ID}">${STYLE_TEXT}</style>`,
+    );
   }
 
   function setButtonState(
@@ -162,27 +174,10 @@
 
   function getCodeText(pre: HTMLElement): string {
     const code = pre.querySelector<HTMLElement>("code");
-    if (!code) {
-      return "";
-    }
+    if (!code) return "";
 
-    const lineNumberRows = code.querySelectorAll<HTMLElement>(
-      LINE_NUMBER_ROW_SELECTOR,
-    );
-
-    if (lineNumberRows.length > 0) {
-      return getJoinedText(lineNumberRows);
-    }
-
-    const lineNumberCells = code.querySelectorAll<HTMLElement>(
-      LINE_NUMBER_CELL_SELECTOR,
-    );
-
-    if (lineNumberCells.length > 0) {
-      return getJoinedText(lineNumberCells);
-    }
-
-    return normalizeLineBreaks(code.textContent ?? "");
+    const lineText = getTextBySelectors(code, LINE_TEXT_SELECTORS);
+    return normalizeLineBreaks(lineText ?? code.textContent ?? "");
   }
 
   function createButton(pre: HTMLElement): HTMLButtonElement {
@@ -221,17 +216,14 @@
   }
 
   function enhanceCodeBlocks(article: HTMLElement): void {
-    const preElements = article.querySelectorAll<HTMLElement>("pre");
-
-    preElements.forEach((pre) => {
-      if (pre.dataset.copyCodeReady === "true") return;
-      if (!pre.querySelector("code")) return;
+    article.querySelectorAll<HTMLElement>("pre").forEach((pre) => {
+      if (pre.dataset.copyCodeReady === "true" || !pre.querySelector("code")) {
+        return;
+      }
 
       pre.dataset.copyCodeReady = "true";
       pre.classList.add(WRAPPER_CLASS);
-
-      const button = createButton(pre);
-      pre.appendChild(button);
+      pre.appendChild(createButton(pre));
     });
   }
 
