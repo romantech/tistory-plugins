@@ -244,3 +244,64 @@ describe("copy-code plugin", () => {
     expect(button).toHaveTextContent("Copy");
   });
 });
+
+it("preserves line breaks when copying plain code blocks", async () => {
+  document.body.innerHTML = `
+      <div id="article">
+        <pre><code>const a = 1;\nconst b = 2;\nreturn a + b;</code></pre>
+      </div>
+    `;
+
+  await loadPlugin(() => import("./index.ts"));
+
+  const button = screen.getByRole("button", { name: "Copy code" });
+
+  await fireEvent.click(button);
+
+  await waitFor(() => {
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "const a = 1;\nconst b = 2;\nreturn a + b;",
+    );
+    expect(button).toHaveTextContent("Copied");
+  });
+});
+
+it("preserves line breaks when copying code blocks rendered with highlightjs line numbers", async () => {
+  document.body.innerHTML = `
+      <div id="article">
+        <pre>
+          <code>
+            <table class="hljs-ln">
+              <tbody>
+                <tr>
+                  <td class="hljs-ln-numbers" data-line-number="1"></td>
+                  <td class="hljs-ln-code"><span class="hljs-ln-line">const a = 1;</span></td>
+                </tr>
+                <tr>
+                  <td class="hljs-ln-numbers" data-line-number="2"></td>
+                  <td class="hljs-ln-code"><span class="hljs-ln-line">const b = 2;</span></td>
+                </tr>
+                <tr>
+                  <td class="hljs-ln-numbers" data-line-number="3"></td>
+                  <td class="hljs-ln-code"><span class="hljs-ln-line">return a + b;</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </code>
+        </pre>
+      </div>
+    `;
+
+  await loadPlugin(() => import("./index.ts"));
+
+  const button = screen.getByRole("button", { name: "Copy code" });
+
+  await fireEvent.click(button);
+
+  await waitFor(() => {
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      "const a = 1;\nconst b = 2;\nreturn a + b;",
+    );
+    expect(button).toHaveTextContent("Copied");
+  });
+});

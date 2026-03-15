@@ -11,6 +11,7 @@
   const ERROR_CLASS = "is-error";
   const STYLE_ID = "rp-copy-code-style";
   const LINE_NUMBER_ROW_SELECTOR = ".hljs-ln-code .hljs-ln-line";
+  const LINE_NUMBER_CELL_SELECTOR = ".hljs-ln-code";
 
   const STYLE_TEXT = `
       .${WRAPPER_CLASS} {
@@ -91,6 +92,16 @@
   const ERROR_TEXT = "Error";
   const RESET_DELAY = 2000;
 
+  function normalizeLineBreaks(text: string): string {
+    return text.replace(/\r\n?/g, "\n");
+  }
+
+  function getJoinedText(elements: NodeListOf<HTMLElement>): string {
+    return Array.from(elements)
+      .map((element) => element.textContent ?? "")
+      .join("\n");
+  }
+
   function getArticleContainer(): HTMLElement | null {
     for (const selector of CONTAINER_SELECTORS) {
       const element = document.querySelector<HTMLElement>(selector);
@@ -124,13 +135,14 @@
   }
 
   async function copyText(text: string): Promise<void> {
+    const normalizedText = normalizeLineBreaks(text);
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(normalizedText);
       return;
     }
 
     const textarea = document.createElement("textarea");
-    textarea.value = text;
+    textarea.value = normalizedText;
     textarea.setAttribute("readonly", "");
     textarea.style.position = "fixed";
     textarea.style.top = "-9999px";
@@ -159,12 +171,18 @@
     );
 
     if (lineNumberRows.length > 0) {
-      return Array.from(lineNumberRows)
-        .map((line) => line.textContent ?? "")
-        .join("\n");
+      return getJoinedText(lineNumberRows);
     }
 
-    return code.textContent ?? "";
+    const lineNumberCells = code.querySelectorAll<HTMLElement>(
+      LINE_NUMBER_CELL_SELECTOR,
+    );
+
+    if (lineNumberCells.length > 0) {
+      return getJoinedText(lineNumberCells);
+    }
+
+    return normalizeLineBreaks(code.textContent ?? "");
   }
 
   function createButton(pre: HTMLElement): HTMLButtonElement {
