@@ -58,7 +58,7 @@ describe("copy-code plugin", () => {
     expect(buttons).toHaveLength(1);
   });
 
-  it("injects the style element only once", async () => {
+  it("does not add duplicate copy buttons when loaded more than once", async () => {
     document.body.innerHTML = `
       <div id="article">
         <pre><code>const a = 1;</code></pre>
@@ -68,8 +68,11 @@ describe("copy-code plugin", () => {
     await loadPlugin(() => import("./index.ts"));
     await loadPlugin(() => import("./index.ts"));
 
-    const styles = document.querySelectorAll("#rp-copy-code-style");
-    expect(styles).toHaveLength(1);
+    const buttons = screen.getAllByRole("button", { name: "Copy code" });
+    const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
+
+    expect(buttons).toHaveLength(1);
+    expect(wrappers).toHaveLength(1);
   });
 
   it("copies code text with Clipboard API and shows success state", async () => {
