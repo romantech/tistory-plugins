@@ -29,6 +29,7 @@
 | [`inline-code`](src/inline-code) | 백틱으로 감싼 텍스트를 `<code>`로 변환합니다. | [README](src/inline-code/README.md) |
 | [`katex`](src/katex) | `$...$`, `$$...$$` 수식을 KaTeX로 렌더링합니다. | [README](src/katex/README.md) |
 | [`copy-code`](src/copy-code) | 코드블록 우측 상단에 복사 버튼을 추가합니다. | [README](src/copy-code/README.md) |
+| [`focus-guard`](src/focus-guard) | 사이드바 토글 시 `aria-hidden` 관련 포커스 경고를 완화합니다. | [README](src/focus-guard/README.md) |
 
 ## 개발 명령어
 프로젝트 환경 설정 및 빌드 명령어입니다. 패키지 매니저는 `pnpm`을 사용합니다.
