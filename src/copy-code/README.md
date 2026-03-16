@@ -27,11 +27,20 @@
 
 ## 사용 방법
 
-티스토리 HTML 편집기에서 아래 스크립트를 붙여 넣습니다.
+티스토리 HTML 편집기를 열고 아래의 단계에 따라 코드를 삽입합니다.
+
+### 1. CSS 추가하기
+아래 코드를 복사하여 `</head>` 태그 바로 앞에 붙여넣습니다.
 
 ```html
 <!-- 코드블록 복사 버튼 CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.css">
+```
+
+### 2. 자바스크립트(JS) 추가하기
+아래 스크립트를 복사하여 `</body>` 태그 바로 앞에 붙여넣습니다.
+
+```html
 <!-- 코드블록 복사 버튼 JS -->
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.js"></script>
 ```

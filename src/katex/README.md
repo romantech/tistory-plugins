@@ -31,7 +31,7 @@
 
 ## 사용 방법
 
-티스토리 HTML 편집기에서 아래 스크립트를 붙여 넣습니다.
+아래 스크립트를 복사하여 티스토리 HTML 편집기의 `</body>` 태그 앞에 삽입합니다.
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
