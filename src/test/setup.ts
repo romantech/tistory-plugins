@@ -5,25 +5,25 @@ const RESET_GLOBAL_KEYS = [
   "__tistoryPluginsKatexLoadPromise",
   "katex",
   "renderMathInElement",
-];
+] as const;
 
-function resetDom() {
+function resetDom(): void {
   document.head.innerHTML = "";
   document.body.innerHTML = "";
 }
 
-function resetGlobals() {
+function resetGlobals(): void {
   for (const key of RESET_GLOBAL_KEYS) {
-    delete globalThis[key];
+    delete (globalThis as Record<string, unknown>)[key];
   }
 }
 
-beforeEach(() => {
+beforeEach((): void => {
   resetDom();
   resetGlobals();
 });
 
-afterEach(() => {
+afterEach((): void => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   resetDom();

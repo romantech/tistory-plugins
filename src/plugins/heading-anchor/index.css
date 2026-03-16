@@ -1,0 +1,32 @@
+:root {
+  --header-height: 84px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+:is(h2, h3, h4) {
+  scroll-margin-top: var(--header-height);
+}
+
+html.night #article.fc :is(h2, h3, h4) > .rp-heading-anchor {
+  color: #bbb;
+}
+
+.rp-heading-anchor-marker {
+  display: inline-flex;
+  margin-inline-start: 0.2em;
+  font-size: 0.9em;
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(-1px);
+  transition: opacity 0.2s ease;
+  user-select: none;
+  pointer-events: none;
+}
+
+:is(h2, h3, h4):hover .rp-heading-anchor-marker,
+.rp-heading-anchor:focus-visible .rp-heading-anchor-marker {
+  opacity: 1;
+}

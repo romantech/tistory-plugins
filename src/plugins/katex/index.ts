@@ -1,36 +1,18 @@
-type RenderMathInElement = (
-  element: HTMLElement,
-  options: {
-    delimiters: Array<{ left: string; right: string; display: boolean }>;
-    ignoredTags: string[];
-    throwOnError: boolean;
-    strict: boolean;
-  },
-) => void;
+import type renderMathInElement from "katex/contrib/auto-render";
+import { getTistoryArticle } from "@/shared/utils";
 
 type KatexState = typeof globalThis & {
   __tistoryPluginsKatexLoadPromise?: Promise<void>;
   katex?: unknown;
-  renderMathInElement?: RenderMathInElement;
+  renderMathInElement?: typeof renderMathInElement;
 };
 
 (() => {
-  const ARTICLE_SELECTORS = [
-    "#article",
-    ".article-view",
-    ".tt_article_useless_p_margin",
-  ];
   const KATEX_VERSION = "0.16.38";
   const STYLESHEET_ID = "tistory-plugins-katex-css";
   const KATEX_SCRIPT_ID = "tistory-plugins-katex-js";
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
   const LOAD_PROMISE_KEY = "__tistoryPluginsKatexLoadPromise";
-
-  function findArticle(): HTMLElement | undefined {
-    return ARTICLE_SELECTORS.map((selector) =>
-      document.querySelector<HTMLElement>(selector),
-    ).find((article): article is HTMLElement => article !== null);
-  }
 
   function ensureStylesheet(): void {
     if (document.getElementById(STYLESHEET_ID)) return;
@@ -113,8 +95,9 @@ type KatexState = typeof globalThis & {
   }
 
   async function initKatexPlugin(): Promise<void> {
-    const article = findArticle();
-    if (!article || article.dataset.katexRendered === "true") return;
+    const article = getTistoryArticle();
+    if (!(article instanceof HTMLElement)) return;
+    if (article.dataset.katexRendered === "true") return;
 
     try {
       await ensureKatexAssets();

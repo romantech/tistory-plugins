@@ -1,6 +1,11 @@
 import { vi } from "vitest";
 
-export async function loadPlugin(importModule, microtaskCount = 1) {
+type ImportModule = () => Promise<unknown>;
+
+export async function loadPlugin(
+  importModule: ImportModule,
+  microtaskCount = 1,
+): Promise<void> {
   vi.resetModules();
   await importModule();
   document.dispatchEvent(new Event("DOMContentLoaded"));
