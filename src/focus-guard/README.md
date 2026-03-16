@@ -1,12 +1,12 @@
 # focus-guard
 
-티스토리 스킨의 사이드바 토글 과정에서 발생할 수 있는 `aria-hidden` 관련 포커스 경고를 완화하는 플러그인입니다. 일부 스킨은 사이드바를 열거나 닫는 과정에서 포커스가 남아 있는 요소 또는 그 조상 요소에 `aria-hidden="true"`를 적용합니다. 이 경우 브라우저 콘솔에 아래와 같은 접근성 경고가 표시될 수 있습니다.
+티스토리 스킨의 사이드바 토글 과정에서 발생할 수 있는 `aria-hidden` 포커스 경고를 완화하는 플러그인입니다. 일부 스킨은 사이드바를 열거나 닫는 과정에서 포커스가 남아 있는 요소 또는 그 조상 요소에 `aria-hidden="true"`를 적용합니다. 이 경우 브라우저 콘솔에 아래와 같은 접근성 경고가 표시될 수 있습니다.
 
 > Blocked aria-hidden on an element because its descendant retained focus. The focus must not be hidden from assistive technology users. Avoid using aria-hidden on a focused element or its ancestor. Consider using the inert attribute instead, which will also prevent focus. For more details, see the aria-hidden section of the WAI-ARIA specification at https://w3c.github.io/aria/#aria-hidden.
 
 이 플러그인은 다음 방식으로 포커스가 숨겨진 영역에 남지 않도록 보조합니다.
 
-- 사이드바 열기/닫기 버튼의 `pointerdown`에서 기본 포커스 이동을 방지
+- 사이드바 열기/닫기 버튼의 `pointerdown`에서 기본 포커스 이동 방지
 - 클릭 이후 버튼에 포커스가 남아 있으면 `blur()` 처리
 - `aria-hidden="true"`로 변경된 요소 내부에 활성 요소가 남아 있으면 `blur()` 처리
 
