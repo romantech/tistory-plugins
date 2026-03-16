@@ -5,7 +5,16 @@ import { getTistoryArticle } from "@/shared/utils";
   const HEADING_SELECTOR = "h2, h3, h4";
   const LINK_CLASS = "rp-heading-anchor";
   const DEFAULT_ID = "section";
+  const DEFAULT_HEADER_HEIGHT = 84;
+  const MAX_SUFFIX = 1000;
+  const POST_LOAD_CORRECTION_DELAYS = [120, 320, 700, 1400] as const;
+  const VIEWPORT_RESIZE_WATCH_DURATION = 1600;
+  const POSITION_TOLERANCE = 6;
+
   const USED_IDS = new Set<string>();
+  let cleanupPendingInitialHashScroll: (() => void) | null = null;
+
+  let initialized = false;
 
   function getHeaderOffset(): number {
     return (
@@ -14,7 +23,7 @@ import { getTistoryArticle } from "@/shared/utils";
           .getPropertyValue("--header-height")
           .trim(),
         10,
-      ) || 84
+      ) || DEFAULT_HEADER_HEIGHT
     );
   }
 
@@ -22,52 +31,154 @@ import { getTistoryArticle } from "@/shared/utils";
     return text
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s가-힣-]/g, "")
+      .replace(/[^\p{L}\p{N}\s-]/gu, "")
       .replace(/\s+/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
   }
 
-  function getUniqueId(base: string): string {
+  function getUniqueId(base: string, currentHeading?: HTMLElement): string {
     const normalizedBase = base || DEFAULT_ID;
-    let id = normalizedBase;
-    let count = 2;
 
-    while (USED_IDS.has(id) || document.getElementById(id)) {
-      id = `${normalizedBase}-${count++}`;
+    for (let suffix = 1; suffix <= MAX_SUFFIX; suffix += 1) {
+      const id = suffix === 1 ? normalizedBase : `${normalizedBase}-${suffix}`;
+      const existing = document.getElementById(id);
+
+      if (!USED_IDS.has(id) && (!existing || existing === currentHeading)) {
+        USED_IDS.add(id);
+        return id;
+      }
     }
 
-    USED_IDS.add(id);
-    return id;
+    const fallback = `${normalizedBase}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+
+    USED_IDS.add(fallback);
+    return fallback;
   }
 
-  async function copyToClipboard(text: string): Promise<boolean> {
-    try {
-      if (!navigator.clipboard?.writeText) return false;
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      return false;
-    }
+  function isHeadingPositionAccurate(
+    heading: HTMLElement,
+    tolerance = POSITION_TOLERANCE,
+  ): boolean {
+    const expectedTop = getHeaderOffset();
+    const actualTop = heading.getBoundingClientRect().top;
+
+    return Math.abs(actualTop - expectedTop) <= tolerance;
   }
 
-  function scrollToHeading(heading: HTMLElement, smooth = true): void {
+  function scrollHeadingIntoView(
+    heading: HTMLElement,
+    behavior: ScrollBehavior,
+  ): void {
     const top =
       window.scrollY + heading.getBoundingClientRect().top - getHeaderOffset();
 
     window.scrollTo({
       top: Math.max(0, top),
-      behavior: smooth ? "smooth" : "auto",
+      behavior,
     });
   }
 
-  async function activateHeading(heading: HTMLElement): Promise<void> {
-    const url = new URL(location.href);
-    url.hash = heading.id;
+  function scrollHeadingIntoViewIfNeeded(
+    heading: HTMLElement,
+    behavior: ScrollBehavior,
+    tolerance = POSITION_TOLERANCE,
+  ): void {
+    if (isHeadingPositionAccurate(heading, tolerance)) {
+      return;
+    }
 
-    await copyToClipboard(url.toString());
-    history.replaceState(null, "", url);
-    scrollToHeading(heading, true);
+    scrollHeadingIntoView(heading, behavior);
+  }
+
+  function correctInitialHashScroll(target: HTMLElement): void {
+    const timeoutIds: number[] = [];
+    cleanupPendingInitialHashScroll?.();
+
+    const run = (): void => {
+      if (!document.contains(target)) return;
+      scrollHeadingIntoViewIfNeeded(target, "auto");
+    };
+
+    const addManagedTimeout = (callback: () => void, delay: number): void => {
+      const timeoutId = window.setTimeout(() => {
+        const index = timeoutIds.indexOf(timeoutId);
+        if (index !== -1) {
+          timeoutIds.splice(index, 1);
+        }
+
+        callback();
+      }, delay);
+
+      timeoutIds.push(timeoutId);
+    };
+
+    const handleViewportChange = (): void => {
+      run();
+    };
+
+    const cleanup = (): void => {
+      while (timeoutIds.length) {
+        const timeoutId = timeoutIds.pop();
+        if (timeoutId !== undefined) {
+          window.clearTimeout(timeoutId);
+        }
+      }
+
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener(
+          "resize",
+          handleViewportChange,
+        );
+      }
+
+      window.removeEventListener("load", runAfterLoad);
+
+      if (cleanupPendingInitialHashScroll === cleanup) {
+        cleanupPendingInitialHashScroll = null;
+      }
+    };
+
+    cleanupPendingInitialHashScroll = cleanup;
+
+    const runAfterLoad = (): void => {
+      run();
+
+      requestAnimationFrame(() => {
+        run();
+        requestAnimationFrame(run);
+      });
+
+      POST_LOAD_CORRECTION_DELAYS.forEach((delay) => {
+        addManagedTimeout(run, delay);
+      });
+
+      addManagedTimeout(cleanup, VIEWPORT_RESIZE_WATCH_DURATION);
+    };
+
+    if (document.readyState === "complete") {
+      runAfterLoad();
+    } else {
+      window.addEventListener("load", runAfterLoad, { once: true });
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleViewportChange, {
+        passive: true,
+      });
+    }
+  }
+
+  function activateHeading(heading: HTMLElement): void {
+    try {
+      history.replaceState(null, "", `#${heading.id}`);
+    } catch {
+      // 해시 갱신 실패 시에도 스크롤은 계속 진행
+    }
+
+    scrollHeadingIntoView(heading, "smooth");
   }
 
   function createAnchorLink(heading: HTMLElement): HTMLAnchorElement {
@@ -76,108 +187,115 @@ import { getTistoryArticle } from "@/shared/utils";
     const anchor = document.createElement("a");
     anchor.className = LINK_CLASS;
     anchor.href = `#${heading.id}`;
-    anchor.textContent = "#";
-    anchor.setAttribute("aria-label", `${text} 링크 복사`);
-    anchor.setAttribute("title", "링크 복사");
+    anchor.setAttribute("aria-label", `${text} 링크`);
+    anchor.setAttribute("title", "현재 섹션으로 이동");
 
-    anchor.addEventListener("click", async (event) => {
+    while (heading.firstChild) {
+      anchor.append(heading.firstChild);
+    }
+
+    const marker = document.createElement("span");
+    marker.className = `${LINK_CLASS}-marker`;
+    marker.textContent = "#";
+    marker.setAttribute("aria-hidden", "true");
+
+    anchor.append(marker);
+
+    anchor.addEventListener("click", (event) => {
       event.preventDefault();
-      event.stopPropagation();
-      await activateHeading(heading);
+      activateHeading(heading);
       anchor.blur();
     });
 
     return anchor;
   }
 
-  function getImagesBeforeTarget(
-    article: Element,
-    target: HTMLElement,
-  ): HTMLImageElement[] {
-    const allImages = Array.from(article.querySelectorAll("img"));
+  function getDecodedHash(): string {
+    const rawHash = location.hash.slice(1);
 
-    return allImages.filter((img) => {
-      const pos = img.compareDocumentPosition(target);
-      return Boolean(pos & Node.DOCUMENT_POSITION_FOLLOWING);
-    });
+    if (!rawHash) return "";
+
+    try {
+      return decodeURIComponent(rawHash);
+    } catch {
+      return rawHash;
+    }
   }
 
-  function waitForImages(images: HTMLImageElement[]): Promise<void[]> {
-    const pending = images.filter((img) => !img.complete);
+  function hasHash(): boolean {
+    return location.hash.length > 1;
+  }
 
-    if (pending.length === 0) {
-      return Promise.resolve([]);
+  function scrollToHeadingHash(article: HTMLElement): void {
+    const hash = getDecodedHash();
+    if (!hash) return;
+
+    const target = document.getElementById(hash);
+    if (
+      !target ||
+      !article.contains(target) ||
+      !target.matches(HEADING_SELECTOR)
+    ) {
+      return;
     }
 
-    return Promise.all(
-      pending.map(
-        (img) =>
-          new Promise<void>((resolve) => {
-            const done = () => resolve();
+    if (document.fonts?.ready) {
+      void document.fonts.ready.then(() => {
+        if (!document.contains(target)) return;
+        correctInitialHashScroll(target);
+      });
+      return;
+    }
 
-            img.addEventListener("load", done, { once: true });
-            img.addEventListener("error", done, { once: true });
-
-            if (img.complete) resolve();
-          }),
-      ),
-    );
+    correctInitialHashScroll(target);
   }
 
-  async function fixInitialHashScroll(article: Element): Promise<void> {
-    if (!location.hash) return;
+  function prepareHeading(heading: HTMLElement): void {
+    if (heading.querySelector(`.${LINK_CLASS}`)) {
+      return;
+    }
 
-    const id = decodeURIComponent(location.hash.slice(1));
-    if (!id) return;
+    const text = heading.textContent?.trim();
+    if (!text) return;
 
-    const target = document.getElementById(id);
-    if (!(target instanceof HTMLElement)) return;
+    if (heading.id) {
+      heading.id = getUniqueId(heading.id, heading);
+    } else {
+      heading.id = getUniqueId(slugify(text), heading);
+    }
 
-    const imagesBeforeTarget = getImagesBeforeTarget(article, target);
+    if (heading.querySelector("a")) {
+      return;
+    }
 
-    await waitForImages(imagesBeforeTarget);
-
-    requestAnimationFrame(() => {
-      scrollToHeading(target, false);
-    });
+    heading.append(createAnchorLink(heading));
   }
 
   function init(): void {
+    if (initialized) return;
+    initialized = true;
+
     const article = getTistoryArticle();
     if (!(article instanceof HTMLElement)) return;
 
-    const headings = article.querySelectorAll(HEADING_SELECTOR);
+    const headings = article.querySelectorAll<HTMLElement>(HEADING_SELECTOR);
     if (!headings.length) return;
 
-    headings.forEach((heading) => {
-      if (!(heading instanceof HTMLElement)) return;
-      if (heading.querySelector(`.${LINK_CLASS}`)) return;
+    headings.forEach(prepareHeading);
 
-      const text = heading.textContent?.trim();
-      if (!text) return;
+    if (!hasHash()) return;
 
-      if (!heading.id) {
-        heading.id = getUniqueId(slugify(text));
-      } else {
-        USED_IDS.add(heading.id);
+    const runInitialHashScroll = (): void => {
+      scrollToHeadingHash(article);
+    };
+
+    runInitialHashScroll();
+
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        runInitialHashScroll();
       }
-
-      heading.append(createAnchorLink(heading));
-
-      heading.addEventListener("click", async (event) => {
-        const selection = window.getSelection();
-        if (selection?.toString().trim()) return;
-
-        const target = event.target;
-        if (target instanceof Element && target.closest(`.${LINK_CLASS}`)) {
-          return;
-        }
-
-        await activateHeading(heading);
-      });
     });
-
-    void fixInitialHashScroll(article);
   }
 
   if (document.readyState === "loading") {
