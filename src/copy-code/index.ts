@@ -1,12 +1,7 @@
 import "./style.css";
+import { getTistoryArticle } from "@/shared/utils";
 
 (() => {
-  const CONTAINER_SELECTORS = [
-    "#article",
-    ".article-view",
-    ".tt_article_useless_p_margin",
-  ] as const;
-
   const WRAPPER_CLASS = "rp-copy-code-wrapper";
   const BUTTON_CLASS = "rp-copy-code-button";
   const COPIED_CLASS = "is-copied";
@@ -38,15 +33,6 @@ import "./style.css";
         : Array.from(elements)
             .map((element) => element.textContent ?? "")
             .join("\n");
-    }
-
-    return null;
-  }
-
-  function getArticleContainer(): HTMLElement | null {
-    for (const selector of CONTAINER_SELECTORS) {
-      const element = document.querySelector<HTMLElement>(selector);
-      if (element) return element;
     }
 
     return null;
@@ -148,8 +134,8 @@ import "./style.css";
   }
 
   function init(): void {
-    const article = getArticleContainer();
-    if (!article) return;
+    const article = getTistoryArticle();
+    if (!(article instanceof HTMLElement)) return;
 
     enhanceCodeBlocks(article);
   }

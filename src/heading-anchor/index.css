@@ -1,0 +1,32 @@
+:root {
+  --header-height: 84px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+:is(h2, h3, h4) {
+  position: relative;
+  scroll-margin-top: var(--header-height);
+  cursor: pointer;
+}
+
+.rp-heading-anchor {
+  display: inline-flex;
+  margin-left: 0.2em;
+  text-decoration: none;
+  line-height: 1;
+  vertical-align: middle;
+  opacity: 0;
+  transform: translateY(-1px);
+  transition: opacity 0.2s ease;
+  user-select: none;
+  font-size: 0.9em;
+}
+
+:is(h2, h3, h4):hover .rp-heading-anchor,
+.rp-heading-anchor:hover,
+.rp-heading-anchor:focus-visible {
+  opacity: 1;
+}

@@ -1,5 +1,6 @@
+import { getTistoryArticle } from "@/shared/utils";
+
 (() => {
-  const CONTAINER_SELECTOR = "#article";
   const TARGET_SELECTOR =
     "p, blockquote, .table-content, h1, h2, h3, h4, li, figcaption";
   const BLOCKED_SELECTOR = "code, pre, script, style, textarea";
@@ -51,10 +52,10 @@
   }
 
   function initInlineCodePlugin(): void {
-    const container = document.querySelector<HTMLElement>(CONTAINER_SELECTOR);
-    if (!container) return;
+    const article = getTistoryArticle();
+    if (!(article instanceof HTMLElement)) return;
 
-    collectTextNodes(container).forEach((textNode) => {
+    collectTextNodes(article).forEach((textNode) => {
       if (!INLINE_CODE_PATTERN.test(textNode.textContent ?? "")) return;
       wrapInlineCode(textNode);
     });

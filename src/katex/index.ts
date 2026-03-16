@@ -1,3 +1,5 @@
+import { getTistoryArticle } from "@/shared/utils";
+
 type RenderMathInElement = (
   element: HTMLElement,
   options: {
@@ -15,22 +17,11 @@ type KatexState = typeof globalThis & {
 };
 
 (() => {
-  const ARTICLE_SELECTORS = [
-    "#article",
-    ".article-view",
-    ".tt_article_useless_p_margin",
-  ];
   const KATEX_VERSION = "0.16.38";
   const STYLESHEET_ID = "tistory-plugins-katex-css";
   const KATEX_SCRIPT_ID = "tistory-plugins-katex-js";
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
   const LOAD_PROMISE_KEY = "__tistoryPluginsKatexLoadPromise";
-
-  function findArticle(): HTMLElement | undefined {
-    return ARTICLE_SELECTORS.map((selector) =>
-      document.querySelector<HTMLElement>(selector),
-    ).find((article): article is HTMLElement => article !== null);
-  }
 
   function ensureStylesheet(): void {
     if (document.getElementById(STYLESHEET_ID)) return;
@@ -113,8 +104,9 @@ type KatexState = typeof globalThis & {
   }
 
   async function initKatexPlugin(): Promise<void> {
-    const article = findArticle();
-    if (!article || article.dataset.katexRendered === "true") return;
+    const article = getTistoryArticle();
+    if (!(article instanceof HTMLElement)) return;
+    if (article.dataset.katexRendered === "true") return;
 
     try {
       await ensureKatexAssets();
