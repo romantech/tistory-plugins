@@ -3,12 +3,12 @@ import { build } from "esbuild";
 
 const entryPoints = [];
 
-for await (const file of glob("src/**/index.ts")) {
+for await (const file of glob("src/plugins/**/index.ts")) {
   entryPoints.push(file);
 }
 
 if (entryPoints.length === 0) {
-  throw new Error("No entry points found in src/**/index.ts");
+  throw new Error("No entry points found in src/plugins/**/index.ts");
 }
 
 await build({
@@ -18,7 +18,7 @@ await build({
   platform: "browser",
   target: "es2022",
   format: "iife",
-  outbase: "src",
+  outbase: "src/plugins",
   outdir: "dist",
   entryNames: "[dir]/index.min",
 });
