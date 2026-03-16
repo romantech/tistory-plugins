@@ -1,6 +1,6 @@
-import { loadPlugin } from "@test/load-plugin";
 import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { loadPlugin } from "@/test/load-plugin";
 
 describe("copy-code plugin", () => {
   beforeEach(() => {
@@ -22,7 +22,10 @@ describe("copy-code plugin", () => {
       },
     });
 
-    document.execCommand = vi.fn(() => true);
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: vi.fn(() => true),
+    });
   });
 
   it("adds copy buttons to code blocks in the article", async () => {
@@ -33,7 +36,7 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
@@ -52,7 +55,7 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(1);
@@ -65,8 +68,8 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
@@ -84,11 +87,11 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
-    await fireEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -116,11 +119,11 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
-    await fireEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
@@ -158,11 +161,11 @@ describe("copy-code plugin", () => {
 
     const execCommandSpy = vi.spyOn(document, "execCommand");
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
-    await fireEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       expect(execCommandSpy).toHaveBeenCalledWith("copy");
@@ -187,11 +190,11 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
-    await fireEvent.click(button);
+    fireEvent.click(button);
 
     await waitFor(() => {
       expect(button).toHaveTextContent("Error");
@@ -213,7 +216,7 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(1);
@@ -226,7 +229,7 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const button = screen.getByRole("button", { name: "Copy code" });
     expect(button).toBeInTheDocument();
@@ -240,37 +243,36 @@ describe("copy-code plugin", () => {
       </div>
     `;
 
-    await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
     const button = screen.getByRole("button", { name: "Copy code" });
     expect(button).toBeInTheDocument();
     expect(button).toHaveTextContent("Copy");
   });
-});
 
-it("preserves line breaks when copying plain code blocks", async () => {
-  document.body.innerHTML = `
+  it("preserves line breaks when copying plain code blocks", async () => {
+    document.body.innerHTML = `
       <div id="article">
         <pre><code>const a = 1;\nconst b = 2;\nreturn a + b;</code></pre>
       </div>
     `;
 
-  await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
-  const button = screen.getByRole("button", { name: "Copy code" });
+    const button = screen.getByRole("button", { name: "Copy code" });
 
-  await fireEvent.click(button);
+    fireEvent.click(button);
 
-  await waitFor(() => {
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      "const a = 1;\nconst b = 2;\nreturn a + b;",
-    );
-    expect(button).toHaveTextContent("Copied");
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "const a = 1;\nconst b = 2;\nreturn a + b;",
+      );
+      expect(button).toHaveTextContent("Copied");
+    });
   });
-});
 
-it("preserves line breaks when copying code blocks rendered with highlightjs line numbers", async () => {
-  document.body.innerHTML = `
+  it("preserves line breaks when copying code blocks rendered with highlight.js line numbers", async () => {
+    document.body.innerHTML = `
       <div id="article">
         <pre>
           <code>
@@ -295,16 +297,17 @@ it("preserves line breaks when copying code blocks rendered with highlightjs lin
       </div>
     `;
 
-  await loadPlugin(() => import("./index.ts"));
+    await loadPlugin(() => import("@/plugins/copy-code"));
 
-  const button = screen.getByRole("button", { name: "Copy code" });
+    const button = screen.getByRole("button", { name: "Copy code" });
 
-  await fireEvent.click(button);
+    fireEvent.click(button);
 
-  await waitFor(() => {
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      "const a = 1;\nconst b = 2;\nreturn a + b;",
-    );
-    expect(button).toHaveTextContent("Copied");
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "const a = 1;\nconst b = 2;\nreturn a + b;",
+      );
+      expect(button).toHaveTextContent("Copied");
+    });
   });
 });

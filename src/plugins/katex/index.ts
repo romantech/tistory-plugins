@@ -1,19 +1,10 @@
+import type renderMathInElement from "katex/contrib/auto-render";
 import { getTistoryArticle } from "@/shared/utils";
-
-type RenderMathInElement = (
-  element: HTMLElement,
-  options: {
-    delimiters: Array<{ left: string; right: string; display: boolean }>;
-    ignoredTags: string[];
-    throwOnError: boolean;
-    strict: boolean;
-  },
-) => void;
 
 type KatexState = typeof globalThis & {
   __tistoryPluginsKatexLoadPromise?: Promise<void>;
   katex?: unknown;
-  renderMathInElement?: RenderMathInElement;
+  renderMathInElement?: typeof renderMathInElement;
 };
 
 (() => {
