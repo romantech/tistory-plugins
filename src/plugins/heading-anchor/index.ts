@@ -7,8 +7,8 @@ import { getTistoryArticle } from "@/shared/utils";
   const DEFAULT_ID = "section";
   const DEFAULT_HEADER_HEIGHT = 84;
   const MAX_SUFFIX = 1000;
-  const POST_LOAD_CORRECTION_DELAYS = [120, 320, 700, 900] as const;
-  const VIEWPORT_RESIZE_WATCH_DURATION = 1000;
+  const POST_LOAD_CORRECTION_DELAYS = [120, 320, 700, 1100] as const;
+  const VIEWPORT_RESIZE_WATCH_DURATION = 1300;
   const POSITION_TOLERANCE = 6;
 
   const USED_IDS = new Set<string>();
