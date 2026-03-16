@@ -3,8 +3,12 @@ import { build } from "esbuild";
 
 const entryPoints = [];
 
-for await (const file of glob("src/*/index.ts")) {
+for await (const file of glob("src/**/index.ts")) {
   entryPoints.push(file);
+}
+
+if (entryPoints.length === 0) {
+  throw new Error("No entry points found in src/**/index.ts");
 }
 
 await build({
