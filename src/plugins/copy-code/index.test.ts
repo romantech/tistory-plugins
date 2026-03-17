@@ -236,20 +236,6 @@ describe("copy-code plugin", () => {
     expect(button).toHaveTextContent("Copy");
   });
 
-  it("works with .tt_article_useless_p_margin container too", async () => {
-    document.body.innerHTML = `
-      <div class="tt_article_useless_p_margin">
-        <pre><code>const a = 1;</code></pre>
-      </div>
-    `;
-
-    await loadPlugin(() => import("@/plugins/copy-code"));
-
-    const button = screen.getByRole("button", { name: "Copy code" });
-    expect(button).toBeInTheDocument();
-    expect(button).toHaveTextContent("Copy");
-  });
-
   it("preserves line breaks when copying plain code blocks", async () => {
     document.body.innerHTML = `
       <div id="article">

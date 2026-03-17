@@ -1,4 +1,4 @@
-import { getTistoryArticle } from "@/shared/utils";
+import { getTistoryArticle } from "@/shared/article-selector";
 
 (() => {
   const TARGET_SELECTOR =

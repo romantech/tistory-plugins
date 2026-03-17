@@ -1,5 +1,5 @@
 import "./style.css";
-import { getTistoryArticle } from "@/shared/utils";
+import { getTistoryArticle } from "@/shared/article-selector";
 
 (() => {
   const WRAPPER_CLASS = "rp-copy-code-wrapper";

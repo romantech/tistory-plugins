@@ -12,13 +12,17 @@
 - `visualViewport.resize` 변화를 잠시 감시하여 초기 진입 직후 레이아웃 변동 대응
 - CSS 변수 `--header-height` 값을 기준으로 고정 헤더 높이 반영
 
-## 동작 대상
+## 대상 컨테이너
 
-다음 본문 컨테이너 중 가장 먼저 발견되는 영역 내에서 동작합니다.
+티스토리 스킨별 차이를 고려하여 여러 본문 컨테이너 후보 중 먼저 발견되는 영역에서 동작합니다.
 
 - `#article`
 - `.article-view`
-- `.tt_article_useless_p_margin`
+- `.area_view`
+- `.entry-content`
+- ...
+
+## 대상 요소
 
 다음 제목 요소를 처리합니다.
 
