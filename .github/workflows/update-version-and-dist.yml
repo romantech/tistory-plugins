@@ -1,0 +1,101 @@
+name: Update Version and Dist on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+concurrency:
+  group: pr-version-dist-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  update-version-and-dist:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Determine next version
+        id: versioning
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+          git fetch origin main --force
+
+          current_version="$(node -p "require('./package.json').version")"
+          if [[ ! "${current_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "package.json version must be in x.y.z format: ${current_version}"
+            exit 1
+          fi
+
+          latest_tag="$(git tag -l | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)"
+          if [[ -z "${latest_tag}" ]]; then
+            latest_tag="0.0.0"
+          fi
+
+          IFS='.' read -r major minor patch <<< "${latest_tag}"
+          next_version="${major}.${minor}.$((patch + 1))"
+
+          echo "current_version=${current_version}" >> "${GITHUB_OUTPUT}"
+          echo "latest_tag=${latest_tag}" >> "${GITHUB_OUTPUT}"
+          echo "next_version=${next_version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update package.json version
+        if: steps.versioning.outputs.current_version != steps.versioning.outputs.next_version
+        env:
+          RELEASE_VERSION: ${{ steps.versioning.outputs.next_version }}
+        run: |
+          set -euo pipefail
+
+          node -e "const fs=require('fs'); const path='package.json'; const pkg=JSON.parse(fs.readFileSync(path,'utf8')); pkg.version=process.env.RELEASE_VERSION; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
+
+      - name: Build dist assets
+        run: pnpm build
+
+      - name: Commit and push version/dist changes if needed
+        env:
+          RELEASE_VERSION: ${{ steps.versioning.outputs.next_version }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add package.json
+          git add -fA dist
+
+          if git diff --cached --quiet; then
+            echo "No version or dist changes to commit"
+            exit 0
+          fi
+
+          if git diff --cached --quiet -- package.json && git diff --cached --quiet -- dist; then
+            echo "No relevant changes to commit"
+            exit 0
+          fi
+
+          git commit -m "build: sync dist and bump version to ${RELEASE_VERSION}"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
