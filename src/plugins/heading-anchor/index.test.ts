@@ -216,7 +216,7 @@ describe("heading-anchor plugin", () => {
     }
   });
 
-  it("본문의 h2~h4 제목에 앵커 링크와 고유 id를 추가한다", async () => {
+  it("adds anchor links and unique ids to h2~h4 headings in the article", async () => {
     const article = createArticle(`
       <h2>첫 번째 섹션</h2>
       <h2>첫 번째 섹션</h2>
@@ -251,7 +251,7 @@ describe("heading-anchor plugin", () => {
     }
   });
 
-  it("이미 링크가 있는 제목은 기존 구조를 유지하고 id만 준비한다", async () => {
+  it("preserves headings that already contain links and only prepares the id", async () => {
     const article = createArticle(`
       <h2><a href="/existing">기존 링크 제목</a></h2>
       <h3>일반 제목</h3>
@@ -270,7 +270,7 @@ describe("heading-anchor plugin", () => {
     expect(normalHeading.querySelector(".rp-heading-anchor")).not.toBeNull();
   });
 
-  it("플러그인을 다시 로드해도 기존 제목에 앵커를 중복 추가하지 않는다", async () => {
+  it("does not add duplicate anchors when the plugin is loaded again", async () => {
     const article = createArticle(`
       <h2>중복 방지 제목</h2>
       <h3>두 번째 제목</h3>
@@ -289,7 +289,7 @@ describe("heading-anchor plugin", () => {
     }
   });
 
-  it("앵커 클릭 시 해시를 갱신하고 헤더 오프셋 기준으로 스크롤한다", async () => {
+  it("updates the hash and scrolls using the header offset when an anchor is clicked", async () => {
     const article = createArticle(`<h2>클릭 테스트</h2>`);
 
     await loadPlugin(() => import("@/plugins/heading-anchor"));
@@ -318,7 +318,7 @@ describe("heading-anchor plugin", () => {
     });
   });
 
-  it("초기 해시가 있으면 폰트 준비 후 위치 오차를 보정한다", async () => {
+  it("corrects the initial hash target position after fonts are ready", async () => {
     const article = createArticle(`
       <h2>소개</h2>
       <h2>목표 제목</h2>
@@ -339,7 +339,7 @@ describe("heading-anchor plugin", () => {
     });
   });
 
-  it("초기 해시 대상의 위치가 이미 정확하면 추가 스크롤하지 않는다", async () => {
+  it("does not scroll again when the initial hash target is already correctly positioned", async () => {
     const article = createArticle(`
       <h2>소개</h2>
       <h2>정확한 위치</h2>
@@ -356,7 +356,7 @@ describe("heading-anchor plugin", () => {
     expect(scrollToMock).not.toHaveBeenCalled();
   });
 
-  it("초기 해시 대상이 없으면 스크롤을 시도하지 않는다", async () => {
+  it("does not attempt to scroll when the initial hash target does not exist", async () => {
     createArticle(`
       <h2>소개</h2>
       <h2>다른 제목</h2>
@@ -370,7 +370,7 @@ describe("heading-anchor plugin", () => {
     expect(scrollToMock).not.toHaveBeenCalled();
   });
 
-  it("본문에 제목이 없어도 오류 없이 종료한다", async () => {
+  it("exits without errors even when the article has no headings", async () => {
     const article = createArticle(`
       <p>일반 문단</p>
       <div>제목 아님</div>
@@ -384,7 +384,7 @@ describe("heading-anchor plugin", () => {
     expect(scrollToMock).not.toHaveBeenCalled();
   });
 
-  it("bfcache 복원 pageshow(persisted=true) 시 해시 스크롤 보정을 다시 수행한다", async () => {
+  it("re-runs hash scroll correction on bfcache restore via pageshow(persisted=true)", async () => {
     const article = createArticle(`
       <h2>소개</h2>
       <h2>복원 대상</h2>

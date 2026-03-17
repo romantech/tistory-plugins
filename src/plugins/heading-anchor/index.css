@@ -11,6 +11,7 @@ html {
 }
 
 html.night .rp-heading-anchor:not(:hover):not(:focus-visible) {
+  /* biome-ignore lint/complexity/noImportantStyles: 다크 모드 기본 앵커 색 강제 적용 */
   color: #bbb !important;
 }
 
