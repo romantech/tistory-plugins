@@ -11,9 +11,13 @@
 
 ## 대상 컨테이너
 
+티스토리 스킨별 차이를 고려하여 여러 본문 컨테이너 후보 중 먼저 발견되는 영역에서 동작합니다.
+
 - `#article`
 - `.article-view`
-- `.tt_article_useless_p_margin`
+- `.area_view`
+- `.entry-content`
+- ...
 
 ## 구분자
 

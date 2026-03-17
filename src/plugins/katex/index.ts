@@ -1,5 +1,5 @@
 import type renderMathInElement from "katex/contrib/auto-render";
-import { getTistoryArticle } from "@/shared/utils";
+import { getTistoryArticle } from "@/shared/article-selector";
 
 type KatexState = typeof globalThis & {
   __tistoryPluginsKatexLoadPromise?: Promise<void>;

@@ -1,5 +1,5 @@
 import "./index.css";
-import { getTistoryArticle } from "@/shared/utils";
+import { getTistoryArticle } from "@/shared/article-selector";
 
 (() => {
   const HEADING_SELECTOR = "h2, h3, h4";
