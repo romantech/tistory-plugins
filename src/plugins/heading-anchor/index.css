@@ -10,7 +10,7 @@ html {
   scroll-margin-top: var(--header-height);
 }
 
-html.night .rp-heading-anchor {
+html.night .rp-heading-anchor:not(:hover):not(:focus-visible) {
   color: #bbb !important;
 }
 
