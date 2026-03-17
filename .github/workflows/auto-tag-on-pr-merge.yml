@@ -1,4 +1,4 @@
-name: Sync Dist and Release
+name: Tag and Release on PR Merge
 
 on:
   pull_request:
@@ -17,26 +17,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (with tags)
+      - name: Checkout main (with tags)
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: main
           persist-credentials: true
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Determine release version
+      - name: Read release version from package.json
         id: versioning
         run: |
           set -euo pipefail
@@ -46,44 +34,15 @@ jobs:
           git checkout main
           git reset --hard origin/main
 
-          existing_line="$(git tag --points-at HEAD | awk 'match($0,/^(v\.?)?[0-9]+\.[0-9]+(\.[0-9]+)?$/){raw=$0;ver=$0;sub(/^v\.?/,"",ver);n=split(ver,a,/\./);if(n==2){ver=ver".0"};print ver" "raw}' | sort -V | tail -n1 || true)"
-          if [[ -n "${existing_line}" ]]; then
-            existing_tag="${existing_line#* }"
-            existing_version="${existing_tag#v}"
-            existing_version="${existing_version#.}"
-            echo "version=${existing_version}" >> "${GITHUB_OUTPUT}"
-            echo "tag=${existing_version}" >> "${GITHUB_OUTPUT}"
-            echo "should_bump=false" >> "${GITHUB_OUTPUT}"
-            exit 0
+          release_version="$(node -p "require('./package.json').version")"
+
+          if [[ ! "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "package.json version must be in x.y.z format: ${release_version}"
+            exit 1
           fi
 
-          latest_line="$(git tag -l | awk 'match($0,/^(v\.?)?[0-9]+\.[0-9]+(\.[0-9]+)?$/){raw=$0;ver=$0;sub(/^v\.?/,"",ver);n=split(ver,a,/\./);if(n==2){ver=ver".0"};print ver" "raw}' | sort -V | tail -n1 || true)"
-
-          if [[ -n "${latest_line}" ]]; then
-            latest_version="${latest_line%% *}"
-          else
-            latest_version="0.0.0"
-          fi
-
-          IFS='.' read -r major minor patch <<< "${latest_version}"
-          next_patch=$((patch + 1))
-          next_version="${major}.${minor}.${next_patch}"
-
-          echo "version=${next_version}" >> "${GITHUB_OUTPUT}"
-          echo "tag=${next_version}" >> "${GITHUB_OUTPUT}"
-          echo "should_bump=true" >> "${GITHUB_OUTPUT}"
-
-      - name: Update package.json version
-        if: steps.versioning.outputs.should_bump == 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.versioning.outputs.version }}
-        run: |
-          set -euo pipefail
-
-          node -e "const fs=require('fs'); const path='package.json'; const pkg=JSON.parse(fs.readFileSync(path,'utf8')); pkg.version=process.env.RELEASE_VERSION; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
-
-      - name: Build dist assets
-        run: pnpm build
+          echo "version=${release_version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${release_version}" >> "${GITHUB_OUTPUT}"
 
       - name: Validate signing secrets
         env:
@@ -131,28 +90,7 @@ jobs:
           git_committer_name: ${{ secrets.TAG_SIGNING_NAME }}
           git_committer_email: ${{ secrets.TAG_SIGNING_EMAIL }}
 
-      - name: Commit version and dist changes if needed
-        env:
-          TAG_SIGNING_NAME: ${{ secrets.TAG_SIGNING_NAME }}
-          TAG_SIGNING_EMAIL: ${{ secrets.TAG_SIGNING_EMAIL }}
-        run: |
-          set -euo pipefail
-
-          git add package.json
-          git add -fA dist
-
-          if git diff --cached --quiet; then
-            echo "dist is up to date"
-            exit 0
-          fi
-
-          git config user.name "${TAG_SIGNING_NAME}"
-          git config user.email "${TAG_SIGNING_EMAIL}"
-
-          git commit -S -m "build: sync dist assets"
-          git push origin HEAD:main
-
-      - name: Create or reuse patch tag
+      - name: Create or reuse release tag
         id: tagging
         env:
           TAG_SIGNING_NAME: ${{ secrets.TAG_SIGNING_NAME }}

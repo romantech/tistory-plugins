@@ -1,0 +1,147 @@
+name: Update Version and Dist on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+concurrency:
+  group: pr-version-dist-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  update-version-and-dist:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate signing secrets
+        env:
+          TAG_SIGNING_GPG_PRIVATE_KEY: ${{ secrets.TAG_SIGNING_GPG_PRIVATE_KEY }}
+          TAG_SIGNING_GPG_PASSPHRASE: ${{ secrets.TAG_SIGNING_GPG_PASSPHRASE }}
+          TAG_SIGNING_PASSPHRASE_REQUIRED: ${{ vars.TAG_SIGNING_PASSPHRASE_REQUIRED }}
+          TAG_SIGNING_NAME: ${{ secrets.TAG_SIGNING_NAME }}
+          TAG_SIGNING_EMAIL: ${{ secrets.TAG_SIGNING_EMAIL }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${TAG_SIGNING_GPG_PRIVATE_KEY:-}" ]]; then
+            echo "Missing secret: TAG_SIGNING_GPG_PRIVATE_KEY"
+            exit 1
+          fi
+
+          if [[ -z "${TAG_SIGNING_NAME:-}" ]]; then
+            echo "Missing secret: TAG_SIGNING_NAME"
+            exit 1
+          fi
+
+          if [[ -z "${TAG_SIGNING_EMAIL:-}" ]]; then
+            echo "Missing secret: TAG_SIGNING_EMAIL"
+            exit 1
+          fi
+
+          passphrase_required="${TAG_SIGNING_PASSPHRASE_REQUIRED:-false}"
+          passphrase_required="$(echo "${passphrase_required}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${passphrase_required}" == "1" || "${passphrase_required}" == "true" || "${passphrase_required}" == "yes" ]]; then
+            if [[ -z "${TAG_SIGNING_GPG_PASSPHRASE:-}" ]]; then
+              echo "Missing secret: TAG_SIGNING_GPG_PASSPHRASE (required because TAG_SIGNING_PASSPHRASE_REQUIRED is enabled)"
+              exit 1
+            fi
+          fi
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.TAG_SIGNING_GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.TAG_SIGNING_GPG_PASSPHRASE }}
+          git_config_global: true
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+          git_committer_name: ${{ secrets.TAG_SIGNING_NAME }}
+          git_committer_email: ${{ secrets.TAG_SIGNING_EMAIL }}
+
+      - name: Determine next version
+        id: versioning
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+          git fetch origin main --force
+
+          current_version="$(node -p "require('./package.json').version")"
+          if [[ ! "${current_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "package.json version must be in x.y.z format: ${current_version}"
+            exit 1
+          fi
+
+          latest_tag="$(git tag -l | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1 || true)"
+          if [[ -z "${latest_tag}" ]]; then
+            latest_tag="0.0.0"
+          fi
+
+          IFS='.' read -r major minor patch <<< "${latest_tag}"
+          next_version="${major}.${minor}.$((patch + 1))"
+
+          echo "current_version=${current_version}" >> "${GITHUB_OUTPUT}"
+          echo "latest_tag=${latest_tag}" >> "${GITHUB_OUTPUT}"
+          echo "next_version=${next_version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Update package.json version
+        if: steps.versioning.outputs.current_version != steps.versioning.outputs.next_version
+        env:
+          RELEASE_VERSION: ${{ steps.versioning.outputs.next_version }}
+        run: |
+          set -euo pipefail
+
+          node -e "const fs=require('fs'); const path='package.json'; const pkg=JSON.parse(fs.readFileSync(path,'utf8')); pkg.version=process.env.RELEASE_VERSION; fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');"
+
+      - name: Build dist assets
+        run: pnpm build
+
+      - name: Commit and push version/dist changes if needed
+        env:
+          RELEASE_VERSION: ${{ steps.versioning.outputs.next_version }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "${{ secrets.TAG_SIGNING_NAME }}"
+          git config user.email "${{ secrets.TAG_SIGNING_EMAIL }}"
+
+          git add -- package.json
+          git add -fA -- dist
+
+          if git diff --cached --quiet; then
+            echo "No version or dist changes to commit"
+            exit 0
+          fi
+
+          git commit -S -m "build: sync dist and bump version to ${RELEASE_VERSION}"
+
+          current_branch="$(git rev-parse --abbrev-ref HEAD)"
+          echo "Pushing workflow changes to ${current_branch}"
+
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
