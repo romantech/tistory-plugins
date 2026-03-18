@@ -1,9 +1,10 @@
 import "./index.css";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { getHeadingAnchorConfig } from "@/shared/plugin-config";
 
 (() => {
-  const HEADING_SELECTOR = "h2, h3, h4";
+  const DEFAULT_HEADING_SELECTOR = "h2, h3, h4";
   const LINK_CLASS = "rp-heading-anchor";
   const DEFAULT_ID = "section";
   const DEFAULT_HEADER_HEIGHT = 84;
@@ -17,7 +18,28 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
 
   let initialized = false;
 
+  function getHeadingSelector(): string {
+    const { levels } = getHeadingAnchorConfig();
+    if (!Array.isArray(levels) || levels.length === 0) {
+      return DEFAULT_HEADING_SELECTOR;
+    }
+
+    const selectors = levels
+      .filter((level): level is number => Number.isInteger(level))
+      .filter((level) => level >= 1 && level <= 6)
+      .map((level) => `h${level}`);
+
+    return selectors.length > 0
+      ? selectors.join(", ")
+      : DEFAULT_HEADING_SELECTOR;
+  }
+
   function getHeaderOffset(): number {
+    const { headerOffset } = getHeadingAnchorConfig();
+    if (typeof headerOffset === "number" && Number.isFinite(headerOffset)) {
+      return headerOffset;
+    }
+
     return (
       parseInt(
         getComputedStyle(document.documentElement)
@@ -235,7 +257,7 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
     if (
       !target ||
       !article.contains(target) ||
-      !target.matches(HEADING_SELECTOR)
+      !target.matches(getHeadingSelector())
     ) {
       return;
     }
@@ -279,7 +301,9 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
     const article = getTistoryArticle();
     if (!article) return;
 
-    const headings = article.querySelectorAll<HTMLElement>(HEADING_SELECTOR);
+    const headings = article.querySelectorAll<HTMLElement>(
+      getHeadingSelector(),
+    );
     if (!headings.length) return;
 
     headings.forEach(prepareHeading);

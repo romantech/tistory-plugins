@@ -1,11 +1,20 @@
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { getInlineCodeConfig } from "@/shared/plugin-config";
 
 (() => {
-  const TARGET_SELECTOR =
+  const DEFAULT_TARGET_SELECTOR =
     "p, blockquote, .table-content, h1, h2, h3, h4, li, figcaption";
-  const BLOCKED_SELECTOR = "code, pre, script, style, textarea";
+  const DEFAULT_BLOCKED_SELECTOR = "code, pre, script, style, textarea";
   const INLINE_CODE_PATTERN = /`([^`\n]+)`/;
+
+  function getTargetSelector(): string {
+    return getInlineCodeConfig().targetSelector || DEFAULT_TARGET_SELECTOR;
+  }
+
+  function getBlockedSelector(): string {
+    return getInlineCodeConfig().blockedSelector || DEFAULT_BLOCKED_SELECTOR;
+  }
 
   function collectTextNodes(container: ParentNode): Text[] {
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
@@ -13,8 +22,8 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_SKIP;
 
-        const inTarget = parent.closest(TARGET_SELECTOR);
-        const inBlocked = parent.closest(BLOCKED_SELECTOR);
+        const inTarget = parent.closest(getTargetSelector());
+        const inBlocked = parent.closest(getBlockedSelector());
 
         return inTarget && !inBlocked
           ? NodeFilter.FILTER_ACCEPT

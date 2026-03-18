@@ -273,4 +273,40 @@ describe("copy-code plugin", () => {
       expect(button).toHaveTextContent("Copied");
     });
   });
+
+  it("uses configured article selectors and button labels", async () => {
+    document.body.innerHTML = `
+      <section class="custom-article">
+        <pre><code>const a = 1;</code></pre>
+      </section>
+    `;
+
+    (
+      window as typeof window & {
+        RPPlugins?: Record<string, unknown>;
+      }
+    ).RPPlugins = {
+      articleSelectors: [".custom-article"],
+      copyCode: {
+        ariaLabel: "코드 복사",
+        buttonText: "복사",
+        successText: "완료",
+        errorText: "실패",
+      },
+    };
+
+    await loadCopyCodePlugin();
+
+    const button = screen.getByRole("button", { name: "코드 복사" });
+    expect(button).toHaveTextContent("복사");
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        "const a = 1;",
+      );
+      expect(button).toHaveTextContent("완료");
+    });
+  });
 });

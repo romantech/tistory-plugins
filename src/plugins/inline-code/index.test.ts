@@ -82,4 +82,23 @@ describe("inline-code plugin", () => {
       normalizeWhitespace: false,
     });
   });
+
+  it("uses a configured target selector", async () => {
+    const article = renderArticle("<div>Use `const x = 1` in div.</div>");
+
+    (
+      window as typeof window & {
+        RPPlugins?: Record<string, unknown>;
+      }
+    ).RPPlugins = {
+      inlineCode: {
+        targetSelector: "div",
+      },
+    };
+
+    await loadInlineCodePlugin();
+
+    const code = getRequiredElement(article, "div code", HTMLElement);
+    expect(code).toHaveTextContent("const x = 1");
+  });
 });

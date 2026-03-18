@@ -1,6 +1,7 @@
 import type renderMathInElement from "katex/contrib/auto-render";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { getKatexConfig } from "@/shared/plugin-config";
 
 type KatexState = typeof globalThis & {
   __tistoryPluginsKatexLoadPromise?: Promise<void>;
@@ -8,12 +9,57 @@ type KatexState = typeof globalThis & {
   renderMathInElement?: typeof renderMathInElement;
 };
 
+type KatexRenderOptions = NonNullable<
+  Parameters<typeof renderMathInElement>[1]
+>;
+type KatexDelimiter = NonNullable<KatexRenderOptions["delimiters"]>[number];
+type KatexIgnoredTag = keyof HTMLElementTagNameMap;
+
 (() => {
   const KATEX_VERSION = "0.16.38";
   const STYLESHEET_ID = "tistory-plugins-katex-css";
   const KATEX_SCRIPT_ID = "tistory-plugins-katex-js";
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
   const LOAD_PROMISE_KEY = "__tistoryPluginsKatexLoadPromise";
+  const DEFAULT_DELIMITERS: readonly KatexDelimiter[] = [
+    { left: "$$", right: "$$", display: true },
+    { left: "$", right: "$", display: false },
+  ] as const;
+  const DEFAULT_IGNORED_TAGS: readonly KatexIgnoredTag[] = [
+    "script",
+    "noscript",
+    "style",
+    "textarea",
+    "pre",
+    "code",
+  ] as const;
+
+  function getIgnoredTags(): KatexIgnoredTag[] {
+    const { ignoredTags } = getKatexConfig();
+    if (!Array.isArray(ignoredTags) || ignoredTags.length === 0) {
+      return [...DEFAULT_IGNORED_TAGS];
+    }
+
+    return ignoredTags.filter(
+      (tag): tag is KatexIgnoredTag =>
+        typeof tag === "string" && tag.length > 0,
+    );
+  }
+
+  function getRenderOptions(): KatexRenderOptions {
+    const config = getKatexConfig();
+
+    return {
+      delimiters:
+        Array.isArray(config.delimiters) && config.delimiters.length > 0
+          ? config.delimiters
+          : DEFAULT_DELIMITERS,
+      ignoredTags: getIgnoredTags(),
+      strict: typeof config.strict === "boolean" ? config.strict : false,
+      throwOnError:
+        typeof config.throwOnError === "boolean" ? config.throwOnError : false,
+    };
+  }
 
   function ensureStylesheet(): void {
     if (document.getElementById(STYLESHEET_ID)) return;
@@ -110,15 +156,7 @@ type KatexState = typeof globalThis & {
     const state = globalThis as KatexState;
     if (typeof state.renderMathInElement !== "function") return;
 
-    state.renderMathInElement(article, {
-      delimiters: [
-        { left: "$$", right: "$$", display: true },
-        { left: "$", right: "$", display: false },
-      ],
-      ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
-      throwOnError: false,
-      strict: false,
-    });
+    state.renderMathInElement(article, getRenderOptions());
 
     article.dataset.katexRendered = "true";
   }

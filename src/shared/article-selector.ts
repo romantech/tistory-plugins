@@ -1,3 +1,5 @@
+import { getArticleSelectorOverrides } from "@/shared/plugin-config";
+
 type ArticleSelector = {
   selector: string;
   preferred: boolean;
@@ -15,6 +17,23 @@ export const TISTORY_ARTICLE_SELECTORS: readonly ArticleSelector[] = [
   { selector: ".tt_article_useless_p_margin", preferred: false },
   { selector: ".inner_content", preferred: false },
 ] as const;
+
+function getArticleSelectors(): readonly ArticleSelector[] {
+  const overrides = getArticleSelectorOverrides();
+  if (overrides.length === 0) {
+    return TISTORY_ARTICLE_SELECTORS;
+  }
+
+  return [
+    ...overrides.map((selector) => ({
+      selector,
+      preferred: true,
+    })),
+    ...TISTORY_ARTICLE_SELECTORS.filter(
+      ({ selector }) => !overrides.includes(selector),
+    ),
+  ];
+}
 
 function hasEnoughText(element: Element, min = 80): boolean {
   const text = (element.textContent || "").replace(/\s+/g, "");
@@ -34,7 +53,7 @@ function isFallbackArticle(element: Element): boolean {
 export function getTistoryArticle(
   root: ParentNode = document,
 ): HTMLElement | null {
-  for (const { selector, preferred } of TISTORY_ARTICLE_SELECTORS) {
+  for (const { selector, preferred } of getArticleSelectors()) {
     const element = root.querySelector(selector);
     if (!element) continue;
     if (!(element instanceof HTMLElement)) continue;

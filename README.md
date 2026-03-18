@@ -57,6 +57,49 @@
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
 ```
 
+## 전역 설정
+
+플러그인 스크립트를 불러오기 전에 `window.RPPlugins`로 공통 설정과 플러그인별 옵션을 줄 수 있습니다.
+
+```html
+<script>
+window.RPPlugins = {
+  articleSelectors: [".article-view", ".contents_style", ".my-custom-article"],
+  copyCode: {
+    buttonText: "복사",
+    successText: "완료",
+    errorText: "실패",
+    ariaLabel: "코드 복사"
+  },
+  headingAnchor: {
+    levels: [2, 3, 4, 5],
+    headerOffset: 64
+  },
+  inlineCode: {
+    targetSelector: "p, li, td, figcaption",
+    blockedSelector: "code, pre, script, style, textarea"
+  },
+  katex: {
+    delimiters: [
+      { left: "$$", right: "$$", display: true },
+      { left: "\\(", right: "\\)", display: false }
+    ],
+    ignoredTags: ["script", "style", "pre", "code"],
+    throwOnError: false,
+    strict: false
+  }
+};
+</script>
+```
+
+현재 지원하는 항목은 다음과 같습니다.
+
+- `articleSelectors`: 본문 컨테이너 감지용 셀렉터를 앞쪽에 추가합니다.
+- `copyCode`: 버튼 문구와 `aria-label`을 바꿉니다.
+- `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋을 바꿉니다.
+- `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터를 바꿉니다.
+- `katex`: 구분자, 무시 태그, 에러 처리 옵션을 바꿉니다.
+
 ## 저장소 구조
 
 - `src/plugins`: 플러그인 소스, 개별 README

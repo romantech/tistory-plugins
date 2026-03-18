@@ -1,6 +1,7 @@
 import "./style.css";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { getCopyCodeConfig } from "@/shared/plugin-config";
 
 (() => {
   const WRAPPER_CLASS = "rp-copy-code-wrapper";
@@ -12,10 +13,27 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
     ".hljs-ln-code",
   ] as const;
 
-  const BUTTON_TEXT = "Copy";
-  const SUCCESS_TEXT = "Copied";
-  const ERROR_TEXT = "Error";
+  const DEFAULT_BUTTON_TEXT = "Copy";
+  const DEFAULT_SUCCESS_TEXT = "Copied";
+  const DEFAULT_ERROR_TEXT = "Error";
+  const DEFAULT_ARIA_LABEL = "Copy code";
   const RESET_DELAY = 2000;
+
+  function getLabels(): {
+    ariaLabel: string;
+    buttonText: string;
+    errorText: string;
+    successText: string;
+  } {
+    const config = getCopyCodeConfig();
+
+    return {
+      ariaLabel: config.ariaLabel || DEFAULT_ARIA_LABEL,
+      buttonText: config.buttonText || DEFAULT_BUTTON_TEXT,
+      errorText: config.errorText || DEFAULT_ERROR_TEXT,
+      successText: config.successText || DEFAULT_SUCCESS_TEXT,
+    };
+  }
 
   function normalizeLineBreaks(text: string): string {
     return text.replace(/\r\n?/g, "\n");
@@ -88,11 +106,12 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
   }
 
   function createButton(pre: HTMLElement): HTMLButtonElement {
+    const labels = getLabels();
     const button = document.createElement("button");
     button.type = "button";
     button.className = BUTTON_CLASS;
-    button.textContent = BUTTON_TEXT;
-    button.setAttribute("aria-label", "Copy code");
+    button.textContent = labels.buttonText;
+    button.setAttribute("aria-label", labels.ariaLabel);
 
     let resetTimer: number | undefined;
 
@@ -100,13 +119,13 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
       const text = getCodeText(pre);
 
       if (!text.trim()) {
-        setButtonState(button, ERROR_TEXT, ERROR_CLASS);
+        setButtonState(button, labels.errorText, ERROR_CLASS);
       } else {
         try {
           await copyText(text);
-          setButtonState(button, SUCCESS_TEXT, COPIED_CLASS);
+          setButtonState(button, labels.successText, COPIED_CLASS);
         } catch {
-          setButtonState(button, ERROR_TEXT, ERROR_CLASS);
+          setButtonState(button, labels.errorText, ERROR_CLASS);
         }
       }
 
@@ -115,7 +134,7 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
       }
 
       resetTimer = window.setTimeout(() => {
-        setButtonState(button, BUTTON_TEXT);
+        setButtonState(button, labels.buttonText);
       }, RESET_DELAY);
     });
 

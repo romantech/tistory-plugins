@@ -35,4 +35,39 @@ describe("katex plugin", () => {
     );
     expect(article).toHaveAttribute("data-katex-rendered", "true");
   });
+
+  it("uses configured render options", async () => {
+    const renderMathInElement = vi.fn();
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    (
+      window as typeof window & {
+        RPPlugins?: Record<string, unknown>;
+      }
+    ).RPPlugins = {
+      katex: {
+        delimiters: [{ left: "\\(", right: "\\)", display: false }],
+        ignoredTags: ["pre"],
+        strict: true,
+        throwOnError: true,
+      },
+    };
+
+    const article = renderArticleView("<p>Euler: \\(e^{i\\pi}+1=0\\)</p>");
+
+    await loadKatexPlugin();
+
+    expect(article).toHaveAttribute("data-katex-rendered", "true");
+    expect(renderMathInElement).toHaveBeenCalledWith(
+      article,
+      expect.objectContaining({
+        delimiters: [{ left: "\\(", right: "\\)", display: false }],
+        ignoredTags: ["pre"],
+        strict: true,
+        throwOnError: true,
+      }),
+    );
+  });
 });
