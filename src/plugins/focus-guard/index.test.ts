@@ -1,12 +1,10 @@
+import { loadPlugin } from "@test/load-plugin";
 import { waitFor } from "@testing-library/dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
 
 describe("focus-guard plugin", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    document.head.innerHTML = "";
-    document.body.innerHTML = "";
   });
 
   it("prevents focus on sidebar toggle buttons on pointerdown", async () => {

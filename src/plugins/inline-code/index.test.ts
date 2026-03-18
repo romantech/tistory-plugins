@@ -1,13 +1,8 @@
+import { loadPlugin } from "@test/load-plugin";
 import { screen } from "@testing-library/dom";
-import { beforeEach, describe, expect, it } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
+import { describe, expect, it } from "vitest";
 
 describe("inline-code plugin", () => {
-  beforeEach(() => {
-    document.head.innerHTML = "";
-    document.body.innerHTML = "";
-  });
-
   it("wraps backtick-delimited text in code tags", async () => {
     document.body.innerHTML =
       '<div id="article"><p>Use `const x = 1` in the post.</p></div>';

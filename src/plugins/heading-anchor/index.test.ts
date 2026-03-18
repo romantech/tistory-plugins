@@ -1,5 +1,5 @@
+import { loadPlugin } from "@test/load-plugin";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
 
 const getTistoryArticleMock = vi.fn();
 

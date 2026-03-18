@@ -1,12 +1,10 @@
+import { loadPlugin } from "@test/load-plugin";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
 
 describe("katex plugin", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    document.head.innerHTML = "";
-    document.body.innerHTML = "";
   });
 
   it("injects the stylesheet and renders math inside the detected article container", async () => {
