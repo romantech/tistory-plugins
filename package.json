@@ -1,8 +1,17 @@
 {
   "name": "tistory-plugins",
+  "description": "Tistory blog plugins distributed via jsDelivr CDN",
   "version": "0.1.28",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/romantech/tistory-plugins.git"
+  },
+  "homepage": "https://github.com/romantech/tistory-plugins#readme",
+  "bugs": {
+    "url": "https://github.com/romantech/tistory-plugins/issues"
+  },
   "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=22"
