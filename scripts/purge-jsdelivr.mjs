@@ -1,4 +1,4 @@
-import { glob } from "node:fs/promises";
+import { glob, stat } from "node:fs/promises";
 
 const REPO = process.env.JSDELIVR_REPO || "romantech/tistory-plugins";
 const refsInput = process.env.JSDELIVR_REFS || "latest";
@@ -9,9 +9,14 @@ const refs = refsInput
   .map((ref) => ref.trim())
   .filter(Boolean);
 
-const targets = await Array.fromAsync(glob("dist/**/index.min.js"), (file) =>
-  file.replaceAll("\\", "/"),
-);
+const distEntries = await Array.fromAsync(glob("dist/**/*"));
+const targets = [];
+
+for (const entry of distEntries) {
+  if ((await stat(entry)).isFile()) {
+    targets.push(entry.replaceAll("\\", "/"));
+  }
+}
 
 targets.sort();
 
