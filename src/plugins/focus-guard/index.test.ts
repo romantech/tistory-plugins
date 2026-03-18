@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 describe("focus-guard plugin", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    document.head.innerHTML = "";
-    document.body.innerHTML = "";
   });
 
   it("prevents focus on sidebar toggle buttons on pointerdown", async () => {

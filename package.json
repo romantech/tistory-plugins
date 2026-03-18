@@ -9,8 +9,8 @@
     "build": "node esbuild.config.mjs",
     "purge:jsdelivr": "node scripts/purge-jsdelivr.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.7",

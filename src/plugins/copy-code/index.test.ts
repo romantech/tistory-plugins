@@ -7,9 +7,6 @@ describe("copy-code plugin", () => {
     vi.restoreAllMocks();
     vi.useRealTimers();
 
-    document.head.innerHTML = "";
-    document.body.innerHTML = "";
-
     Object.defineProperty(window, "isSecureContext", {
       configurable: true,
       value: true,

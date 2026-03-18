@@ -5,8 +5,6 @@ describe("katex plugin", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    document.head.innerHTML = "";
-    document.body.innerHTML = "";
   });
 
   it("injects the stylesheet and renders math inside the detected article container", async () => {
