@@ -31,10 +31,13 @@ function isFallbackArticle(element: Element): boolean {
   return hasEnoughText(element, 200) && hasContentSignals(element);
 }
 
-export function getTistoryArticle(root: ParentNode = document): Element | null {
+export function getTistoryArticle(
+  root: ParentNode = document,
+): HTMLElement | null {
   for (const { selector, preferred } of TISTORY_ARTICLE_SELECTORS) {
     const element = root.querySelector(selector);
     if (!element) continue;
+    if (!(element instanceof HTMLElement)) continue;
 
     if (preferred) return element;
     if (isFallbackArticle(element)) return element;

@@ -1,5 +1,6 @@
 import "./style.css";
 import { getTistoryArticle } from "@/shared/article-selector";
+import { runOnDocumentReady } from "@/shared/dom-ready";
 
 (() => {
   const WRAPPER_CLASS = "rp-copy-code-wrapper";
@@ -135,14 +136,10 @@ import { getTistoryArticle } from "@/shared/article-selector";
 
   function init(): void {
     const article = getTistoryArticle();
-    if (!(article instanceof HTMLElement)) return;
+    if (!article) return;
 
     enhanceCodeBlocks(article);
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
-  } else {
-    init();
-  }
+  runOnDocumentReady(init);
 })();

@@ -1,3 +1,5 @@
+import { runOnDocumentReady } from "@/shared/dom-ready";
+
 (() => {
   const SELECTOR =
     'button[data-func="close-sidebar"], button[data-func="open-sidebar"]';
@@ -69,11 +71,5 @@
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
-  } else {
-    init();
-  }
+  runOnDocumentReady(init);
 })();
-
-export {};

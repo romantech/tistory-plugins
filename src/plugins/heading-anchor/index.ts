@@ -1,5 +1,6 @@
 import "./index.css";
 import { getTistoryArticle } from "@/shared/article-selector";
+import { runOnDocumentReady } from "@/shared/dom-ready";
 
 (() => {
   const HEADING_SELECTOR = "h2, h3, h4";
@@ -276,7 +277,7 @@ import { getTistoryArticle } from "@/shared/article-selector";
     initialized = true;
 
     const article = getTistoryArticle();
-    if (!(article instanceof HTMLElement)) return;
+    if (!article) return;
 
     const headings = article.querySelectorAll<HTMLElement>(HEADING_SELECTOR);
     if (!headings.length) return;
@@ -298,9 +299,5 @@ import { getTistoryArticle } from "@/shared/article-selector";
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init, { once: true });
-  } else {
-    init();
-  }
+  runOnDocumentReady(init);
 })();

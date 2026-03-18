@@ -1,4 +1,5 @@
 import { getTistoryArticle } from "@/shared/article-selector";
+import { runOnDocumentReady } from "@/shared/dom-ready";
 
 (() => {
   const TARGET_SELECTOR =
@@ -53,7 +54,7 @@ import { getTistoryArticle } from "@/shared/article-selector";
 
   function initInlineCodePlugin(): void {
     const article = getTistoryArticle();
-    if (!(article instanceof HTMLElement)) return;
+    if (!article) return;
 
     collectTextNodes(article).forEach((textNode) => {
       if (!INLINE_CODE_PATTERN.test(textNode.textContent ?? "")) return;
@@ -61,11 +62,5 @@ import { getTistoryArticle } from "@/shared/article-selector";
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initInlineCodePlugin, {
-      once: true,
-    });
-  } else {
-    initInlineCodePlugin();
-  }
+  runOnDocumentReady(initInlineCodePlugin);
 })();
