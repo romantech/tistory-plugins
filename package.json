@@ -3,10 +3,15 @@
   "version": "0.1.27",
   "private": true,
   "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "format": "biome format --write .",
-    "check": "biome check . --write",
-    "build": "node esbuild.config.mjs",
+    "check": "biome check .",
+    "check:write": "biome check . --write",
+    "build": "pnpm clean && node esbuild.config.mjs",
     "purge:jsdelivr": "node scripts/purge-jsdelivr.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
