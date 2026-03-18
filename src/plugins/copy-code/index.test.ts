@@ -1,8 +1,12 @@
+import { renderArticle, renderArticleView } from "@test/dom";
 import { loadPlugin } from "@test/load-plugin";
 import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("copy-code plugin", () => {
+  const loadCopyCodePlugin = () =>
+    loadPlugin(() => import("@/plugins/copy-code"));
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
@@ -26,14 +30,12 @@ describe("copy-code plugin", () => {
   });
 
   it("adds copy buttons to code blocks in the article", async () => {
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>const a = 1;</code></pre>
-        <pre><code>const b = 2;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>const a = 1;</code></pre>
+      <pre><code>const b = 2;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
@@ -45,28 +47,24 @@ describe("copy-code plugin", () => {
   });
 
   it("does not add a button when pre does not contain code", async () => {
-    document.body.innerHTML = `
-      <div id="article">
-        <pre>plain text</pre>
-        <pre><code>const a = 1;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre>plain text</pre>
+      <pre><code>const a = 1;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(1);
   });
 
   it("does not add duplicate copy buttons when loaded more than once", async () => {
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>const a = 1;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>const a = 1;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
+    await loadCopyCodePlugin();
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
@@ -78,13 +76,11 @@ describe("copy-code plugin", () => {
   it("copies code text with Clipboard API and shows success state", async () => {
     vi.useFakeTimers();
 
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>const a = 1;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>const a = 1;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
@@ -110,13 +106,11 @@ describe("copy-code plugin", () => {
   it("shows error state when code block is empty", async () => {
     vi.useFakeTimers();
 
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>   </code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>   </code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
@@ -150,15 +144,13 @@ describe("copy-code plugin", () => {
       value: undefined,
     });
 
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>fallback text</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>fallback text</code></pre>
+    `);
 
     const execCommandSpy = vi.spyOn(document, "execCommand");
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
@@ -181,13 +173,11 @@ describe("copy-code plugin", () => {
       },
     });
 
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>const a = 1;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>const a = 1;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
@@ -206,27 +196,23 @@ describe("copy-code plugin", () => {
   });
 
   it("does not add a duplicate button to already processed code blocks", async () => {
-    document.body.innerHTML = `
-      <div id="article">
-        <pre data-copy-code-ready="true"><code>const a = 1;</code></pre>
-        <pre><code>const b = 2;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre data-copy-code-ready="true"><code>const a = 1;</code></pre>
+      <pre><code>const b = 2;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(1);
   });
 
   it("works with .article-view container too", async () => {
-    document.body.innerHTML = `
-      <div class="article-view">
-        <pre><code>const a = 1;</code></pre>
-      </div>
-    `;
+    renderArticleView(`
+      <pre><code>const a = 1;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
     expect(button).toBeInTheDocument();
@@ -234,13 +220,11 @@ describe("copy-code plugin", () => {
   });
 
   it("preserves line breaks when copying plain code blocks", async () => {
-    document.body.innerHTML = `
-      <div id="article">
-        <pre><code>const a = 1;\nconst b = 2;\nreturn a + b;</code></pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre><code>const a = 1;\nconst b = 2;\nreturn a + b;</code></pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
@@ -255,32 +239,30 @@ describe("copy-code plugin", () => {
   });
 
   it("preserves line breaks when copying code blocks rendered with highlight.js line numbers", async () => {
-    document.body.innerHTML = `
-      <div id="article">
-        <pre>
-          <code>
-            <table class="hljs-ln">
-              <tbody>
-                <tr>
-                  <td class="hljs-ln-numbers" data-line-number="1"></td>
-                  <td class="hljs-ln-code"><span class="hljs-ln-line">const a = 1;</span></td>
-                </tr>
-                <tr>
-                  <td class="hljs-ln-numbers" data-line-number="2"></td>
-                  <td class="hljs-ln-code"><span class="hljs-ln-line">const b = 2;</span></td>
-                </tr>
-                <tr>
-                  <td class="hljs-ln-numbers" data-line-number="3"></td>
-                  <td class="hljs-ln-code"><span class="hljs-ln-line">return a + b;</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </code>
-        </pre>
-      </div>
-    `;
+    renderArticle(`
+      <pre>
+        <code>
+          <table class="hljs-ln">
+            <tbody>
+              <tr>
+                <td class="hljs-ln-numbers" data-line-number="1"></td>
+                <td class="hljs-ln-code"><span class="hljs-ln-line">const a = 1;</span></td>
+              </tr>
+              <tr>
+                <td class="hljs-ln-numbers" data-line-number="2"></td>
+                <td class="hljs-ln-code"><span class="hljs-ln-line">const b = 2;</span></td>
+              </tr>
+              <tr>
+                <td class="hljs-ln-numbers" data-line-number="3"></td>
+                <td class="hljs-ln-code"><span class="hljs-ln-line">return a + b;</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </code>
+      </pre>
+    `);
 
-    await loadPlugin(() => import("@/plugins/copy-code"));
+    await loadCopyCodePlugin();
 
     const button = screen.getByRole("button", { name: "Copy code" });
 
