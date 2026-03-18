@@ -68,8 +68,8 @@ jobs:
             ## CI summary
             | Check | Status |
             |-------|--------|
-            | Biome | ${{ steps.biome.outcome == 'success' && '✅ passed' || steps.biome.outcome == 'skipped' && '⏭️ skipped' || '❌ failed' }} |
-            | Typecheck | ${{ steps.typecheck.outcome == 'success' && '✅ passed' || steps.typecheck.outcome == 'skipped' && '⏭️ skipped' || '❌ failed' }} |
+            | Lint/Format | ${{ steps.biome.outcome == 'success' && '✅ passed' || steps.biome.outcome == 'skipped' && '⏭️ skipped' || '❌ failed' }} |
+            | Type Check | ${{ steps.typecheck.outcome == 'success' && '✅ passed' || steps.typecheck.outcome == 'skipped' && '⏭️ skipped' || '❌ failed' }} |
             | Build | ${{ steps.build.outcome == 'success' && '✅ passed' || steps.build.outcome == 'skipped' && '⏭️ skipped' || '❌ failed' }} |
             | Tests | ${{ steps.test.outcome == 'success' && '✅ passed' || steps.test.outcome == 'skipped' && '⏭️ skipped' || '❌ failed' }} |
 
