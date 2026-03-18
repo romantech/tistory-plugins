@@ -20,19 +20,19 @@ jobs:
 
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
           persist-credentials: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v4.2.0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -73,7 +73,7 @@ jobs:
           fi
 
       - name: Import GPG key
-        uses: crazy-max/ghaction-import-gpg@v7.0.0
+        uses: crazy-max/ghaction-import-gpg@v7
         with:
           gpg_private_key: ${{ secrets.TAG_SIGNING_GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.TAG_SIGNING_GPG_PASSPHRASE }}
