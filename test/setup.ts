@@ -18,14 +18,24 @@ function resetGlobals(): void {
   }
 }
 
-beforeEach((): void => {
-  resetDom();
-  resetGlobals();
-});
+function resetLocation(): void {
+  location.hash = "";
+}
 
-afterEach((): void => {
+function resetTestEnvironment(): void {
+  vi.clearAllTimers();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   resetDom();
   resetGlobals();
+  resetLocation();
+}
+
+beforeEach((): void => {
+  resetTestEnvironment();
+});
+
+afterEach((): void => {
+  resetTestEnvironment();
 });

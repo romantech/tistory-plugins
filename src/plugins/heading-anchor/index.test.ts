@@ -1,13 +1,16 @@
-import { loadPlugin } from "@test/load-plugin";
+import {
+  getRequiredElement,
+  getRequiredElements,
+  renderArticle,
+} from "@test/dom";
+import { createPluginLoader } from "@test/load-plugin";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const getTistoryArticleMock = vi.fn();
-
-vi.mock("@/shared/utils", () => ({
-  getTistoryArticle: getTistoryArticleMock,
-}));
-
 describe("heading-anchor plugin", () => {
+  const loadHeadingAnchorPlugin = createPluginLoader(
+    () => import("@/plugins/heading-anchor"),
+  );
+
   let originalReadyState: PropertyDescriptor | undefined;
   let originalFonts: PropertyDescriptor | undefined;
   let originalVisualViewport: PropertyDescriptor | undefined;
@@ -91,39 +94,6 @@ describe("heading-anchor plugin", () => {
     });
   }
 
-  function createArticle(markup: string): HTMLElement {
-    document.body.innerHTML = `<article id="article">${markup}</article>`;
-
-    const article = document.getElementById("article");
-    if (!(article instanceof HTMLElement)) {
-      throw new Error("Failed to create test article");
-    }
-
-    getTistoryArticleMock.mockReturnValue(article);
-    return article;
-  }
-
-  function getRequiredElement<T extends Element>(
-    parent: ParentNode,
-    selector: string,
-    ctor: abstract new (...args: never[]) => T,
-  ): T {
-    const element = parent.querySelector(selector);
-
-    if (!(element instanceof ctor)) {
-      throw new Error(`Element not found: ${selector}`);
-    }
-
-    return element;
-  }
-
-  function getRequiredElements<T extends Element>(
-    parent: ParentNode,
-    selector: string,
-  ): T[] {
-    return Array.from(parent.querySelectorAll<T>(selector));
-  }
-
   function mockHeadingTop(heading: HTMLElement, top: number): void {
     Object.defineProperty(heading, "getBoundingClientRect", {
       configurable: true,
@@ -143,7 +113,6 @@ describe("heading-anchor plugin", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
 
     originalReadyState = Object.getOwnPropertyDescriptor(
       document,
@@ -184,19 +153,9 @@ describe("heading-anchor plugin", () => {
     setDocumentReadyState("complete");
     setFontsReady();
     setVisualViewport();
-
-    location.hash = "";
-    document.body.innerHTML = "";
   });
 
   afterEach(() => {
-    vi.clearAllTimers();
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-
-    location.hash = "";
-    document.body.innerHTML = "";
     document.documentElement.style.removeProperty("--header-height");
 
     if (originalReadyState) {
@@ -217,14 +176,17 @@ describe("heading-anchor plugin", () => {
   });
 
   it("adds anchor links and unique ids to h2~h4 headings in the article", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <h2>첫 번째 섹션</h2>
       <h2>첫 번째 섹션</h2>
       <h3 id="custom-id">직접 지정한 제목</h3>
       <h4>마지막 제목</h4>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
 
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3, h4");
     expect(headings).toHaveLength(4);
@@ -252,12 +214,15 @@ describe("heading-anchor plugin", () => {
   });
 
   it("preserves headings that already contain links and only prepares the id", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <h2><a href="/existing">기존 링크 제목</a></h2>
       <h3>일반 제목</h3>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
 
     const linkedHeading = getRequiredElement(article, "h2", HTMLElement);
     const normalHeading = getRequiredElement(article, "h3", HTMLElement);
@@ -271,13 +236,16 @@ describe("heading-anchor plugin", () => {
   });
 
   it("does not add duplicate anchors when the plugin is loaded again", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <h2>중복 방지 제목</h2>
       <h3>두 번째 제목</h3>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
+    await loadHeadingAnchorPlugin();
 
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
 
@@ -290,9 +258,11 @@ describe("heading-anchor plugin", () => {
   });
 
   it("updates the hash and scrolls using the header offset when an anchor is clicked", async () => {
-    const article = createArticle(`<h2>클릭 테스트</h2>`);
+    const article = renderArticle("<h2>클릭 테스트</h2>", {
+      tagName: "article",
+    });
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
 
     const heading = getRequiredElement(article, "h2", HTMLElement);
     mockHeadingTop(heading, 180);
@@ -319,17 +289,20 @@ describe("heading-anchor plugin", () => {
   });
 
   it("corrects the initial hash target position after fonts are ready", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <h2>소개</h2>
       <h2>목표 제목</h2>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
     location.hash = "#목표-제목";
 
     const target = getRequiredElements<HTMLElement>(article, "h2")[1];
     mockHeadingTop(target, 160);
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     expect(scrollToMock).toHaveBeenCalled();
@@ -340,62 +313,72 @@ describe("heading-anchor plugin", () => {
   });
 
   it("does not scroll again when the initial hash target is already correctly positioned", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <h2>소개</h2>
       <h2>정확한 위치</h2>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
     location.hash = "#정확한-위치";
 
     const target = getRequiredElements<HTMLElement>(article, "h2")[1];
     mockHeadingTop(target, 84);
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     expect(scrollToMock).not.toHaveBeenCalled();
   });
 
   it("does not attempt to scroll when the initial hash target does not exist", async () => {
-    createArticle(`
+    renderArticle(
+      `
       <h2>소개</h2>
       <h2>다른 제목</h2>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
     location.hash = "#없는-제목";
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     expect(scrollToMock).not.toHaveBeenCalled();
   });
 
   it("exits without errors even when the article has no headings", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <p>일반 문단</p>
       <div>제목 아님</div>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
-    await expect(
-      loadPlugin(() => import("@/plugins/heading-anchor")),
-    ).resolves.toBeUndefined();
+    await expect(loadHeadingAnchorPlugin()).resolves.toBeUndefined();
 
     expect(article.querySelector(".rp-heading-anchor")).toBeNull();
     expect(scrollToMock).not.toHaveBeenCalled();
   });
 
   it("re-runs hash scroll correction on bfcache restore via pageshow(persisted=true)", async () => {
-    const article = createArticle(`
+    const article = renderArticle(
+      `
       <h2>소개</h2>
       <h2>복원 대상</h2>
-    `);
+    `,
+      { tagName: "article" },
+    );
 
     location.hash = "#복원-대상";
 
     const target = getRequiredElements<HTMLElement>(article, "h2")[1];
     mockHeadingTop(target, 200);
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     scrollToMock.mockClear();

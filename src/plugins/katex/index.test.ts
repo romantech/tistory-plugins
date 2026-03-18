@@ -1,10 +1,10 @@
-import { loadPlugin } from "@test/load-plugin";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getRequiredElement, renderArticleView } from "@test/dom";
+import { createPluginLoader } from "@test/load-plugin";
+import { describe, expect, it, vi } from "vitest";
 
 describe("katex plugin", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.unstubAllGlobals();
+  const loadKatexPlugin = createPluginLoader(() => import("@/plugins/katex"), {
+    microtaskCount: 2,
   });
 
   it("injects the stylesheet and renders math inside the detected article container", async () => {
@@ -13,18 +13,17 @@ describe("katex plugin", () => {
     vi.stubGlobal("katex", {});
     vi.stubGlobal("renderMathInElement", renderMathInElement);
 
-    document.body.innerHTML =
-      '<div class="article-view"><p>Euler: $e^{i\\pi}+1=0$</p></div>';
+    const article = renderArticleView("<p>Euler: $e^{i\\pi}+1=0$</p>");
 
-    await loadPlugin(() => import("@/plugins/katex"), 2);
+    await loadKatexPlugin();
 
-    const article = document.querySelector(".article-view");
-    const stylesheet = document.head.querySelector<HTMLLinkElement>(
+    const stylesheet = getRequiredElement(
+      document.head,
       "#tistory-plugins-katex-css",
+      HTMLLinkElement,
     );
 
     expect(article).toBeInTheDocument();
-    expect(stylesheet).toBeInstanceOf(HTMLLinkElement);
     expect(stylesheet).toHaveAttribute("rel", "stylesheet");
     expect(renderMathInElement).toHaveBeenCalledTimes(1);
     expect(renderMathInElement).toHaveBeenCalledWith(

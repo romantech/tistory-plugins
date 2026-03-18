@@ -1,5 +1,6 @@
 import type renderMathInElement from "katex/contrib/auto-render";
 import { getTistoryArticle } from "@/shared/article-selector";
+import { runOnDocumentReady } from "@/shared/dom-ready";
 
 type KatexState = typeof globalThis & {
   __tistoryPluginsKatexLoadPromise?: Promise<void>;
@@ -96,7 +97,7 @@ type KatexState = typeof globalThis & {
 
   async function initKatexPlugin(): Promise<void> {
     const article = getTistoryArticle();
-    if (!(article instanceof HTMLElement)) return;
+    if (!article) return;
     if (article.dataset.katexRendered === "true") return;
 
     try {
@@ -122,11 +123,5 @@ type KatexState = typeof globalThis & {
     article.dataset.katexRendered = "true";
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initKatexPlugin, {
-      once: true,
-    });
-  } else {
-    initKatexPlugin();
-  }
+  runOnDocumentReady(initKatexPlugin);
 })();
