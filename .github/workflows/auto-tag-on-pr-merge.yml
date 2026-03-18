@@ -146,3 +146,13 @@ jobs:
                 generate_release_notes: true
               });
             }
+
+      - name: Wait before purging jsDelivr cache
+        run: sleep 60
+
+      - name: Purge jsDelivr cache
+        continue-on-error: true
+        env:
+          JSDELIVR_REPO: ${{ github.repository }}
+          JSDELIVR_REFS: latest,${{ steps.versioning.outputs.tag }}
+        run: node scripts/purge-jsdelivr.mjs

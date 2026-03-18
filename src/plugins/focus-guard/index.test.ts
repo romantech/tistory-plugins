@@ -1,6 +1,6 @@
+import { loadPlugin } from "@test/load-plugin";
 import { waitFor } from "@testing-library/dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
 
 describe("focus-guard plugin", () => {
   beforeEach(() => {

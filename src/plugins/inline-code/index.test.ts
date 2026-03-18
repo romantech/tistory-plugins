@@ -1,6 +1,6 @@
+import { loadPlugin } from "@test/load-plugin";
 import { screen } from "@testing-library/dom";
 import { beforeEach, describe, expect, it } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
 
 describe("inline-code plugin", () => {
   beforeEach(() => {

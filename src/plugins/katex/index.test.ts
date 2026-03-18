@@ -1,5 +1,5 @@
+import { loadPlugin } from "@test/load-plugin";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPlugin } from "@/test/load-plugin";
 
 describe("katex plugin", () => {
   beforeEach(() => {
