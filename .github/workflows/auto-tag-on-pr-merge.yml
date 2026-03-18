@@ -159,5 +159,5 @@ jobs:
         continue-on-error: true
         env:
           JSDELIVR_REPO: ${{ github.repository }}
-          JSDELIVR_REFS: latest,${{ steps.versioning.outputs.tag }}
+          JSDELIVR_REFS: latest
         run: node scripts/purge-jsdelivr.mjs

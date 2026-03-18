@@ -397,4 +397,50 @@ describe("heading-anchor plugin", () => {
       behavior: "auto",
     });
   });
+
+  it("uses configured heading levels and header offset", async () => {
+    const article = renderArticle(
+      `
+      <h2>기본 제외</h2>
+      <h5>사용자 정의 제목</h5>
+    `,
+      { tagName: "article" },
+    );
+
+    (
+      window as typeof window & {
+        RPPlugins?: Record<string, unknown>;
+      }
+    ).RPPlugins = {
+      headingAnchor: {
+        levels: [5],
+        headerOffset: 40,
+      },
+    };
+
+    const heading = getRequiredElement(article, "h5", HTMLElement);
+    mockHeadingTop(heading, 100);
+
+    await loadHeadingAnchorPlugin();
+
+    expect(article.querySelector("h2 .rp-heading-anchor")).toBeNull();
+
+    const anchor = getRequiredElement(
+      heading,
+      ".rp-heading-anchor",
+      HTMLAnchorElement,
+    );
+
+    anchor.dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(scrollToMock).toHaveBeenLastCalledWith({
+      top: 360,
+      behavior: "smooth",
+    });
+  });
 });

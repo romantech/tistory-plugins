@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, vi } from "vitest";
 
 const RESET_GLOBAL_KEYS = [
+  "RPPlugins",
   "__tistoryPluginsKatexLoadPromise",
   "katex",
   "renderMathInElement",
