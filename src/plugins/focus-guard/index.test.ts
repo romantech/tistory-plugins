@@ -1,11 +1,12 @@
 import { getRequiredElement, setBodyHtml } from "@test/dom";
-import { loadPlugin } from "@test/load-plugin";
+import { createPluginLoader } from "@test/load-plugin";
 import { waitFor } from "@testing-library/dom";
 import { describe, expect, it, vi } from "vitest";
 
 describe("focus-guard plugin", () => {
-  const loadFocusGuardPlugin = () =>
-    loadPlugin(() => import("@/plugins/focus-guard"));
+  const loadFocusGuardPlugin = createPluginLoader(
+    () => import("@/plugins/focus-guard"),
+  );
 
   it("prevents focus on sidebar toggle buttons on pointerdown", async () => {
     setBodyHtml(`

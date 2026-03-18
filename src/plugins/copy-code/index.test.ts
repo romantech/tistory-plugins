@@ -1,16 +1,14 @@
 import { renderArticle, renderArticleView } from "@test/dom";
-import { loadPlugin } from "@test/load-plugin";
+import { createPluginLoader } from "@test/load-plugin";
 import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("copy-code plugin", () => {
-  const loadCopyCodePlugin = () =>
-    loadPlugin(() => import("@/plugins/copy-code"));
+  const loadCopyCodePlugin = createPluginLoader(
+    () => import("@/plugins/copy-code"),
+  );
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-
     Object.defineProperty(window, "isSecureContext", {
       configurable: true,
       value: true,

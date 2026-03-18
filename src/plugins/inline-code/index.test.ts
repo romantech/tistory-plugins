@@ -1,11 +1,12 @@
 import { getRequiredElement, renderArticle } from "@test/dom";
-import { loadPlugin } from "@test/load-plugin";
+import { createPluginLoader } from "@test/load-plugin";
 import { screen } from "@testing-library/dom";
 import { describe, expect, it } from "vitest";
 
 describe("inline-code plugin", () => {
-  const loadInlineCodePlugin = () =>
-    loadPlugin(() => import("@/plugins/inline-code"));
+  const loadInlineCodePlugin = createPluginLoader(
+    () => import("@/plugins/inline-code"),
+  );
 
   it("wraps backtick-delimited text in code tags", async () => {
     const article = renderArticle("<p>Use `const x = 1` in the post.</p>");

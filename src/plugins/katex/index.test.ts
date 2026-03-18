@@ -1,9 +1,11 @@
 import { getRequiredElement, renderArticleView } from "@test/dom";
-import { loadPlugin } from "@test/load-plugin";
+import { createPluginLoader } from "@test/load-plugin";
 import { describe, expect, it, vi } from "vitest";
 
 describe("katex plugin", () => {
-  const loadKatexPlugin = () => loadPlugin(() => import("@/plugins/katex"), 2);
+  const loadKatexPlugin = createPluginLoader(() => import("@/plugins/katex"), {
+    microtaskCount: 2,
+  });
 
   it("injects the stylesheet and renders math inside the detected article container", async () => {
     const renderMathInElement = vi.fn();

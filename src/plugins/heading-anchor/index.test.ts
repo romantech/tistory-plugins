@@ -3,10 +3,14 @@ import {
   getRequiredElements,
   renderArticle,
 } from "@test/dom";
-import { loadPlugin } from "@test/load-plugin";
+import { createPluginLoader } from "@test/load-plugin";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("heading-anchor plugin", () => {
+  const loadHeadingAnchorPlugin = createPluginLoader(
+    () => import("@/plugins/heading-anchor"),
+  );
+
   let originalReadyState: PropertyDescriptor | undefined;
   let originalFonts: PropertyDescriptor | undefined;
   let originalVisualViewport: PropertyDescriptor | undefined;
@@ -109,7 +113,6 @@ describe("heading-anchor plugin", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.clearAllMocks();
 
     originalReadyState = Object.getOwnPropertyDescriptor(
       document,
@@ -150,19 +153,9 @@ describe("heading-anchor plugin", () => {
     setDocumentReadyState("complete");
     setFontsReady();
     setVisualViewport();
-
-    location.hash = "";
-    document.body.innerHTML = "";
   });
 
   afterEach(() => {
-    vi.clearAllTimers();
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-
-    location.hash = "";
-    document.body.innerHTML = "";
     document.documentElement.style.removeProperty("--header-height");
 
     if (originalReadyState) {
@@ -193,7 +186,7 @@ describe("heading-anchor plugin", () => {
       { tagName: "article" },
     );
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
 
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3, h4");
     expect(headings).toHaveLength(4);
@@ -229,7 +222,7 @@ describe("heading-anchor plugin", () => {
       { tagName: "article" },
     );
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
 
     const linkedHeading = getRequiredElement(article, "h2", HTMLElement);
     const normalHeading = getRequiredElement(article, "h3", HTMLElement);
@@ -251,8 +244,8 @@ describe("heading-anchor plugin", () => {
       { tagName: "article" },
     );
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
+    await loadHeadingAnchorPlugin();
 
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
 
@@ -269,7 +262,7 @@ describe("heading-anchor plugin", () => {
       tagName: "article",
     });
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
 
     const heading = getRequiredElement(article, "h2", HTMLElement);
     mockHeadingTop(heading, 180);
@@ -309,7 +302,7 @@ describe("heading-anchor plugin", () => {
     const target = getRequiredElements<HTMLElement>(article, "h2")[1];
     mockHeadingTop(target, 160);
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     expect(scrollToMock).toHaveBeenCalled();
@@ -333,7 +326,7 @@ describe("heading-anchor plugin", () => {
     const target = getRequiredElements<HTMLElement>(article, "h2")[1];
     mockHeadingTop(target, 84);
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     expect(scrollToMock).not.toHaveBeenCalled();
@@ -350,7 +343,7 @@ describe("heading-anchor plugin", () => {
 
     location.hash = "#없는-제목";
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     expect(scrollToMock).not.toHaveBeenCalled();
@@ -365,9 +358,7 @@ describe("heading-anchor plugin", () => {
       { tagName: "article" },
     );
 
-    await expect(
-      loadPlugin(() => import("@/plugins/heading-anchor")),
-    ).resolves.toBeUndefined();
+    await expect(loadHeadingAnchorPlugin()).resolves.toBeUndefined();
 
     expect(article.querySelector(".rp-heading-anchor")).toBeNull();
     expect(scrollToMock).not.toHaveBeenCalled();
@@ -387,7 +378,7 @@ describe("heading-anchor plugin", () => {
     const target = getRequiredElements<HTMLElement>(article, "h2")[1];
     mockHeadingTop(target, 200);
 
-    await loadPlugin(() => import("@/plugins/heading-anchor"));
+    await loadHeadingAnchorPlugin();
     await flushAll();
 
     scrollToMock.mockClear();
