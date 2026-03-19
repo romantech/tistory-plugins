@@ -11,7 +11,7 @@
 
 ## 본문 컨테이너 감지
 
-아래 셀렉터를 위에서부터 순서대로 확인해 가장 먼저 찾은 본문 영역에서 동작합니다.
+아래 셀렉터 중 가장 먼저 찾은 본문 영역에서 동작합니다.
 
 - `.contents_style`
 - `.entry-content`
@@ -22,7 +22,7 @@
 - `#article`
 - `.article_cont`
 
-아래 셀렉터는 본문 텍스트와 콘텐츠 신호가 충분할 때만 fallback 후보로 사용합니다.
+아래 셀렉터는 fallback 후보로 사용합니다.
 
 - `.tt_article_useless_p_margin`
 - `.inner_content`
@@ -49,7 +49,7 @@
 
 ## 설치 방법
 
-아래 스크립트를 `</body>` 바로 앞에 삽입합니다.
+아래 스크립트를 `</body>` 위에 삽입합니다.
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/inline-code/index.min.js"></script>
