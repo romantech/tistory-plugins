@@ -19,7 +19,7 @@
 
 ## 설치 방법
 
-아래 스크립트를 `</body>` 바로 앞에 삽입합니다.
+아래 스크립트를 `</body>` 위에 삽입합니다.
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/focus-guard/index.min.js"></script>
