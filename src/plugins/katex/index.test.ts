@@ -1,5 +1,5 @@
-import { getRequiredElement, renderArticleView } from "@test/dom";
-import { createPluginLoader } from "@test/load-plugin";
+import { getRequiredElement, renderArticleView, setBodyHtml } from "@test/dom";
+import { createPluginLoader, loadPlugin } from "@test/load-plugin";
 import { describe, expect, it, vi } from "vitest";
 
 describe("katex plugin", () => {
@@ -69,5 +69,44 @@ describe("katex plugin", () => {
         throwOnError: true,
       }),
     );
+  });
+
+  it("reselects the article after async asset loading", async () => {
+    let resolveAssets!: () => void;
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal(
+      "__tistoryPluginsKatexLoadPromise",
+      new Promise<void>((resolve) => {
+        resolveAssets = resolve;
+      }),
+    );
+
+    const renderMathInElement = vi.fn();
+
+    setBodyHtml(
+      '<div class="tt_article_useless_p_margin contents_style"><p>Transient $x$</p></div>',
+    );
+
+    const pluginLoad = loadPlugin(() => import("@/plugins/katex"), 0);
+
+    setBodyHtml('<div id="article"><p>Stable $e^{i\\pi}+1=0$</p></div>');
+    const article = getRequiredElement(document, "#article", HTMLElement);
+
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+    resolveAssets();
+
+    await pluginLoad;
+    await Promise.resolve();
+
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
+    expect(renderMathInElement).toHaveBeenCalledWith(
+      article,
+      expect.objectContaining({
+        throwOnError: false,
+        strict: false,
+      }),
+    );
+    expect(article).toHaveAttribute("data-katex-rendered", "true");
   });
 });

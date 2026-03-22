@@ -142,9 +142,9 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   }
 
   async function initKatexPlugin(): Promise<void> {
-    const article = getTistoryArticle();
-    if (!article) return;
-    if (article.dataset.katexRendered === "true") return;
+    const initialArticle = getTistoryArticle();
+    if (!initialArticle) return;
+    if (initialArticle.dataset.katexRendered === "true") return;
 
     try {
       await ensureKatexAssets();
@@ -152,6 +152,10 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
       console.error("[tistory-plugins/katex] asset load failed", error);
       return;
     }
+
+    const article = getTistoryArticle();
+    if (!article) return;
+    if (article.dataset.katexRendered === "true") return;
 
     const state = globalThis as KatexState;
     if (typeof state.renderMathInElement !== "function") return;
