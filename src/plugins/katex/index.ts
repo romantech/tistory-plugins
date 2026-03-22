@@ -34,6 +34,14 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     "code",
   ] as const;
 
+  function isKatexRendered(article: HTMLElement): boolean {
+    return article.dataset.katexRendered === "true";
+  }
+
+  function markKatexRendered(article: HTMLElement): void {
+    article.dataset.katexRendered = "true";
+  }
+
   function getIgnoredTags(): KatexIgnoredTag[] {
     const { ignoredTags } = getKatexConfig();
     if (!Array.isArray(ignoredTags) || ignoredTags.length === 0) {
@@ -81,12 +89,12 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
           return;
         }
 
-        existing.addEventListener("load", () => resolve(), { once: true });
-        existing.addEventListener(
-          "error",
-          () => reject(new Error(`Failed to load ${src}`)),
-          { once: true },
-        );
+        const handleLoad = (): void => resolve();
+        const handleError = (): void =>
+          reject(new Error(`Failed to load ${src}`));
+
+        existing.addEventListener("load", handleLoad, { once: true });
+        existing.addEventListener("error", handleError, { once: true });
       });
     }
 
@@ -142,9 +150,8 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   }
 
   async function initKatexPlugin(): Promise<void> {
-    const article = getTistoryArticle();
-    if (!article) return;
-    if (article.dataset.katexRendered === "true") return;
+    const initialArticle = getTistoryArticle();
+    if (!initialArticle || isKatexRendered(initialArticle)) return;
 
     try {
       await ensureKatexAssets();
@@ -153,12 +160,15 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
       return;
     }
 
+    const article = getTistoryArticle();
+    if (!article || isKatexRendered(article)) return;
+
     const state = globalThis as KatexState;
     if (typeof state.renderMathInElement !== "function") return;
 
     state.renderMathInElement(article, getRenderOptions());
 
-    article.dataset.katexRendered = "true";
+    markKatexRendered(article);
   }
 
   runOnDocumentReady(initKatexPlugin);
