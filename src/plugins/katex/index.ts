@@ -17,6 +17,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
 (() => {
   const KATEX_VERSION = "0.16.38";
+  const CDN_BASE = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist`;
   const STYLESHEET_ID = "tistory-plugins-katex-css";
   const KATEX_SCRIPT_ID = "tistory-plugins-katex-js";
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
@@ -34,6 +35,8 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     "code",
   ] as const;
 
+  const asBool = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
+
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
   }
@@ -42,16 +45,17 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     article.dataset.katexRendered = "true";
   }
 
-  function getIgnoredTags(): KatexIgnoredTag[] {
-    const { ignoredTags } = getKatexConfig();
+  function getIgnoredTags(
+    config: ReturnType<typeof getKatexConfig>,
+  ): KatexIgnoredTag[] {
+    const { ignoredTags } = config;
     if (!Array.isArray(ignoredTags) || ignoredTags.length === 0) {
       return [...DEFAULT_IGNORED_TAGS];
     }
 
-    return ignoredTags.filter(
-      (tag): tag is KatexIgnoredTag =>
-        typeof tag === "string" && tag.length > 0,
-    );
+    return ignoredTags.filter((tag): tag is KatexIgnoredTag => {
+      return typeof tag === "string" && tag.length > 0;
+    });
   }
 
   function getRenderOptions(): KatexRenderOptions {
@@ -62,10 +66,9 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
         Array.isArray(config.delimiters) && config.delimiters.length > 0
           ? config.delimiters
           : DEFAULT_DELIMITERS,
-      ignoredTags: getIgnoredTags(),
-      strict: typeof config.strict === "boolean" ? config.strict : false,
-      throwOnError:
-        typeof config.throwOnError === "boolean" ? config.throwOnError : false,
+      ignoredTags: getIgnoredTags(config),
+      strict: asBool(config.strict),
+      throwOnError: asBool(config.throwOnError),
     };
   }
 
@@ -75,35 +78,18 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     const link = document.createElement("link");
     link.id = STYLESHEET_ID;
     link.rel = "stylesheet";
-    link.href = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.css`;
+    link.href = `${CDN_BASE}/katex.min.css`;
     link.crossOrigin = "anonymous";
     document.head.appendChild(link);
   }
 
-  function loadScript(id: string, src: string): Promise<void> {
-    const existing = document.getElementById(id);
-    if (existing) {
-      return new Promise((resolve, reject) => {
-        if (existing.dataset.loaded === "true") {
-          resolve();
-          return;
-        }
-
-        const handleLoad = (): void => resolve();
-        const handleError = (): void =>
-          reject(new Error(`Failed to load ${src}`));
-
-        existing.addEventListener("load", handleLoad, { once: true });
-        existing.addEventListener("error", handleError, { once: true });
-      });
-    }
-
+  function waitForScript(script: HTMLElement, src: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.id = id;
-      script.defer = true;
-      script.src = src;
-      script.crossOrigin = "anonymous";
+      if (script.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+
       script.addEventListener(
         "load",
         () => {
@@ -117,8 +103,23 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
         () => reject(new Error(`Failed to load ${src}`)),
         { once: true },
       );
-      document.head.appendChild(script);
     });
+  }
+
+  async function loadScript(id: string, src: string): Promise<void> {
+    const existing = document.getElementById(id);
+    if (existing) return waitForScript(existing, src);
+
+    const script = document.createElement("script");
+    script.id = id;
+    script.defer = true;
+    script.src = src;
+    script.crossOrigin = "anonymous";
+
+    const promise = waitForScript(script, src);
+    document.head.appendChild(script);
+
+    await promise;
   }
 
   function ensureKatexAssets(): Promise<void> {
@@ -129,16 +130,13 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
     state[LOAD_PROMISE_KEY] = (async () => {
       if (typeof state.katex === "undefined") {
-        await loadScript(
-          KATEX_SCRIPT_ID,
-          `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.js`,
-        );
+        await loadScript(KATEX_SCRIPT_ID, `${CDN_BASE}/katex.min.js`);
       }
 
       if (typeof state.renderMathInElement !== "function") {
         await loadScript(
           AUTO_RENDER_SCRIPT_ID,
-          `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/contrib/auto-render.min.js`,
+          `${CDN_BASE}/contrib/auto-render.min.js`,
         );
       }
     })().catch((error) => {
@@ -163,7 +161,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     const article = getTistoryArticle();
     if (!article || isKatexRendered(article)) return;
 
-    const state = globalThis as KatexState;
+    const state = globalThis satisfies KatexState;
     if (typeof state.renderMathInElement !== "function") return;
 
     state.renderMathInElement(article, getRenderOptions());
