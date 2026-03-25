@@ -7,7 +7,7 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
   const DEFAULT_HEADING_SELECTOR = "h2, h3, h4";
   const LINK_CLASS = "rp-heading-anchor";
   const TARGET_CLASS = "rp-heading-target";
-  const DEFAULT_ID = "heading";
+  const DEFAULT_ID = "heading-abcdef";
   const DEFAULT_HEADER_HEIGHT = 84;
   const MAX_SUFFIX = 1000;
   const POST_LOAD_CORRECTION_DELAYS = [120, 320, 700, 1100] as const;
