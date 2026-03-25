@@ -44,6 +44,10 @@ function getWorkingTreeFileSize(file) {
 function formatSizeDiff(diffBytes) {
   if (diffBytes === 0) return "no change";
 
+  if (Math.abs(diffBytes) < 1024) {
+    return diffBytes > 0 ? `+${diffBytes} B` : `-${Math.abs(diffBytes)} B`;
+  }
+
   const absKb = (Math.abs(diffBytes) / 1024).toFixed(1);
   return diffBytes > 0 ? `+${absKb} KB` : `-${absKb} KB`;
 }
@@ -102,16 +106,15 @@ const distFiles = [
   )
   .sort();
 
-const distMd =
-  distFiles.length > 0
-    ? distFiles
-        .map((file) => {
-          const diff =
-            getWorkingTreeFileSize(file) - getFileSizeAtRef(baseSha, file);
-          return `- \`${file}\`: ${formatSizeDiff(diff)}`;
-        })
-        .join("\n")
-    : "- none";
+const distMdItems = distFiles
+  .map((file) => ({
+    file,
+    diff: getWorkingTreeFileSize(file) - getFileSizeAtRef(baseSha, file),
+  }))
+  .filter(({ diff }) => diff !== 0)
+  .map(({ file, diff }) => `- \`${file}\`: ${formatSizeDiff(diff)}`);
+
+const distMd = distMdItems.length > 0 ? distMdItems.join("\n") : "- none";
 
 writeMultilineOutput("plugins", pluginsMd);
 writeMultilineOutput("dist", distMd);
