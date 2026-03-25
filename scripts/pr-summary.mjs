@@ -1,12 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { appendFileSync, existsSync, statSync } from "node:fs";
 
-const baseSha = process.env.BASE_SHA;
-const githubOutput = process.env.GITHUB_OUTPUT;
+const {
+  BASE_SHA: baseSha,
+  HEAD_SHA: headSha,
+  GITHUB_OUTPUT: githubOutput,
+} = process.env;
 
-if (!baseSha || !githubOutput) {
-  console.error("Missing required environment variables.");
+if (!baseSha || !headSha || !githubOutput) {
+  console.error(
+    "Missing required environment variables: BASE_SHA, HEAD_SHA, GITHUB_OUTPUT.",
+  );
   process.exit(1);
 }
 
@@ -17,16 +22,9 @@ function git(args) {
   }).trim();
 }
 
-function gitRaw(args) {
-  return execFileSync("git", args, {
-    encoding: "buffer",
-    maxBuffer: 10 * 1024 * 1024,
-  });
-}
-
 function getFileSizeAtRef(ref, file) {
   try {
-    return gitRaw(["show", `${ref}:${file}`]).byteLength;
+    return Number(git(["cat-file", "-s", `${ref}:${file}`]));
   } catch {
     return 0;
   }
@@ -35,7 +33,7 @@ function getFileSizeAtRef(ref, file) {
 function getWorkingTreeFileSize(file) {
   try {
     if (!existsSync(file)) return 0;
-    return readFileSync(file).byteLength;
+    return statSync(file).size;
   } catch {
     return 0;
   }
@@ -63,7 +61,7 @@ function writeMultilineOutput(name, value) {
 let changedFiles = [];
 
 try {
-  const raw = git(["diff", "--name-only", baseSha, process.env.HEAD_SHA]);
+  const raw = git(["diff", "--name-only", baseSha, headSha]);
   changedFiles = raw
     ? raw
         .split("\n")
@@ -89,7 +87,7 @@ const pluginsMd =
     ? pluginNames.map((name) => `- ${name}`).join("\n")
     : "- none";
 
-const distFiles = [
+const distEntries = [
   ...new Set([
     ...pluginNames.flatMap((name) => [
       `dist/${name}/index.min.js`,
@@ -100,17 +98,21 @@ const distFiles = [
     ),
   ]),
 ]
-  .filter(
-    (file) =>
-      getFileSizeAtRef(baseSha, file) > 0 || getWorkingTreeFileSize(file) > 0,
-  )
-  .sort();
+  .map((file) => {
+    const baseSize = getFileSizeAtRef(baseSha, file);
+    const currentSize = getWorkingTreeFileSize(file);
 
-const distMdItems = distFiles
-  .map((file) => ({
-    file,
-    diff: getWorkingTreeFileSize(file) - getFileSizeAtRef(baseSha, file),
-  }))
+    return {
+      file,
+      baseSize,
+      currentSize,
+      diff: currentSize - baseSize,
+    };
+  })
+  .filter(({ baseSize, currentSize }) => baseSize > 0 || currentSize > 0)
+  .sort((a, b) => a.file.localeCompare(b.file));
+
+const distMdItems = distEntries
   .filter(({ diff }) => diff !== 0)
   .map(({ file, diff }) => `- \`${file}\`: ${formatSizeDiff(diff)}`);
 
