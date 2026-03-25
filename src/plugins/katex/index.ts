@@ -35,21 +35,6 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     "code",
   ] as const;
 
-  const KATEX_TEXT_SCAN_EXCLUDED_SELECTORS = [
-    "pre",
-    "code",
-    "script",
-    "style",
-    "textarea",
-    "noscript",
-    "[hidden]",
-    '[aria-hidden="true"]',
-    ".activity-content-wrap",
-    ".another-category",
-    ".revenue_unit_wrap",
-    "[data-tistory-react-app]",
-  ].join(", ");
-
   const KATEX_TEXT_HINT_REGEX =
     /\$\$[^$]+\$\$|\$(?!\s)(?:\\.|[^$\n\\])+\$|\\\((?:\\.|[^\\\n])+\\\)|\\\[(?:\\.|[^\\\n])+\\\]/;
 
@@ -64,16 +49,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   }
 
   function hasKatexContent(article: HTMLElement): boolean {
-    const clone = article.cloneNode(true);
-    if (!(clone instanceof HTMLElement)) return false;
-
-    clone
-      .querySelectorAll(KATEX_TEXT_SCAN_EXCLUDED_SELECTORS)
-      .forEach((node) => {
-        node.remove();
-      });
-
-    return KATEX_TEXT_HINT_REGEX.test(clone.textContent ?? "");
+    return KATEX_TEXT_HINT_REGEX.test(article.textContent ?? "");
   }
 
   function shouldRenderKatex(article: HTMLElement): boolean {

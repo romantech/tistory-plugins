@@ -7,7 +7,6 @@
 - 인라인 수식 구분자 `$...$`를 렌더링합니다.
 - 블록 수식 구분자 `$$...$$`를 렌더링합니다.
 - KaTeX CSS, 본체 스크립트, auto-render 스크립트를 jsDelivr에서 한 번만 로드합니다.
-- 본문에 수식 패턴이 있을 때만 KaTeX 자산을 로드합니다.
 - 렌더링이 끝난 본문에는 `data-katex-rendered="true"`를 남겨 중복 실행을 막습니다.
 - `throwOnError: false`, `strict: false` 설정으로 수식 오류가 있어도 전체 렌더링이 중단되지 않습니다.
 
@@ -34,11 +33,7 @@
 - 인라인 수식: `$...$`
 - 블록 수식: `$$...$$`
 
-## 렌더링 제외 태그 및 영역
-
-아래 태그와 영역은 수식 존재 여부 검사와 렌더링 대상에서 제외합니다.
-
-### 태그
+## 렌더링 제외 태그
 
 - `script`
 - `noscript`
@@ -46,15 +41,6 @@
 - `textarea`
 - `pre`
 - `code`
-
-### 영역
-
-- `[hidden]`
-- `[aria-hidden="true"]`
-- `.activity-content-wrap`
-- `.another-category`
-- `.revenue_unit_wrap`
-- `[data-tistory-react-app]`
 
 코드블록이나 인라인 코드 안의 달러 표시는 무시됩니다.
 
