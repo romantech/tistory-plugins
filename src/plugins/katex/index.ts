@@ -35,9 +35,6 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     "code",
   ] as const;
 
-  const KATEX_TEXT_HINT_REGEX =
-    /\$\$[^$]+\$\$|\$(?!\s)(?:\\.|[^$\n\\])+\$|\\\((?:\\.|[^\\\n])+\\\)|\\\[(?:\\.|[^\\\n])+\\\]/;
-
   const asBool = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
 
   function isKatexRendered(article: HTMLElement): boolean {
@@ -46,14 +43,6 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
   function markKatexRendered(article: HTMLElement): void {
     article.dataset.katexRendered = "true";
-  }
-
-  function hasKatexContent(article: HTMLElement): boolean {
-    return KATEX_TEXT_HINT_REGEX.test(article.textContent ?? "");
-  }
-
-  function shouldRenderKatex(article: HTMLElement): boolean {
-    return !isKatexRendered(article) && hasKatexContent(article);
   }
 
   function getIgnoredTags(
@@ -160,7 +149,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
   async function initKatexPlugin(): Promise<void> {
     const initialArticle = getTistoryArticle();
-    if (!initialArticle || !shouldRenderKatex(initialArticle)) return;
+    if (!initialArticle || isKatexRendered(initialArticle)) return;
 
     try {
       await ensureKatexAssets();
@@ -170,7 +159,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     }
 
     const article = getTistoryArticle();
-    if (!article || !shouldRenderKatex(article)) return;
+    if (!article || isKatexRendered(article)) return;
 
     const state = globalThis satisfies KatexState;
     if (typeof state.renderMathInElement !== "function") return;
