@@ -1,12 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync } from "node:fs";
 
 const baseSha = process.env.BASE_SHA;
-const headSha = process.env.HEAD_SHA;
 const githubOutput = process.env.GITHUB_OUTPUT;
 
-if (!baseSha || !headSha || !githubOutput) {
+if (!baseSha || !githubOutput) {
   console.error("Missing required environment variables.");
   process.exit(1);
 }
@@ -33,6 +32,15 @@ function getFileSizeAtRef(ref, file) {
   }
 }
 
+function getWorkingTreeFileSize(file) {
+  try {
+    if (!existsSync(file)) return 0;
+    return readFileSync(file).byteLength;
+  } catch {
+    return 0;
+  }
+}
+
 function formatSizeDiff(diffBytes) {
   if (diffBytes === 0) return "no change";
 
@@ -51,7 +59,7 @@ function writeMultilineOutput(name, value) {
 let changedFiles = [];
 
 try {
-  const raw = git(["diff", "--name-only", baseSha, headSha]);
+  const raw = git(["diff", "--name-only", baseSha, process.env.HEAD_SHA]);
   changedFiles = raw
     ? raw
         .split("\n")
@@ -77,8 +85,21 @@ const pluginsMd =
     ? pluginNames.map((name) => `- ${name}`).join("\n")
     : "- none";
 
-const distFiles = changedFiles
-  .filter((file) => /^dist\/.*\/index\.min\.(js|css)$/.test(file))
+const distFiles = [
+  ...new Set([
+    ...pluginNames.flatMap((name) => [
+      `dist/${name}/index.min.js`,
+      `dist/${name}/index.min.css`,
+    ]),
+    ...changedFiles.filter((file) =>
+      /^dist\/.*\/index\.min\.(js|css)$/.test(file),
+    ),
+  ]),
+]
+  .filter(
+    (file) =>
+      getFileSizeAtRef(baseSha, file) > 0 || getWorkingTreeFileSize(file) > 0,
+  )
   .sort();
 
 const distMd =
@@ -86,7 +107,7 @@ const distMd =
     ? distFiles
         .map((file) => {
           const diff =
-            getFileSizeAtRef(headSha, file) - getFileSizeAtRef(baseSha, file);
+            getWorkingTreeFileSize(file) - getFileSizeAtRef(baseSha, file);
           return `- \`${file}\`: ${formatSizeDiff(diff)}`;
         })
         .join("\n")
