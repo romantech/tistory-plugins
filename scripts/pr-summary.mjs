@@ -1,13 +1,17 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, existsSync, statSync } from "node:fs";
 
-const baseSha = process.env.BASE_SHA;
-const headSha = process.env.HEAD_SHA;
-const githubOutput = process.env.GITHUB_OUTPUT;
+const {
+  BASE_SHA: baseSha,
+  HEAD_SHA: headSha,
+  GITHUB_OUTPUT: githubOutput,
+} = process.env;
 
 if (!baseSha || !headSha || !githubOutput) {
-  console.error("Missing required environment variables.");
+  console.error(
+    "Missing required environment variables: BASE_SHA, HEAD_SHA, GITHUB_OUTPUT.",
+  );
   process.exit(1);
 }
 
@@ -18,16 +22,18 @@ function git(args) {
   }).trim();
 }
 
-function gitRaw(args) {
-  return execFileSync("git", args, {
-    encoding: "buffer",
-    maxBuffer: 10 * 1024 * 1024,
-  });
-}
-
 function getFileSizeAtRef(ref, file) {
   try {
-    return gitRaw(["show", `${ref}:${file}`]).byteLength;
+    return Number(git(["cat-file", "-s", `${ref}:${file}`]));
+  } catch {
+    return 0;
+  }
+}
+
+function getWorkingTreeFileSize(file) {
+  try {
+    if (!existsSync(file)) return 0;
+    return statSync(file).size;
   } catch {
     return 0;
   }
@@ -35,6 +41,10 @@ function getFileSizeAtRef(ref, file) {
 
 function formatSizeDiff(diffBytes) {
   if (diffBytes === 0) return "no change";
+
+  if (Math.abs(diffBytes) < 1024) {
+    return diffBytes > 0 ? `+${diffBytes} B` : `-${Math.abs(diffBytes)} B`;
+  }
 
   const absKb = (Math.abs(diffBytes) / 1024).toFixed(1);
   return diffBytes > 0 ? `+${absKb} KB` : `-${absKb} KB`;
@@ -77,20 +87,36 @@ const pluginsMd =
     ? pluginNames.map((name) => `- ${name}`).join("\n")
     : "- none";
 
-const distFiles = changedFiles
-  .filter((file) => /^dist\/.*\/index\.min\.(js|css)$/.test(file))
-  .sort();
+const distEntries = [
+  ...new Set([
+    ...pluginNames.flatMap((name) => [
+      `dist/${name}/index.min.js`,
+      `dist/${name}/index.min.css`,
+    ]),
+    ...changedFiles.filter((file) =>
+      /^dist\/.*\/index\.min\.(js|css)$/.test(file),
+    ),
+  ]),
+]
+  .map((file) => {
+    const baseSize = getFileSizeAtRef(baseSha, file);
+    const currentSize = getWorkingTreeFileSize(file);
 
-const distMd =
-  distFiles.length > 0
-    ? distFiles
-        .map((file) => {
-          const diff =
-            getFileSizeAtRef(headSha, file) - getFileSizeAtRef(baseSha, file);
-          return `- \`${file}\`: ${formatSizeDiff(diff)}`;
-        })
-        .join("\n")
-    : "- none";
+    return {
+      file,
+      baseSize,
+      currentSize,
+      diff: currentSize - baseSize,
+    };
+  })
+  .filter(({ baseSize, currentSize }) => baseSize > 0 || currentSize > 0)
+  .sort((a, b) => a.file.localeCompare(b.file));
+
+const distMdItems = distEntries
+  .filter(({ diff }) => diff !== 0)
+  .map(({ file, diff }) => `- \`${file}\`: ${formatSizeDiff(diff)}`);
+
+const distMd = distMdItems.length > 0 ? distMdItems.join("\n") : "- none";
 
 writeMultilineOutput("plugins", pluginsMd);
 writeMultilineOutput("dist", distMd);
