@@ -49,7 +49,7 @@
 아래 코드를 `</body>` 위에 삽입합니다.
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
 ```
 
 ## 동작 흐름

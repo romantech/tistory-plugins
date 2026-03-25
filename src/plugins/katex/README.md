@@ -49,7 +49,7 @@
 아래 스크립트를 `</body>` 위에 삽입합니다.
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
 ```
 
 ## 참고 사항
