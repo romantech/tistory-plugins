@@ -6,6 +6,7 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
 (() => {
   const DEFAULT_HEADING_SELECTOR = "h2, h3, h4";
   const LINK_CLASS = "rp-heading-anchor";
+  const TARGET_CLASS = "rp-heading-target";
   const DEFAULT_ID = "section";
   const DEFAULT_HEADER_HEIGHT = 84;
   const MAX_SUFFIX = 1000;
@@ -109,9 +110,7 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
     behavior: ScrollBehavior,
     tolerance = POSITION_TOLERANCE,
   ): void {
-    if (isHeadingPositionAccurate(heading, tolerance)) {
-      return;
-    }
+    if (isHeadingPositionAccurate(heading, tolerance)) return;
 
     scrollHeadingIntoView(heading, behavior);
   }
@@ -128,9 +127,7 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
     const addManagedTimeout = (callback: () => void, delay: number): void => {
       const timeoutId = window.setTimeout(() => {
         const index = timeoutIds.indexOf(timeoutId);
-        if (index !== -1) {
-          timeoutIds.splice(index, 1);
-        }
+        if (index !== -1) timeoutIds.splice(index, 1);
 
         callback();
       }, delay);
@@ -138,16 +135,12 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
       timeoutIds.push(timeoutId);
     };
 
-    const handleViewportChange = (): void => {
-      run();
-    };
+    const handleViewportChange = (): void => run();
 
     const cleanup = (): void => {
       while (timeoutIds.length) {
         const timeoutId = timeoutIds.pop();
-        if (timeoutId !== undefined) {
-          window.clearTimeout(timeoutId);
-        }
+        if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       }
 
       if (window.visualViewport) {
@@ -181,11 +174,8 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
       addManagedTimeout(cleanup, VIEWPORT_RESIZE_WATCH_DURATION);
     };
 
-    if (document.readyState === "complete") {
-      runAfterLoad();
-    } else {
-      window.addEventListener("load", runAfterLoad, { once: true });
-    }
+    if (document.readyState === "complete") runAfterLoad();
+    else window.addEventListener("load", runAfterLoad, { once: true });
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", handleViewportChange, {
@@ -274,22 +264,17 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
   }
 
   function prepareHeading(heading: HTMLElement): void {
-    if (heading.querySelector(`.${LINK_CLASS}`)) {
-      return;
-    }
+    if (heading.querySelector(`.${LINK_CLASS}`)) return;
 
     const text = heading.textContent?.trim();
     if (!text) return;
 
-    if (heading.id) {
-      heading.id = getUniqueId(heading.id, heading);
-    } else {
-      heading.id = getUniqueId(slugify(text), heading);
-    }
+    heading.classList.add(TARGET_CLASS);
 
-    if (heading.querySelector("a")) {
-      return;
-    }
+    if (heading.id) heading.id = getUniqueId(heading.id, heading);
+    else heading.id = getUniqueId(slugify(text), heading);
+
+    if (heading.querySelector("a")) return;
 
     heading.append(createAnchorLink(heading));
   }
@@ -310,16 +295,12 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
 
     if (!hasHash()) return;
 
-    const runInitialHashScroll = (): void => {
-      scrollToHeadingHash(article);
-    };
+    const runInitialHashScroll = (): void => scrollToHeadingHash(article);
 
     runInitialHashScroll();
 
     window.addEventListener("pageshow", (event) => {
-      if (event.persisted) {
-        runInitialHashScroll();
-      }
+      if (event.persisted) runInitialHashScroll();
     });
   }
 

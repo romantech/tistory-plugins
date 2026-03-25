@@ -6,13 +6,18 @@ html {
   scroll-behavior: smooth;
 }
 
-:is(h2, h3, h4) {
+.rp-heading-target {
   scroll-margin-top: var(--header-height);
+  display: inline-block;
 }
 
 html.night .rp-heading-anchor:not(:hover):not(:focus-visible) {
   /* biome-ignore lint/complexity/noImportantStyles: 다크 모드 기본 앵커 색 강제 적용 */
   color: inherit !important;
+}
+
+.rp-heading-anchor {
+  text-decoration: none;
 }
 
 .rp-heading-anchor-marker {
@@ -27,7 +32,8 @@ html.night .rp-heading-anchor:not(:hover):not(:focus-visible) {
   pointer-events: none;
 }
 
-:is(h2, h3, h4):hover .rp-heading-anchor-marker,
+.rp-heading-target:hover .rp-heading-anchor-marker,
+.rp-heading-anchor:hover .rp-heading-anchor-marker,
 .rp-heading-anchor:focus-visible .rp-heading-anchor-marker {
   opacity: 1;
 }
