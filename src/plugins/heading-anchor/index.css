@@ -11,12 +11,14 @@ html {
   display: inline-block;
 }
 
-html.night .rp-heading-anchor:not(:hover):not(:focus-visible) {
-  /* biome-ignore lint/complexity/noImportantStyles: 다크 모드 기본 앵커 색 강제 적용 */
+.rp-heading-anchor,
+.rp-heading-anchor:visited,
+.rp-heading-anchor:hover,
+.rp-heading-anchor:active,
+.rp-heading-anchor:focus,
+.rp-heading-anchor:focus-visible {
+  /* biome-ignore lint/complexity/noImportantStyles: 티스토리 전역 링크 상태 색보다 제목 색이 우선이어야 함 */
   color: inherit !important;
-}
-
-.rp-heading-anchor {
   text-decoration: none;
 }
 
