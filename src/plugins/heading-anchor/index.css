@@ -2,10 +2,6 @@
   --header-height: 84px;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 .rp-heading-target {
   scroll-margin-top: var(--header-height);
   display: inline-block;
@@ -40,10 +36,6 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
   .rp-heading-anchor-marker {
     transition: none;
   }
