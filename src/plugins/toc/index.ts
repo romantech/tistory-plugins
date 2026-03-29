@@ -24,9 +24,9 @@ import { getTocConfig } from "@/shared/plugin-config";
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
+  const RELATED_CATEGORY_SELECTORS = [".another-category", ".another_category"];
   const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
-    ".another-category",
-    ".another_category",
+    ...RELATED_CATEGORY_SELECTORS,
     ".container_postbtn",
     "#comments",
     ".comments",
@@ -34,7 +34,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     ".tt-box-comment",
     ".reply",
   ].join(", ");
-  const BOTTOM_BOUNDARY_SELECTOR = ".another-category, .another_category";
+  const BOTTOM_BOUNDARY_SELECTOR = RELATED_CATEGORY_SELECTORS.join(", ");
   const PANEL_GAP = 68;
   const VIEWPORT_GUTTER = 24;
   const RIGHT_RAIL_GUTTER = 32;
