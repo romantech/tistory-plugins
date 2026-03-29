@@ -347,10 +347,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       ? Math.min(linkRect.right + gap, viewportWidth - tooltipWidth - padding)
       : Math.max(padding, linkRect.left - tooltipWidth - gap);
     const top = Math.min(
-      Math.max(
-        padding,
-        linkRect.top + linkRect.height / 2 - tooltipHeight / 2,
-      ),
+      Math.max(padding, linkRect.top + linkRect.height / 2 - tooltipHeight / 2),
       viewportHeight - tooltipHeight - padding,
     );
 
@@ -516,14 +513,8 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     root.hidden = false;
     root.style.setProperty("--rp-toc-left", `${Math.round(left)}px`);
-    root.style.setProperty(
-      "--rp-toc-safe-top",
-      `${Math.round(safeTop)}px`,
-    );
-    root.style.setProperty(
-      "--rp-toc-width",
-      `${Math.round(panelWidth)}px`,
-    );
+    root.style.setProperty("--rp-toc-safe-top", `${Math.round(safeTop)}px`);
+    root.style.setProperty("--rp-toc-width", `${Math.round(panelWidth)}px`);
 
     const rootHeight = Math.max(root.offsetHeight, root.clientHeight);
     const desiredTop = Math.max(
@@ -543,10 +534,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       return;
     }
 
-    root.style.setProperty(
-      "--rp-toc-top",
-      `${resolvedTop}px`,
-    );
+    root.style.setProperty("--rp-toc-top", `${resolvedTop}px`);
   }
 
   function bindLinkInteractions(
@@ -654,11 +642,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       activateEntry(initialEntry, true);
     }
 
-    window.addEventListener(
-      "scroll",
-      scheduleSync,
-      { passive: true },
-    );
+    window.addEventListener("scroll", scheduleSync, { passive: true });
     window.addEventListener("resize", scheduleSync, { passive: true });
     window.addEventListener("load", scheduleSync, { once: true });
     window.addEventListener("pageshow", scheduleSync);
