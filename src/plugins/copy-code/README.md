@@ -36,6 +36,28 @@
 
 성공/실패 후 약 2초 뒤 기본 상태로 돌아갑니다.
 
+## 선택 설정
+
+`window.RPPlugins.copyCode`로 버튼 문구를 조정할 수 있습니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    copyCode: {
+      buttonText: "복사",
+      successText: "완료",
+      errorText: "실패",
+      ariaLabel: "코드 복사",
+    },
+  };
+</script>
+```
+
+- `buttonText`: 기본 버튼 문구.
+- `successText`: 복사 성공 후 문구.
+- `errorText`: 복사 실패 후 문구.
+- `ariaLabel`: 복사 버튼 접근성 레이블.
+
 ## 설치 방법
 
 ### 1. CSS 추가

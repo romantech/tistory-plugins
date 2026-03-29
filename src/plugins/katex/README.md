@@ -46,21 +46,27 @@
 
 ## 선택 설정
 
-`window.RPPlugins.katex`로 KaTeX auto-render 옵션 일부를 조정할 수 있습니다.
+`window.RPPlugins.katex` 속성을 통해 KaTeX 옵션을 조정할 수 있습니다.
 
 ```html
 <script>
   window.RPPlugins = {
     katex: {
+      delimiters: [
+        { left: "$$", right: "$$", display: true },
+        { left: "\\(", right: "\\)", display: false },
+      ],
       ignoredClasses: ["math-ignore", "no-katex"],
       ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      // katex options...
     },
   };
 </script>
 ```
 
+- `delimiters`: 수식 구분자 설정.
 - `ignoredClasses`: KaTeX 렌더링 제외 클래스.
-- `ignoredTags`: KaTeX 렌더링 제외 태그(추가 시 기본값을 덮어쓰므로 주의합니다).
+- `ignoredTags`: KaTeX 렌더링 제외 태그(추가 시 기본값을 덮어씁니다).
 
 ## 설치 방법
 
