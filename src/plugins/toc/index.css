@@ -209,7 +209,7 @@
 }
 
 .rp-toc-link.is-active::before {
-  background: rgb(var(--rp-toc-ink) / 0.68);
+  background: rgb(var(--rp-toc-ink) / 0.72);
 }
 
 .rp-toc-tooltip {
