@@ -2,6 +2,7 @@ import {
   getRequiredElement,
   getRequiredElements,
   renderArticle,
+  setBodyHtml,
 } from "@test/dom";
 import { createPluginLoader } from "@test/load-plugin";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -443,6 +444,81 @@ describe("toc plugin", () => {
 
     expect(links[1]).toHaveAttribute("aria-current", "location");
     expect(links[0]).not.toHaveAttribute("aria-current");
+  });
+
+  it("rebuilds the toc when the initial article container is replaced after load", async () => {
+    setBodyHtml(`
+      <div id="mount">
+        <div class="tt_article_useless_p_margin contents_style">
+          <h2>초기 섹션</h2>
+          <h3>초기 하위 섹션</h3>
+        </div>
+      </div>
+    `);
+
+    const initialArticle = getRequiredElement(
+      document,
+      ".contents_style",
+      HTMLElement,
+    );
+    mockRect(initialArticle, {
+      top: 120,
+      left: 240,
+      width: 820,
+      height: 1600,
+    });
+
+    const initialHeadings = getRequiredElements<HTMLElement>(
+      initialArticle,
+      "h2, h3",
+    );
+    mockRect(initialHeadings[0], { top: 120 });
+    mockRect(initialHeadings[1], { top: 420 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    expect(root.hidden).toBe(false);
+
+    const mount = getRequiredElement(document, "#mount", HTMLElement);
+    mount.innerHTML = `
+      <div id="article">
+        <h2>교체된 섹션</h2>
+        <h3>교체된 하위 섹션</h3>
+      </div>
+    `;
+
+    const replacedArticle = getRequiredElement(
+      document,
+      "#article",
+      HTMLElement,
+    );
+    mockRect(replacedArticle, {
+      top: 160,
+      left: 360,
+      width: 820,
+      height: 1700,
+    });
+
+    const replacedHeadings = getRequiredElements<HTMLElement>(
+      replacedArticle,
+      "h2, h3",
+    );
+    mockRect(replacedHeadings[0], { top: 180 });
+    mockRect(replacedHeadings[1], { top: 520 });
+
+    window.dispatchEvent(new Event("load"));
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    expect(root.hidden).toBe(false);
+    expect(links).toHaveLength(2);
+    expect(links[0].getAttribute("href")).toBe("#교체된-섹션");
+    expect(links[1].getAttribute("href")).toBe("#교체된-하위-섹션");
+    expect(replacedHeadings[0].id).toBe("교체된-섹션");
+    expect(replacedHeadings[1].id).toBe("교체된-하위-섹션");
   });
 
   it("auto-scrolls the toc rail when the active item moves below the visible list", async () => {
