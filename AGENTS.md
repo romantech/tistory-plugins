@@ -18,6 +18,13 @@ This file is for coding agents working in this repository. Keep it short, practi
   - `pnpm test`
   - `pnpm build`
 
+## Git And PR Conventions
+
+- Commit messages should use gitmoji and stay concise in English.
+- Pull request titles must use Conventional Commit style, such as `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, or `chore: ...`.
+- Do not prefix pull request titles with `[codex]`.
+- Prefer short English pull request titles that describe the user-visible change or fix.
+
 ## Source Of Truth
 
 - Edit source files under `src/`.
