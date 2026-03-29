@@ -62,7 +62,7 @@
   pointer-events: none;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .rp-toc:hover .rp-toc-link,
@@ -77,7 +77,7 @@
   max-width: 100%;
   margin-left: auto;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   white-space: nowrap;
   opacity: 0;
   transform: translateX(8px);
@@ -91,6 +91,23 @@
 .rp-toc:focus-within .rp-toc-label {
   opacity: 1;
   transform: translateX(0);
+}
+
+.rp-toc-link.is-truncated .rp-toc-label {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 0,
+    rgb(0 0 0 / 1) calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 0,
+    rgb(0 0 0 / 1) calc(100% - 18px),
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .rp-toc-link::before {
@@ -122,8 +139,8 @@
 }
 
 .rp-toc-link[data-level] {
-  /* biome-ignore lint/complexity/noImportantStyles: 레벨별 들여쓰기를 스킨 링크 규칙보다 우선한다 */
-  padding-right: calc(42px + var(--rp-toc-indent)) !important;
+  /* biome-ignore lint/complexity/noImportantStyles: 레벨별 우측 rail 여백을 스킨 링크 규칙보다 우선한다 */
+  padding-right: 42px !important;
 }
 
 .rp-toc-link[data-level="2"] {
@@ -131,25 +148,21 @@
 }
 
 .rp-toc-link[data-level="3"] {
-  --rp-toc-indent: 12px;
   --rp-toc-bar-width: 18px;
   font-size: 12px;
 }
 
 .rp-toc-link[data-level="4"] {
-  --rp-toc-indent: 20px;
   --rp-toc-bar-width: 16px;
   font-size: 12px;
 }
 
 .rp-toc-link[data-level="5"] {
-  --rp-toc-indent: 28px;
   --rp-toc-bar-width: 14px;
   font-size: 11px;
 }
 
 .rp-toc-link[data-level="6"] {
-  --rp-toc-indent: 34px;
   --rp-toc-bar-width: 12px;
   font-size: 11px;
 }
