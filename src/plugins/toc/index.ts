@@ -40,6 +40,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const RIGHT_RAIL_GUTTER = 32;
   const ACTIVE_OFFSET = 16;
   const SAFE_TOP_GAP = 24;
+  const CLICK_NAVIGATION_LOCK_MS = 1400;
 
   type HeadingItem = {
     heading: HTMLElement;
@@ -61,6 +62,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     bottomBoundary: HTMLElement;
     entries: TocEntry[];
     currentActiveId: string;
+  };
+
+  type PendingNavigation = {
+    expiresAt: number;
   };
 
   let initialized = false;
@@ -468,12 +473,16 @@ import { getTocConfig } from "@/shared/plugin-config";
   function revealActiveEntry(
     root: HTMLElement,
     entry: TocEntry,
-    force = false,
+    options: {
+      behavior?: "center" | "nearest";
+      force?: boolean;
+    } = {},
   ): void {
     const viewportHeight = root.clientHeight;
     const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
     if (viewportHeight <= 0 || maxScrollTop <= 0) return;
 
+    const { behavior = "center", force = false } = options;
     const entryTop = entry.link.offsetTop;
     const entryHeight = Math.max(entry.link.offsetHeight, 20);
     const entryBottom = entryTop + entryHeight;
@@ -486,13 +495,21 @@ import { getTocConfig } from "@/shared/plugin-config";
       return;
     }
 
-    const centeredScrollTop = Math.round(
-      entryTop - (viewportHeight - entryHeight) / 2,
-    );
-    const nextScrollTop = Math.min(
-      maxScrollTop,
-      Math.max(0, centeredScrollTop),
-    );
+    let nextScrollTop = currentScrollTop;
+
+    if (behavior === "nearest") {
+      if (entryTop < visibleTop) {
+        nextScrollTop = entryTop - revealPadding;
+      } else if (entryBottom > visibleBottom) {
+        nextScrollTop = entryBottom - viewportHeight + revealPadding;
+      } else {
+        return;
+      }
+    } else {
+      nextScrollTop = Math.round(entryTop - (viewportHeight - entryHeight) / 2);
+    }
+
+    nextScrollTop = Math.min(maxScrollTop, Math.max(0, nextScrollTop));
 
     if (Math.abs(nextScrollTop - currentScrollTop) <= 1) return;
     root.scrollTop = nextScrollTop;
@@ -571,25 +588,13 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   function bindLinkInteractions(
     entries: TocEntry[],
-    activateEntry: (entry: TocEntry, forceReveal?: boolean) => void,
+    handleLinkActivation: (entry: TocEntry) => void,
   ): void {
     for (const entry of entries) {
       entry.link.addEventListener("click", (event) => {
         event.preventDefault();
         const isPointerActivation = event.detail > 0;
-
-        try {
-          history.replaceState(null, "", `#${entry.id}`);
-        } catch {
-          // 해시 갱신이 실패해도 스크롤은 계속한다.
-        }
-
-        activateEntry(entry, true);
-        scrollElementIntoViewWithOffset(
-          entry.heading,
-          getResolvedHeaderOffset(),
-          prefersReducedMotion() ? "auto" : "smooth",
-        );
+        handleLinkActivation(entry);
 
         if (isPointerActivation) {
           entry.link.blur();
@@ -647,6 +652,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     const root = createRoot();
     const tooltip = createTooltip();
     let isInitialLayoutPending = document.readyState !== "complete";
+    let pendingNavigation: PendingNavigation | null = null;
     const initialState = createState(root);
     if (!initialState) {
       root.remove();
@@ -656,15 +662,60 @@ import { getTocConfig } from "@/shared/plugin-config";
     let state: TocState = initialState;
     setPendingVisibility(root, isInitialLayoutPending);
 
-    const activateEntry = (entry: TocEntry, forceReveal = false): void => {
+    const clearPendingNavigation = (): void => {
+      pendingNavigation = null;
+    };
+
+    const isNavigationLockActive = (): boolean => {
+      if (!pendingNavigation) return false;
+
+      if (performance.now() > pendingNavigation.expiresAt) {
+        clearPendingNavigation();
+        return false;
+      }
+
+      return true;
+    };
+
+    const lockNavigationReveal = (): void => {
+      pendingNavigation = {
+        expiresAt: performance.now() + CLICK_NAVIGATION_LOCK_MS,
+      };
+    };
+
+    const activateEntry = (
+      entry: TocEntry,
+      options: {
+        revealBehavior?: "center" | "nearest";
+      } = {},
+    ): void => {
       state.currentActiveId = entry.id;
       setActive(state.entries, entry.id);
-      revealActiveEntry(root, entry, forceReveal);
+      revealActiveEntry(root, entry, {
+        behavior: options.revealBehavior,
+      });
+    };
+
+    const handleLinkActivation = (entry: TocEntry): void => {
+      try {
+        history.replaceState(null, "", `#${entry.id}`);
+      } catch {
+        // 해시 갱신이 실패해도 스크롤은 계속한다.
+      }
+
+      lockNavigationReveal();
+      activateEntry(entry, { revealBehavior: "nearest" });
+      scrollElementIntoViewWithOffset(
+        entry.heading,
+        getResolvedHeaderOffset(),
+        prefersReducedMotion() ? "auto" : "smooth",
+      );
     };
 
     const rebuildState = (): boolean => {
       const nextState = createState(root);
       if (!nextState) {
+        clearPendingNavigation();
         root.hidden = true;
         hideTooltip(tooltip);
         return false;
@@ -672,7 +723,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
       state = nextState;
       hideTooltip(tooltip);
-      bindLinkInteractions(state.entries, activateEntry);
+      bindLinkInteractions(state.entries, handleLinkActivation);
       bindTooltipInteractions(state.entries, root, tooltip);
       return true;
     };
@@ -684,6 +735,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
       alignRoot(root, state.scope, state.bottomBoundary);
       if (root.hidden) {
+        clearPendingNavigation();
         setPendingVisibility(root, isInitialLayoutPending);
         hideTooltip(tooltip);
         return;
@@ -694,7 +746,11 @@ import { getTocConfig } from "@/shared/plugin-config";
       if (!activeEntry) return;
 
       if (activeEntry.id !== state.currentActiveId) {
-        activateEntry(activeEntry);
+        state.currentActiveId = activeEntry.id;
+
+        if (!isNavigationLockActive()) {
+          revealActiveEntry(root, activeEntry);
+        }
       }
 
       setPendingVisibility(root, isInitialLayoutPending);
@@ -719,7 +775,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       scheduleSync();
     };
 
-    bindLinkInteractions(state.entries, activateEntry);
+    bindLinkInteractions(state.entries, handleLinkActivation);
     bindTooltipInteractions(state.entries, root, tooltip);
     sync();
 
@@ -728,7 +784,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       ? state.entries.find((entry) => entry.id === initialHash)
       : undefined;
     if (initialEntry) {
-      activateEntry(initialEntry, true);
+      activateEntry(initialEntry, { revealBehavior: "nearest" });
     }
 
     const handleLoad = (): void => {

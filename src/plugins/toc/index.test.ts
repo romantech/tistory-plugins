@@ -354,10 +354,82 @@ describe("toc plugin", () => {
     expect(document.activeElement).not.toBe(links[1]);
   });
 
-  it("updates the active toc item as smooth scrolling crosses headings", async () => {
+  it("does not recenter the toc rail when a clicked item is already visible", async () => {
     const article = renderArticle(
       `
       <h2>소개</h2>
+      <h3>클릭 대상</h3>
+      <h3>다음 섹션</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+    mockRect(headings[2], { top: 520 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 280,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 220,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 40;
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(36);
+    expect(links[1]).toHaveAttribute("aria-current", "location");
+  });
+
+  it("keeps the toc rail stable while active steps toward a lower target", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>중간 섹션</h3>
       <h3>클릭 대상</h3>
     `,
       { tagName: "article" },
@@ -374,6 +446,7 @@ describe("toc plugin", () => {
     const topMap = new Map<HTMLElement, number>([
       [headings[0], 40],
       [headings[1], 320],
+      [headings[2], 640],
     ]);
 
     for (const heading of headings) {
@@ -404,32 +477,195 @@ describe("toc plugin", () => {
       ".rp-toc-link",
     );
 
-    links[1].dispatchEvent(
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 320,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 220,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 138;
+
+    links[2].dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
         cancelable: true,
       }),
     );
 
-    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(root.scrollTop).toBe(138);
 
     topMap.set(headings[0], -40);
     topMap.set(headings[1], 72);
+    topMap.set(headings[2], 320);
 
     window.dispatchEvent(new Event("scroll"));
     await flushAnimationFrame();
 
     expect(links[1]).toHaveAttribute("aria-current", "location");
     expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(root.scrollTop).toBe(138);
 
-    topMap.set(headings[1], 320);
+    topMap.set(headings[0], -280);
+    topMap.set(headings[1], -40);
+    topMap.set(headings[2], 72);
+
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(links[2]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(138);
+  });
+
+  it("keeps the toc rail stable while active steps toward an upper target", async () => {
+    const article = renderArticle(
+      `
+      <h2>목표 섹션</h2>
+      <h3>중간 섹션</h3>
+      <h3>현재 섹션</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1500,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const topMap = new Map<HTMLElement, number>([
+      [headings[0], -280],
+      [headings[1], -40],
+      [headings[2], 72],
+    ]);
+
+    for (const heading of headings) {
+      Object.defineProperty(heading, "getBoundingClientRect", {
+        configurable: true,
+        value: vi.fn(() => {
+          const top = topMap.get(heading) ?? 0;
+          return {
+            top,
+            bottom: top + 40,
+            left: 0,
+            right: 100,
+            width: 100,
+            height: 40,
+            x: 0,
+            y: top,
+            toJSON: () => ({}),
+          };
+        }),
+      });
+    }
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 320,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 220,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 0;
+
+    links[0].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(0);
+
+    topMap.set(headings[0], -280);
+    topMap.set(headings[1], -40);
+    topMap.set(headings[2], 72);
+
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(links[2]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(0);
+
+    topMap.set(headings[0], -40);
+    topMap.set(headings[1], 72);
+    topMap.set(headings[2], 360);
+
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(0);
+
+    topMap.set(headings[0], 72);
+    topMap.set(headings[1], 360);
+    topMap.set(headings[2], 640);
 
     window.dispatchEvent(new Event("scroll"));
     await flushAnimationFrame();
 
     expect(links[0]).toHaveAttribute("aria-current", "location");
-    expect(links[1]).not.toHaveAttribute("aria-current");
+    expect(root.scrollTop).toBe(0);
   });
 
   it("tracks the currently visible heading while scrolling", async () => {
