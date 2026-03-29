@@ -37,6 +37,12 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
   const asBool = (v: unknown): boolean => (typeof v === "boolean" ? v : false);
 
+  const isDigit = (char: string | undefined): boolean =>
+    typeof char === "string" && /^\d$/u.test(char);
+
+  const isWhitespace = (char: string | undefined): boolean =>
+    typeof char === "string" && /^\s$/u.test(char);
+
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
   }
@@ -70,6 +76,103 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
       strict: asBool(config.strict),
       throwOnError: asBool(config.throwOnError),
     };
+  }
+
+  function hasSingleDollarDelimiter(
+    delimiters: KatexRenderOptions["delimiters"],
+  ): boolean {
+    return (
+      delimiters?.some(({ left, right }) => left === "$" && right === "$") ??
+      false
+    );
+  }
+
+  function isPriceLikeInlineDollar(text: string, index: number): boolean {
+    if (text[index] !== "$") return false;
+    if (text[index - 1] === "$" || text[index + 1] === "$") return false;
+
+    for (let cursor = index + 1; cursor < text.length; cursor += 1) {
+      const char = text[cursor];
+      if (isWhitespace(char)) continue;
+      return isDigit(char);
+    }
+
+    return false;
+  }
+
+  function splitPriceLikeInlineDollars(text: string): Text[] | null {
+    const nodes: Text[] = [];
+    let segmentStart = 0;
+    let hasSplit = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      if (!isPriceLikeInlineDollar(text, index)) continue;
+
+      hasSplit = true;
+
+      if (segmentStart < index) {
+        nodes.push(document.createTextNode(text.slice(segmentStart, index)));
+      }
+
+      nodes.push(document.createTextNode("$"));
+      segmentStart = index + 1;
+    }
+
+    if (!hasSplit) return null;
+
+    if (segmentStart < text.length) {
+      nodes.push(document.createTextNode(text.slice(segmentStart)));
+    }
+
+    return nodes;
+  }
+
+  function isInsideIgnoredTag(
+    textNode: Text,
+    ignoredTags: readonly string[],
+  ): boolean {
+    if (ignoredTags.length === 0) return false;
+
+    let parent = textNode.parentElement;
+    while (parent) {
+      if (ignoredTags.includes(parent.tagName.toLowerCase())) {
+        return true;
+      }
+
+      parent = parent.parentElement;
+    }
+
+    return false;
+  }
+
+  function protectInlineCurrency(
+    article: HTMLElement,
+    ignoredTags: readonly string[],
+  ): void {
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT;
+        if (!node.textContent?.includes("$")) return NodeFilter.FILTER_REJECT;
+        if (isInsideIgnoredTag(node, ignoredTags)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    });
+
+    let currentNode = walker.nextNode();
+    while (currentNode instanceof Text) {
+      textNodes.push(currentNode);
+      currentNode = walker.nextNode();
+    }
+
+    for (const textNode of textNodes) {
+      const splitNodes = splitPriceLikeInlineDollars(textNode.data);
+      if (!splitNodes) continue;
+      textNode.replaceWith(...splitNodes);
+    }
   }
 
   function ensureStylesheet(): void {
@@ -164,7 +267,13 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     const state = globalThis satisfies KatexState;
     if (typeof state.renderMathInElement !== "function") return;
 
-    state.renderMathInElement(article, getRenderOptions());
+    const renderOptions = getRenderOptions();
+
+    if (hasSingleDollarDelimiter(renderOptions.delimiters)) {
+      protectInlineCurrency(article, renderOptions.ignoredTags ?? []);
+    }
+
+    state.renderMathInElement(article, renderOptions);
 
     markKatexRendered(article);
   }

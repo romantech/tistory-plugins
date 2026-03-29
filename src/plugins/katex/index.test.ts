@@ -71,6 +71,41 @@ describe("katex plugin", () => {
     );
   });
 
+  it("does not treat currency-like dollar prefixes as math delimiters", async () => {
+    let capturedParagraphNodes: string[] = [];
+    const renderMathInElement = vi.fn((element: Element) => {
+      const paragraph = getRequiredElement(element, "p", HTMLParagraphElement);
+      capturedParagraphNodes = Array.from(paragraph.childNodes).map(
+        (node) => node.textContent ?? "",
+      );
+    });
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView(
+      "<p>Prices: $14, $12.99, $1,299, $ 99 and math $x$</p>",
+    );
+
+    await loadKatexPlugin();
+
+    expect(article).toHaveTextContent(
+      "Prices: $14, $12.99, $1,299, $ 99 and math $x$",
+    );
+    expect(capturedParagraphNodes).toEqual([
+      "Prices: ",
+      "$",
+      "14, ",
+      "$",
+      "12.99, ",
+      "$",
+      "1,299, ",
+      "$",
+      " 99 and math $x$",
+    ]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
   it("reselects the article after async asset loading", async () => {
     let resolveAssets!: () => void;
 
