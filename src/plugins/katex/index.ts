@@ -44,6 +44,11 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   const isWhitespace = (char: string | undefined): boolean =>
     typeof char === "string" && /^\s$/u.test(char);
 
+  const isPriceBoundary = (char: string | undefined): boolean =>
+    typeof char === "undefined" ||
+    isWhitespace(char) ||
+    /^[,.;:!?)\]%}]$/u.test(char);
+
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
   }
@@ -120,6 +125,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     }
 
     if (text[cursor] === "$") return null;
+    if (!isPriceBoundary(text[cursor])) return null;
 
     return cursor;
   }
@@ -136,11 +142,20 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     const nodes: Node[] = [];
     let segmentStart = 0;
     let hasSplit = false;
+    let hasOpenInlineMath = false;
 
-    for (let index = 0; index < text.length; ) {
+    for (let index = 0; index < text.length; index += 1) {
+      if (text[index] !== "$") continue;
+      if (text[index - 1] === "$" || text[index + 1] === "$") continue;
+
+      if (hasOpenInlineMath) {
+        hasOpenInlineMath = false;
+        continue;
+      }
+
       const protectedEnd = getPriceLikeInlineDollarEnd(text, index);
       if (protectedEnd === null) {
-        index += 1;
+        hasOpenInlineMath = true;
         continue;
       }
 
@@ -152,7 +167,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
       nodes.push(createProtectedCurrencyNode(text.slice(index, protectedEnd)));
       segmentStart = protectedEnd;
-      index = protectedEnd;
+      index = protectedEnd - 1;
     }
 
     if (!hasSplit) return null;
