@@ -247,6 +247,28 @@ describe("katex plugin", () => {
     expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });
 
+  it("still shields currency after an unmatched non-math dollar", async () => {
+    const renderMathInElement = vi.fn();
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView("<p>literal $x and price $14</p>");
+
+    await loadKatexPlugin();
+
+    const protectedCurrencies = Array.from(
+      article.querySelectorAll<HTMLSpanElement>(
+        ".tistory-plugins-katex-currency",
+      ),
+    );
+
+    expect(protectedCurrencies.map((element) => element.textContent)).toEqual([
+      "$14",
+    ]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
   it("reselects the article after async asset loading", async () => {
     let resolveAssets!: () => void;
 

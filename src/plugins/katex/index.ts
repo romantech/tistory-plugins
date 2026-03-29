@@ -138,24 +138,40 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     return span;
   }
 
+  function isLikelyInlineMathClosingDollar(
+    text: string,
+    index: number,
+  ): boolean {
+    if (text[index] !== "$") return false;
+    if (text[index - 1] === "$" || text[index + 1] === "$") return false;
+
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      if (text[cursor] !== "$") continue;
+      if (text[cursor - 1] === "$" || text[cursor + 1] === "$") continue;
+
+      const inlineMathContent = text.slice(cursor + 1, index);
+      if (inlineMathContent.length === 0) return false;
+
+      return !/\s/u.test(inlineMathContent);
+    }
+
+    return false;
+  }
+
   function splitPriceLikeInlineDollars(text: string): Node[] | null {
     const nodes: Node[] = [];
     let segmentStart = 0;
     let hasSplit = false;
-    let hasOpenInlineMath = false;
 
     for (let index = 0; index < text.length; index += 1) {
       if (text[index] !== "$") continue;
       if (text[index - 1] === "$" || text[index + 1] === "$") continue;
 
-      if (hasOpenInlineMath) {
-        hasOpenInlineMath = false;
-        continue;
-      }
-
       const protectedEnd = getPriceLikeInlineDollarEnd(text, index);
-      if (protectedEnd === null) {
-        hasOpenInlineMath = true;
+      if (
+        protectedEnd === null ||
+        isLikelyInlineMathClosingDollar(text, index)
+      ) {
         continue;
       }
 
