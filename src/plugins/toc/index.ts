@@ -13,6 +13,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
 (() => {
   const ROOT_CLASS = "rp-toc";
+  const PENDING_CLASS = `${ROOT_CLASS}--pending`;
   const LIST_CLASS = `${ROOT_CLASS}-list`;
   const LINK_CLASS = `${ROOT_CLASS}-link`;
   const LABEL_CLASS = `${ROOT_CLASS}-label`;
@@ -336,6 +337,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     tooltip.textContent = "";
   }
 
+  function setPendingVisibility(root: HTMLElement, pending: boolean): void {
+    root.classList.toggle(PENDING_CLASS, pending);
+  }
+
   function positionTooltip(
     tooltip: HTMLElement,
     link: HTMLAnchorElement,
@@ -641,6 +646,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     const root = createRoot();
     const tooltip = createTooltip();
+    let isInitialLayoutPending = document.readyState !== "complete";
     const initialState = createState(root);
     if (!initialState) {
       root.remove();
@@ -648,6 +654,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       return;
     }
     let state: TocState = initialState;
+    setPendingVisibility(root, isInitialLayoutPending);
 
     const activateEntry = (entry: TocEntry, forceReveal = false): void => {
       state.currentActiveId = entry.id;
@@ -677,6 +684,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
       alignRoot(root, state.scope, state.bottomBoundary);
       if (root.hidden) {
+        setPendingVisibility(root, isInitialLayoutPending);
         hideTooltip(tooltip);
         return;
       }
@@ -688,6 +696,11 @@ import { getTocConfig } from "@/shared/plugin-config";
       if (activeEntry.id !== state.currentActiveId) {
         activateEntry(activeEntry);
       }
+
+      setPendingVisibility(root, isInitialLayoutPending);
+      if (isInitialLayoutPending) {
+        hideTooltip(tooltip);
+      }
     };
 
     const scheduleSync = (): void => {
@@ -697,6 +710,13 @@ import { getTocConfig } from "@/shared/plugin-config";
         scheduledFrame = 0;
         sync();
       });
+    };
+
+    const markInitialLayoutReady = (): void => {
+      if (!isInitialLayoutPending) return;
+
+      isInitialLayoutPending = false;
+      scheduleSync();
     };
 
     bindLinkInteractions(state.entries, activateEntry);
@@ -711,9 +731,14 @@ import { getTocConfig } from "@/shared/plugin-config";
       activateEntry(initialEntry, true);
     }
 
+    const handleLoad = (): void => {
+      markInitialLayoutReady();
+      scheduleSync();
+    };
+
     window.addEventListener("scroll", scheduleSync, { passive: true });
     window.addEventListener("resize", scheduleSync, { passive: true });
-    window.addEventListener("load", scheduleSync, { once: true });
+    window.addEventListener("load", handleLoad, { once: true });
     window.addEventListener("pageshow", scheduleSync);
 
     if (window.visualViewport) {

@@ -30,6 +30,11 @@
   scrollbar-color: rgb(var(--rp-toc-ink) / 0.22) transparent;
 }
 
+.rp-toc--pending {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .rp-toc::-webkit-scrollbar {
   width: 4px;
 }

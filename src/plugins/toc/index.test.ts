@@ -14,6 +14,7 @@ describe("toc plugin", () => {
   let originalVisualViewport: PropertyDescriptor | undefined;
   let originalOffsetHeight: PropertyDescriptor | undefined;
   let originalScrollHeight: PropertyDescriptor | undefined;
+  let originalReadyState: PropertyDescriptor | undefined;
 
   let scrollToMock: ReturnType<typeof vi.fn>;
   let replaceStateSpy: ReturnType<typeof vi.spyOn>;
@@ -115,6 +116,10 @@ describe("toc plugin", () => {
       HTMLElement.prototype,
       "scrollHeight",
     );
+    originalReadyState = Object.getOwnPropertyDescriptor(
+      document,
+      "readyState",
+    );
 
     scrollToMock = vi.fn();
 
@@ -180,6 +185,12 @@ describe("toc plugin", () => {
       );
     } else {
       Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
+    }
+
+    if (originalReadyState) {
+      Object.defineProperty(document, "readyState", originalReadyState);
+    } else {
+      Reflect.deleteProperty(document, "readyState");
     }
   });
 
@@ -256,6 +267,45 @@ describe("toc plugin", () => {
 
     expect(document.querySelectorAll(".rp-toc")).toHaveLength(1);
     expect(document.querySelectorAll(".rp-toc-link")).toHaveLength(2);
+  });
+
+  it("keeps the toc invisible until the load event settles the initial layout", async () => {
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      value: "interactive",
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 560 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    expect(root.hidden).toBe(false);
+    expect(root.classList.contains("rp-toc--pending")).toBe(true);
+    expect(root.style.getPropertyValue("--rp-toc-top")).not.toBe("");
+
+    window.dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(root.classList.contains("rp-toc--pending")).toBe(false);
   });
 
   it("updates the hash and scroll position when a toc item is clicked", async () => {
