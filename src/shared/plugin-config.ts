@@ -29,12 +29,18 @@ type KatexConfig = {
   throwOnError?: boolean;
 };
 
+type TocConfig = {
+  headerOffset?: number;
+  levels?: number[];
+};
+
 type RPPluginsConfig = {
   articleSelectors?: string[];
   copyCode?: CopyCodeConfig;
   headingAnchor?: HeadingAnchorConfig;
   inlineCode?: InlineCodeConfig;
   katex?: KatexConfig;
+  toc?: TocConfig;
 };
 
 type RPPluginsGlobal = typeof globalThis & {
@@ -69,4 +75,8 @@ export function getInlineCodeConfig(): InlineCodeConfig {
 
 export function getKatexConfig(): KatexConfig {
   return getGlobalConfig().katex ?? {};
+}
+
+export function getTocConfig(): TocConfig {
+  return getGlobalConfig().toc ?? {};
 }

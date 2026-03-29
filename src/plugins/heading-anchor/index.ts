@@ -1,15 +1,19 @@
 import "./index.css";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import {
+  DEFAULT_HEADING_SELECTOR,
+  ensureHeadingId,
+  getDecodedHash,
+  getHeaderOffset,
+  getHeadingSelector as resolveHeadingSelector,
+  scrollElementIntoViewWithOffset,
+} from "@/shared/headings";
 import { getHeadingAnchorConfig } from "@/shared/plugin-config";
 
 (() => {
-  const DEFAULT_HEADING_SELECTOR = "h2, h3, h4";
   const LINK_CLASS = "rp-heading-anchor";
   const TARGET_CLASS = "rp-heading-target";
-  const DEFAULT_ID = "section";
-  const DEFAULT_HEADER_HEIGHT = 84;
-  const MAX_SUFFIX = 1000;
   const POST_LOAD_CORRECTION_DELAYS = [120, 320, 700] as const;
   const VIEWPORT_RESIZE_WATCH_DURATION = 1100;
   const POSITION_TOLERANCE = 6;
@@ -20,73 +24,25 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
   let initialized = false;
 
   function getHeadingSelector(): string {
-    const { levels } = getHeadingAnchorConfig();
-    if (!Array.isArray(levels) || levels.length === 0) {
-      return DEFAULT_HEADING_SELECTOR;
-    }
-
-    const selectors = levels
-      .filter((level): level is number => Number.isInteger(level))
-      .filter((level) => level >= 1 && level <= 6)
-      .map((level) => `h${level}`);
-
-    return selectors.length > 0
-      ? selectors.join(", ")
-      : DEFAULT_HEADING_SELECTOR;
+    return getHeadingSelectorFromConfig().trim();
   }
 
-  function getHeaderOffset(): number {
-    const { headerOffset } = getHeadingAnchorConfig();
-    if (typeof headerOffset === "number" && Number.isFinite(headerOffset)) {
-      return headerOffset;
-    }
-
-    return (
-      parseInt(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue("--header-height")
-          .trim(),
-        10,
-      ) || DEFAULT_HEADER_HEIGHT
+  function getHeadingSelectorFromConfig(): string {
+    return resolveHeadingSelector(
+      getHeadingAnchorConfig().levels,
+      DEFAULT_HEADING_SELECTOR,
     );
   }
 
-  function slugify(text: string): string {
-    return text
-      .toLowerCase()
-      .trim()
-      .replace(/[^\p{L}\p{N}\s-]/gu, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .replace(/^-|-$/g, "");
-  }
-
-  function getUniqueId(base: string, currentHeading?: HTMLElement): string {
-    const normalizedBase = base || DEFAULT_ID;
-
-    for (let suffix = 1; suffix <= MAX_SUFFIX; suffix += 1) {
-      const id = suffix === 1 ? normalizedBase : `${normalizedBase}-${suffix}`;
-      const existing = document.getElementById(id);
-
-      if (!USED_IDS.has(id) && (!existing || existing === currentHeading)) {
-        USED_IDS.add(id);
-        return id;
-      }
-    }
-
-    const fallback = `${normalizedBase}-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-
-    USED_IDS.add(fallback);
-    return fallback;
+  function getResolvedHeaderOffset(): number {
+    return getHeaderOffset(getHeadingAnchorConfig().headerOffset);
   }
 
   function isHeadingPositionAccurate(
     heading: HTMLElement,
     tolerance = POSITION_TOLERANCE,
   ): boolean {
-    const expectedTop = getHeaderOffset();
+    const expectedTop = getResolvedHeaderOffset();
     const actualTop = heading.getBoundingClientRect().top;
 
     return Math.abs(actualTop - expectedTop) <= tolerance;
@@ -96,13 +52,11 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
     heading: HTMLElement,
     behavior: ScrollBehavior,
   ): void {
-    const top =
-      window.scrollY + heading.getBoundingClientRect().top - getHeaderOffset();
-
-    window.scrollTo({
-      top: Math.max(0, top),
+    scrollElementIntoViewWithOffset(
+      heading,
+      getResolvedHeaderOffset(),
       behavior,
-    });
+    );
   }
 
   function scrollHeadingIntoViewIfNeeded(
@@ -223,18 +177,6 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
     return anchor;
   }
 
-  function getDecodedHash(): string {
-    const rawHash = location.hash.slice(1);
-
-    if (!rawHash) return "";
-
-    try {
-      return decodeURIComponent(rawHash);
-    } catch {
-      return rawHash;
-    }
-  }
-
   function hasHash(): boolean {
     return location.hash.length > 1;
   }
@@ -270,9 +212,7 @@ import { getHeadingAnchorConfig } from "@/shared/plugin-config";
     if (!text) return;
 
     heading.classList.add(TARGET_CLASS);
-
-    if (heading.id) heading.id = getUniqueId(heading.id, heading);
-    else heading.id = getUniqueId(slugify(text), heading);
+    ensureHeadingId(heading, USED_IDS);
 
     if (heading.querySelector("a")) return;
 

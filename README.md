@@ -16,6 +16,7 @@
 | [`copy-code`](src/plugins/copy-code) | JS + CSS | 코드블록 우측 상단에 복사 버튼을 추가합니다. | [README](src/plugins/copy-code/README.md) |
 | [`focus-guard`](src/plugins/focus-guard) | JS       | 사이드바 토글 과정의 `aria-hidden` 포커스 경고를 완화합니다. | [README](src/plugins/focus-guard/README.md) |
 | [`heading-anchor`](src/plugins/heading-anchor) | JS + CSS | 제목에 앵커 링크를 추가하고 해시 이동 위치를 보정합니다. | [README](src/plugins/heading-anchor/README.md) |
+| [`toc`](src/plugins/toc) | JS + CSS | 데스크톱에서 본문 우측에 노션 스타일 목차를 표시합니다. | [README](src/plugins/toc/README.md) |
 
 본문 감지 셀렉터, 처리 대상, 주의사항은 플러그인마다 다르므로 적용 전 README 내용을 확인해주세요.
 
@@ -50,11 +51,13 @@
 ```html
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.css">
 
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/inline-code/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.js"></script>
 ```
 
 ## 전역 설정
@@ -86,6 +89,10 @@ window.RPPlugins = {
     ],
     ignoredClasses: ["math-ignore", "no-katex"],
     ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+  },
+  toc: {
+    levels: [2, 3, 4],
+    headerOffset: 64
   }
 };
 </script>
@@ -96,6 +103,7 @@ window.RPPlugins = {
 - `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋.
 - `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터.
 - `katex`: 수식 구분자, 무시 클래스/태그.
+- `toc`: 데스크톱 목차에 포함할 제목 레벨과 스크롤 오프셋.
 
 ## 저장소 구조
 
