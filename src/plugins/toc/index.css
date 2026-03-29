@@ -1,0 +1,160 @@
+.rp-toc {
+  --rp-toc-ink: 24 24 27;
+  --rp-toc-collapsed-width: 44px;
+  --rp-toc-top: 112px;
+  --rp-toc-left: auto;
+  --rp-toc-safe-top: 108px;
+  --rp-toc-width: 200px;
+  position: fixed;
+  top: var(--rp-toc-top);
+  left: var(--rp-toc-left);
+  z-index: 20;
+  width: var(--rp-toc-collapsed-width);
+  max-height: min(56vh, calc(100vh - var(--rp-toc-safe-top) - 40px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0;
+  border: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  scrollbar-width: thin;
+  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rp-toc:hover,
+.rp-toc:focus-within {
+  width: var(--rp-toc-width);
+}
+
+.rp-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rp-toc-item {
+  margin: 0 0 8px;
+}
+
+.rp-toc-link,
+.rp-toc-link:visited,
+.rp-toc-link:hover,
+.rp-toc-link:active,
+.rp-toc-link:focus,
+.rp-toc-link:focus-visible {
+  position: relative;
+  display: block;
+  min-height: 16px;
+  padding: 2px 12px 2px 46px;
+  /* biome-ignore lint/complexity/noImportantStyles: 스킨의 visited 링크 색보다 TOC 상태 색이 우선이어야 함 */
+  color: rgb(var(--rp-toc-ink) / 0.54) !important;
+  text-decoration: none;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rp-toc:hover .rp-toc-link,
+.rp-toc:focus-within .rp-toc-link {
+  pointer-events: auto;
+}
+
+.rp-toc-label {
+  display: block;
+  opacity: 0;
+  transform: translateX(10px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+
+.rp-toc:hover .rp-toc-label,
+.rp-toc:focus-within .rp-toc-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.rp-toc-link::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--rp-toc-bar-width, 28px);
+  height: 6px;
+  border-radius: 999px;
+  background: rgb(var(--rp-toc-ink) / 0.26);
+  transform: translateY(-50%);
+  transition: background-color 0.18s ease;
+}
+
+.rp-toc-link:hover,
+.rp-toc-link:focus-visible {
+  /* biome-ignore lint/complexity/noImportantStyles: hover 상태가 전역 링크 색보다 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / 0.76) !important;
+}
+
+.rp-toc-link:focus-visible {
+  outline: none;
+}
+
+.rp-toc-link[data-level] {
+  /* biome-ignore lint/complexity/noImportantStyles: hover 시 레벨별 텍스트 시작점 점프 방지 */
+  padding-left: 46px !important;
+}
+
+.rp-toc-link[data-level="2"] {
+  --rp-toc-bar-width: 30px;
+}
+
+.rp-toc-link[data-level="3"] {
+  --rp-toc-bar-width: 20px;
+  font-size: 12px;
+}
+
+.rp-toc-link[data-level="4"] {
+  --rp-toc-bar-width: 18px;
+  font-size: 12px;
+}
+
+.rp-toc-link[data-level="5"] {
+  --rp-toc-bar-width: 16px;
+  font-size: 11px;
+}
+
+.rp-toc-link[data-level="6"] {
+  --rp-toc-bar-width: 14px;
+  font-size: 11px;
+}
+
+.rp-toc-link.is-active,
+.rp-toc-link.is-active:visited,
+.rp-toc-link.is-active:hover,
+.rp-toc-link.is-active:active,
+.rp-toc-link.is-active:focus,
+.rp-toc-link.is-active:focus-visible {
+  /* biome-ignore lint/complexity/noImportantStyles: active 상태가 전역 링크 색보다 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / 0.96) !important;
+}
+
+.rp-toc-link.is-active::before {
+  background: rgb(var(--rp-toc-ink) / 0.72);
+}
+
+@media (max-width: 1279px) {
+  .rp-toc {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-toc,
+  .rp-toc-link,
+  .rp-toc-link::before,
+  .rp-toc-label {
+    transition: none;
+  }
+}
