@@ -85,7 +85,7 @@ window.RPPlugins = {
       { left: "\\(", right: "\\)", display: false }
     ],
     ignoredClasses: ["math-ignore", "no-katex"],
-    ignoredTags: ["script", "style", "pre", "code"],
+    ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
     throwOnError: false,
     strict: false
   }
@@ -95,11 +95,11 @@ window.RPPlugins = {
 
 지원하는 항목은 다음과 같습니다.
 
-- `articleSelectors`: 본문 컨테이너 감지용 셀렉터를 앞쪽에 추가합니다.
+- `articleSelectors`: 본문 컨테이너 감지용 셀렉터.
 - `copyCode`: 버튼 문구와 `aria-label`을 바꿉니다.
-- `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋을 바꿉니다.
-- `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터를 바꿉니다.
-- `katex`: 구분자, 무시 클래스/태그, 에러 처리 옵션을 바꿉니다.
+- `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋.
+- `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터.
+- `katex`: 구분자, 무시 클래스/태그, 에러 처리 옵션. `ignoredTags`는 기본값을 덮어씁니다.
 
 ## 저장소 구조
 
