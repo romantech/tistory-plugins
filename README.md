@@ -59,12 +59,12 @@
 
 ## 전역 설정
 
-플러그인 스크립트를 불러오기 전 `window.RPPlugins`로 공통 설정과 옵션을 변경할 수 있습니다.
+플러그인 스크립트를 불러오기 전 `window.RPPlugins` 속성을 통해 공통 설정과 옵션을 변경할 수 있습니다.
 
 ```html
 <script>
 window.RPPlugins = {
-  articleSelectors: [".article-view", ".contents_style", ".my-custom-article"],
+  articleSelectors: [".article-view", ".contents_style"],
   copyCode: {
     buttonText: "복사",
     successText: "완료",
@@ -84,21 +84,18 @@ window.RPPlugins = {
       { left: "$$", right: "$$", display: true },
       { left: "\\(", right: "\\)", display: false }
     ],
-    ignoredTags: ["script", "style", "pre", "code"],
-    throwOnError: false,
-    strict: false
+    ignoredClasses: ["math-ignore", "no-katex"],
+    ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
   }
 };
 </script>
 ```
 
-지원하는 항목은 다음과 같습니다.
-
-- `articleSelectors`: 본문 컨테이너 감지용 셀렉터를 앞쪽에 추가합니다.
+- `articleSelectors`: 본문 컨테이너 감지용 셀렉터.
 - `copyCode`: 버튼 문구와 `aria-label`을 바꿉니다.
-- `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋을 바꿉니다.
-- `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터를 바꿉니다.
-- `katex`: 구분자, 무시 태그, 에러 처리 옵션을 바꿉니다.
+- `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋.
+- `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터.
+- `katex`: 수식 구분자, 무시 클래스/태그.
 
 ## 저장소 구조
 

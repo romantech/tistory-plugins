@@ -34,6 +34,24 @@
 - 기본 헤더 오프셋: `84px`
 - 조정용 CSS 변수: `--header-height`
 
+## 선택 설정
+
+`window.RPPlugins.headingAnchor` 속성을 통해 처리할 제목 레벨과 해시 이동 오프셋을 조정할 수 있습니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    headingAnchor: {
+      levels: [2, 3, 4, 5],
+      headerOffset: 64,
+    },
+  };
+</script>
+```
+
+- `levels`: 앵커를 추가할 제목 레벨.
+- `headerOffset`: 해시 이동 시 사용할 헤더 오프셋 픽셀 값.
+
 ## 설치 방법
 
 ### 1. CSS 추가

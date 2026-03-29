@@ -47,10 +47,12 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   const isPriceBoundary = (char: string | undefined): boolean =>
     typeof char === "undefined" ||
     isWhitespace(char) ||
-    /^[,.;:!?)\]%}]$/u.test(char);
+    /^[,.;:!?)\]%}~\-–〜]$/u.test(char);
 
   const MATH_COMMAND_PATTERN = /\\[A-Za-z]+/u;
-  const MATH_OPERATOR_PATTERN = /[=+\-*/^_<>|()[\]{}]/u;
+  const NUMERIC_SEQUENCE_PATTERN = /^\d+(?:[.,]\d+)?(?:,\s+\d+(?:[.,]\d+)?)+$/u;
+  const PRICE_LIKE_PREFIX_PATTERN = /^\d+(?:[.,]\d+)*(?:\s*[,/~\-–〜]\s*)$/u;
+  const INLINE_MATH_SIGNAL_PATTERN = /[A-Za-z\\=+\-*/^_<>|()[\]{}]/u;
 
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
@@ -68,9 +70,25 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
       return [...DEFAULT_IGNORED_TAGS];
     }
 
-    return ignoredTags.filter((tag): tag is KatexIgnoredTag => {
-      return typeof tag === "string" && tag.length > 0;
-    });
+    return ignoredTags
+      .filter((tag): tag is string => typeof tag === "string")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag): tag is KatexIgnoredTag => tag.length > 0);
+  }
+
+  function getIgnoredClasses(
+    config: ReturnType<typeof getKatexConfig>,
+  ): string[] {
+    const userIgnoredClasses = Array.isArray(config.ignoredClasses)
+      ? config.ignoredClasses
+          .filter(
+            (className): className is string => typeof className === "string",
+          )
+          .map((className) => className.trim())
+          .filter(Boolean)
+      : [];
+
+    return [...new Set([PROTECTED_CURRENCY_CLASS, ...userIgnoredClasses])];
   }
 
   function getRenderOptions(): KatexRenderOptions {
@@ -81,7 +99,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
         Array.isArray(config.delimiters) && config.delimiters.length > 0
           ? config.delimiters
           : DEFAULT_DELIMITERS,
-      ignoredClasses: [PROTECTED_CURRENCY_CLASS],
+      ignoredClasses: getIgnoredClasses(config),
       ignoredTags: getIgnoredTags(config),
       strict: asBool(config.strict),
       throwOnError: asBool(config.throwOnError),
@@ -157,12 +175,18 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
   function isLikelyInlineMathContent(content: string): boolean {
     if (content.length === 0) return false;
-    if (!/\s/u.test(content)) return true;
 
     const trimmedContent = content.trim();
     if (trimmedContent.length === 0) return false;
+    if (!/\s/u.test(content)) {
+      return (
+        INLINE_MATH_SIGNAL_PATTERN.test(trimmedContent) ||
+        /^\d+(?:[.,]\d+)*$/u.test(trimmedContent)
+      );
+    }
+
     if (MATH_COMMAND_PATTERN.test(trimmedContent)) return true;
-    if (MATH_OPERATOR_PATTERN.test(trimmedContent)) return true;
+    if (NUMERIC_SEQUENCE_PATTERN.test(trimmedContent)) return true;
 
     const tokens = trimmedContent.split(/\s+/u);
     const hasStrongMathSignal = tokens.some((token) =>
@@ -171,6 +195,16 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     if (!hasStrongMathSignal) return false;
 
     return tokens.every((token) => isLikelyInlineMathToken(token));
+  }
+
+  function isLikelyPriceLikePrefix(
+    content: string,
+    trailingText: string,
+  ): boolean {
+    return (
+      PRICE_LIKE_PREFIX_PATTERN.test(content.trim()) &&
+      /^\s*\d/u.test(trailingText)
+    );
   }
 
   function getLikelyInlineMathClosingDollar(
@@ -182,9 +216,11 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
       if (text[index - 1] === "$" || text[index + 1] === "$") continue;
 
       const inlineMathContent = text.slice(openIndex + 1, index);
-      if (isLikelyInlineMathContent(inlineMathContent)) {
-        return index;
+      if (isLikelyPriceLikePrefix(inlineMathContent, text.slice(index + 1))) {
+        return null;
       }
+
+      return isLikelyInlineMathContent(inlineMathContent) ? index : null;
     }
 
     return null;
@@ -233,19 +269,29 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     return nodes;
   }
 
-  function isInsideIgnoredTag(
+  function isInsideIgnoredNode(
     textNode: Text,
     ignoredTags: readonly string[],
+    ignoredClasses: readonly string[],
   ): boolean {
-    if (ignoredTags.length === 0) return false;
+    if (ignoredTags.length === 0 && ignoredClasses.length === 0) return false;
 
     let parent = textNode.parentElement;
     while (parent) {
-      if (ignoredTags.includes(parent.tagName.toLowerCase())) {
+      const currentParent = parent;
+
+      if (ignoredTags.includes(currentParent.tagName.toLowerCase())) {
+        return true;
+      }
+      if (
+        ignoredClasses.some((className) =>
+          currentParent.classList.contains(className),
+        )
+      ) {
         return true;
       }
 
-      parent = parent.parentElement;
+      parent = currentParent.parentElement;
     }
 
     return false;
@@ -254,13 +300,14 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   function protectInlineCurrency(
     article: HTMLElement,
     ignoredTags: readonly string[],
+    ignoredClasses: readonly string[],
   ): void {
     const textNodes: Text[] = [];
     const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
       acceptNode(node) {
         if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT;
         if (!node.textContent?.includes("$")) return NodeFilter.FILTER_REJECT;
-        if (isInsideIgnoredTag(node, ignoredTags)) {
+        if (isInsideIgnoredNode(node, ignoredTags, ignoredClasses)) {
           return NodeFilter.FILTER_REJECT;
         }
 
@@ -376,7 +423,11 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     const renderOptions = getRenderOptions();
 
     if (hasSingleDollarDelimiter(renderOptions.delimiters)) {
-      protectInlineCurrency(article, renderOptions.ignoredTags ?? []);
+      protectInlineCurrency(
+        article,
+        renderOptions.ignoredTags ?? [],
+        renderOptions.ignoredClasses ?? [],
+      );
     }
 
     state.renderMathInElement(article, renderOptions);

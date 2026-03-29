@@ -47,6 +47,24 @@
 - `style`
 - `textarea`
 
+## 선택 설정
+
+`window.RPPlugins.inlineCode` 속성을 통해 처리 대상과 제외 셀렉터를 조정할 수 있습니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    inlineCode: {
+      targetSelector: "p, li, td, figcaption",
+      blockedSelector: "code, pre, script, style, textarea",
+    },
+  };
+</script>
+```
+
+- `targetSelector`: 백틱 변환을 적용할 대상 셀렉터.
+- `blockedSelector`: 변환에서 제외할 셀렉터.
+
 ## 설치 방법
 
 아래 스크립트를 `</body>` 위에 삽입합니다.
