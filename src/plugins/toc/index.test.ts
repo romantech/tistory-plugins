@@ -191,6 +191,8 @@ describe("toc plugin", () => {
     expect(root.parentElement).toBe(document.body);
     expect(links).toHaveLength(4);
     expect(links[0].getAttribute("href")).toBe("#소개");
+    expect(links[0].dataset.tooltip).toBe("소개");
+    expect(links[0].getAttribute("aria-label")).toBe("소개");
     expect(links[1].dataset.level).toBe("2");
     expect(links[2].dataset.level).toBe("3");
     expect(links[3].dataset.level).toBe("4");
@@ -450,8 +452,8 @@ describe("toc plugin", () => {
 
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     expect(root.hidden).toBe(false);
-    expect(root.style.getPropertyValue("--rp-toc-left")).toBe("1132px");
-    expect(root.style.getPropertyValue("--rp-toc-width")).toBe("200px");
+    expect(root.style.getPropertyValue("--rp-toc-left")).toBe("1128px");
+    expect(root.style.getPropertyValue("--rp-toc-width")).toBe("240px");
   });
 
   it("uses the first revenue boundary after the last heading as the bottom clamp", async () => {

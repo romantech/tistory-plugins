@@ -16,8 +16,11 @@ import { getTocConfig } from "@/shared/plugin-config";
   const LIST_CLASS = `${ROOT_CLASS}-list`;
   const LINK_CLASS = `${ROOT_CLASS}-link`;
   const LABEL_CLASS = `${ROOT_CLASS}-label`;
+  const TOOLTIP_CLASS = `${ROOT_CLASS}-tooltip`;
+  const TOOLTIP_VISIBLE_CLASS = "is-visible";
+  const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
-  const DEFAULT_PANEL_WIDTH = 200;
+  const DEFAULT_PANEL_WIDTH = 240;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
   const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
@@ -31,7 +34,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     ".reply",
   ].join(", ");
   const BOTTOM_BOUNDARY_SELECTOR = ".revenue_unit_wrap";
-  const PANEL_GAP = 72;
+  const PANEL_GAP = 68;
   const VIEWPORT_GUTTER = 24;
   const ACTIVE_OFFSET = 16;
   const SAFE_TOP_GAP = 24;
@@ -43,6 +46,8 @@ import { getTocConfig } from "@/shared/plugin-config";
     id: string;
     level: number;
     link: HTMLAnchorElement;
+    label: HTMLSpanElement;
+    text: string;
   };
 
   let initialized = false;
@@ -97,6 +102,39 @@ import { getTocConfig } from "@/shared/plugin-config";
       .join(" ");
   }
 
+  function hasVisibleBackground(color: string): boolean {
+    if (!color || color === "transparent") return false;
+
+    const matches = color.match(/\d+(?:\.\d+)?/g);
+    if (!matches) return false;
+
+    if (color.startsWith("rgba(") && matches.length >= 4) {
+      return Number(matches[3]) > 0;
+    }
+
+    return true;
+  }
+
+  function getSurfaceColor(article: HTMLElement): string {
+    const candidates = [
+      article,
+      article.parentElement,
+      document.body,
+      document.documentElement,
+    ];
+
+    for (const candidate of candidates) {
+      if (!(candidate instanceof HTMLElement)) continue;
+
+      const backgroundColor = getComputedStyle(candidate).backgroundColor;
+      if (hasVisibleBackground(backgroundColor)) {
+        return backgroundColor;
+      }
+    }
+
+    return "rgb(255 255 255)";
+  }
+
   function setPalette(root: HTMLElement, article: HTMLElement): void {
     const styles = getComputedStyle(article);
 
@@ -107,6 +145,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     root.style.setProperty(
       "--rp-toc-ink",
       parseRgb(styles.color) ?? "24 24 27",
+    );
+    root.style.setProperty(
+      "--rp-toc-surface",
+      parseRgb(getSurfaceColor(article)) ?? "255 255 255",
     );
   }
 
@@ -190,6 +232,21 @@ import { getTocConfig } from "@/shared/plugin-config";
     return root;
   }
 
+  function createTooltip(): HTMLElement {
+    const existingTooltip = document.querySelector<HTMLElement>(
+      `.${TOOLTIP_CLASS}`,
+    );
+    if (existingTooltip) return existingTooltip;
+
+    const tooltip = document.createElement("div");
+    tooltip.className = TOOLTIP_CLASS;
+    tooltip.hidden = true;
+    tooltip.setAttribute("role", "tooltip");
+
+    document.body.append(tooltip);
+    return tooltip;
+  }
+
   function getList(root: HTMLElement): HTMLOListElement {
     const list = root.querySelector(`.${LIST_CLASS}`);
     if (!(list instanceof HTMLOListElement)) {
@@ -218,6 +275,8 @@ import { getTocConfig } from "@/shared/plugin-config";
       link.className = LINK_CLASS;
       link.href = `#${id}`;
       link.dataset.level = `${level}`;
+      link.dataset.tooltip = text;
+      link.setAttribute("aria-label", text);
 
       const label = document.createElement("span");
       label.className = LABEL_CLASS;
@@ -233,7 +292,125 @@ import { getTocConfig } from "@/shared/plugin-config";
         id,
         level,
         link,
+        label,
+        text,
       };
+    });
+  }
+
+  function syncTooltipState(entries: TocEntry[]): void {
+    for (const entry of entries) {
+      const isTruncated = entry.label.scrollWidth > entry.label.clientWidth + 1;
+      entry.link.classList.toggle(TRUNCATED_CLASS, isTruncated);
+    }
+  }
+
+  function hideTooltip(tooltip: HTMLElement): void {
+    tooltip.hidden = true;
+    tooltip.classList.remove(TOOLTIP_VISIBLE_CLASS);
+    tooltip.textContent = "";
+  }
+
+  function positionTooltip(
+    tooltip: HTMLElement,
+    link: HTMLAnchorElement,
+    root: HTMLElement,
+  ): void {
+    const linkRect = link.getBoundingClientRect();
+    const viewportWidth = Math.max(
+      window.innerWidth,
+      document.documentElement.clientWidth,
+      0,
+    );
+    const viewportHeight = Math.max(
+      window.innerHeight,
+      document.documentElement.clientHeight,
+      0,
+    );
+    const gap = 10;
+    const padding = 16;
+    const rootLeft = Number.parseFloat(
+      root.style.getPropertyValue("--rp-toc-left") || "0",
+    );
+    const maxWidth = Math.min(320, Math.max(180, viewportWidth - padding * 2));
+
+    tooltip.style.setProperty("--rp-toc-tooltip-max-width", `${maxWidth}px`);
+    tooltip.style.left = "0px";
+    tooltip.style.top = "0px";
+
+    const tooltipWidth = tooltip.offsetWidth;
+    const tooltipHeight = tooltip.offsetHeight;
+    const spaceRight = viewportWidth - linkRect.right - padding;
+    const placeRight = spaceRight >= tooltipWidth || rootLeft <= tooltipWidth;
+    const left = placeRight
+      ? Math.min(linkRect.right + gap, viewportWidth - tooltipWidth - padding)
+      : Math.max(padding, linkRect.left - tooltipWidth - gap);
+    const top = Math.min(
+      Math.max(
+        padding,
+        linkRect.top + linkRect.height / 2 - tooltipHeight / 2,
+      ),
+      viewportHeight - tooltipHeight - padding,
+    );
+
+    tooltip.dataset.side = placeRight ? "right" : "left";
+    tooltip.style.left = `${Math.round(left)}px`;
+    tooltip.style.top = `${Math.round(top)}px`;
+  }
+
+  function bindTooltipInteractions(
+    entries: TocEntry[],
+    root: HTMLElement,
+    tooltip: HTMLElement,
+  ): void {
+    const syncTooltipPalette = (): void => {
+      tooltip.style.setProperty(
+        "--rp-toc-font-family",
+        root.style.getPropertyValue("--rp-toc-font-family"),
+      );
+      tooltip.style.setProperty(
+        "--rp-toc-ink",
+        root.style.getPropertyValue("--rp-toc-ink"),
+      );
+      tooltip.style.setProperty(
+        "--rp-toc-surface",
+        root.style.getPropertyValue("--rp-toc-surface"),
+      );
+    };
+
+    const showTooltip = (entry: TocEntry): void => {
+      if (!entry.link.classList.contains(TRUNCATED_CLASS)) {
+        hideTooltip(tooltip);
+        return;
+      }
+
+      syncTooltipPalette();
+      tooltip.textContent = entry.text;
+      tooltip.hidden = false;
+      tooltip.classList.add(TOOLTIP_VISIBLE_CLASS);
+      positionTooltip(tooltip, entry.link, root);
+    };
+
+    for (const entry of entries) {
+      entry.link.addEventListener("mouseenter", () => {
+        showTooltip(entry);
+      });
+      entry.link.addEventListener("focus", () => {
+        showTooltip(entry);
+      });
+      entry.link.addEventListener("mouseleave", () => {
+        hideTooltip(tooltip);
+      });
+      entry.link.addEventListener("blur", () => {
+        hideTooltip(tooltip);
+      });
+      entry.link.addEventListener("click", () => {
+        hideTooltip(tooltip);
+      });
+    }
+
+    root.addEventListener("mouseleave", () => {
+      hideTooltip(tooltip);
     });
   }
 
@@ -366,6 +543,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     const scope = getStickyScope(article, headings);
     const root = createRoot();
+    const tooltip = createTooltip();
     const entries = buildEntries(root, headings);
 
     if (entries.length < 2) {
@@ -379,8 +557,12 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     const sync = (): void => {
       alignRoot(root, scope, bottomBoundary);
-      if (root.hidden) return;
+      if (root.hidden) {
+        hideTooltip(tooltip);
+        return;
+      }
 
+      syncTooltipState(entries);
       setActive(entries, findActiveId(entries));
     };
 
@@ -394,6 +576,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     };
 
     bindLinkInteractions(entries);
+    bindTooltipInteractions(entries, root, tooltip);
     sync();
 
     const initialHash = getDecodedHash();
