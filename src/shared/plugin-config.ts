@@ -23,6 +23,7 @@ type KatexDelimiter = {
 
 type KatexConfig = {
   delimiters?: KatexDelimiter[];
+  ignoredClasses?: string[];
   ignoredTags?: string[];
   strict?: boolean;
   throwOnError?: boolean;

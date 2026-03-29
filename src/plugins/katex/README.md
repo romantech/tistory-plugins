@@ -44,6 +44,24 @@
 
 코드블록이나 인라인 코드 안의 달러 표시는 무시됩니다.
 
+## 선택 설정
+
+`window.RPPlugins.katex`로 KaTeX auto-render 옵션 일부를 조정할 수 있습니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    katex: {
+      ignoredClasses: ["math-ignore", "no-katex"],
+      ignoredTags: ["pre", "code"],
+    },
+  };
+</script>
+```
+
+- `ignoredClasses`: 해당 클래스를 가진 요소 내부는 KaTeX 렌더링과 가격 보호 pre-pass에서 함께 제외됩니다.
+- `ignoredTags`: 기본 제외 태그를 덮어씁니다.
+
 ## 설치 방법
 
 아래 스크립트를 `</body>` 위에 삽입합니다.

@@ -84,6 +84,7 @@ window.RPPlugins = {
       { left: "$$", right: "$$", display: true },
       { left: "\\(", right: "\\)", display: false }
     ],
+    ignoredClasses: ["math-ignore", "no-katex"],
     ignoredTags: ["script", "style", "pre", "code"],
     throwOnError: false,
     strict: false
@@ -98,7 +99,7 @@ window.RPPlugins = {
 - `copyCode`: 버튼 문구와 `aria-label`을 바꿉니다.
 - `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋을 바꿉니다.
 - `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터를 바꿉니다.
-- `katex`: 구분자, 무시 태그, 에러 처리 옵션을 바꿉니다.
+- `katex`: 구분자, 무시 클래스/태그, 에러 처리 옵션을 바꿉니다.
 
 ## 저장소 구조
 

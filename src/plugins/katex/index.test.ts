@@ -99,6 +99,7 @@ describe("katex plugin", () => {
     ).RPPlugins = {
       katex: {
         delimiters: [{ left: "\\(", right: "\\)", display: false }],
+        ignoredClasses: [" math-ignore ", "skip-katex", "math-ignore"],
         ignoredTags: ["pre"],
         strict: true,
         throwOnError: true,
@@ -114,9 +115,74 @@ describe("katex plugin", () => {
       article,
       expect.objectContaining({
         delimiters: [{ left: "\\(", right: "\\)", display: false }],
+        ignoredClasses: [
+          "tistory-plugins-katex-currency",
+          "math-ignore",
+          "skip-katex",
+        ],
         ignoredTags: ["pre"],
         strict: true,
         throwOnError: true,
+      }),
+    );
+  });
+
+  it("merges configured ignoredClasses and respects them during the pre-pass", async () => {
+    let capturedTextRuns: string[] = [];
+    const renderMathInElement = vi.fn(
+      (
+        element: Element,
+        options?: {
+          ignoredClasses?: string[];
+          ignoredTags?: string[];
+        },
+      ) => {
+        const paragraph = getRequiredElement(
+          element,
+          "p",
+          HTMLParagraphElement,
+        );
+        capturedTextRuns = collectRenderableTextRuns(paragraph, options);
+      },
+    );
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    (
+      window as typeof window & {
+        RPPlugins?: Record<string, unknown>;
+      }
+    ).RPPlugins = {
+      katex: {
+        ignoredClasses: [" math-ignore ", "skip-katex", "math-ignore"],
+      },
+    };
+
+    const article = renderArticleView(
+      '<p><span class="math-ignore">$12 should stay literal</span> Price: $14 and math $x$</p>',
+    );
+
+    await loadKatexPlugin();
+
+    const ignoredElement = getRequiredElement(
+      article,
+      ".math-ignore",
+      HTMLSpanElement,
+    );
+
+    expect(
+      ignoredElement.querySelector(".tistory-plugins-katex-currency"),
+    ).toBeNull();
+    expect(capturedTextRuns).toEqual([" Price: ", " and math $x$"]);
+    expect(renderMathInElement).toHaveBeenCalledWith(
+      article,
+      expect.objectContaining({
+        ignoredClasses: [
+          "tistory-plugins-katex-currency",
+          "math-ignore",
+          "skip-katex",
+        ],
       }),
     );
   });
@@ -156,6 +222,39 @@ describe("katex plugin", () => {
         ignoredTags: ["pre", "code"],
       }),
     );
+  });
+
+  it("skips currency protection inside default ignored code and pre tags", async () => {
+    let capturedTextRuns: string[] = [];
+    const renderMathInElement = vi.fn(
+      (
+        element: Element,
+        options?: {
+          ignoredClasses?: string[];
+          ignoredTags?: string[];
+        },
+      ) => {
+        if (!(element instanceof HTMLElement)) return;
+        capturedTextRuns = collectRenderableTextRuns(element, options);
+      },
+    );
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView(
+      "<code>$12 should stay literal</code><pre>$20 should stay literal</pre><p>Math $x$</p>",
+    );
+
+    await loadKatexPlugin();
+
+    const code = getRequiredElement(article, "code", HTMLElement);
+    const pre = getRequiredElement(article, "pre", HTMLPreElement);
+
+    expect(code.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(pre.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(capturedTextRuns).toEqual(["Math $x$"]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });
 
   it("shields currency-like dollar prefixes from KaTeX auto-render", async () => {
@@ -216,6 +315,63 @@ describe("katex plugin", () => {
         ignoredClasses: ["tistory-plugins-katex-currency"],
       }),
     );
+  });
+
+  it("shields currency lists, decimals, prefixes, and ranges", async () => {
+    let capturedTextRuns: string[] = [];
+    const renderMathInElement = vi.fn(
+      (
+        element: Element,
+        options?: {
+          ignoredClasses?: string[];
+          ignoredTags?: string[];
+        },
+      ) => {
+        const paragraph = getRequiredElement(
+          element,
+          "p",
+          HTMLParagraphElement,
+        );
+        capturedTextRuns = collectRenderableTextRuns(paragraph, options);
+      },
+    );
+
+    const protectedCurrencySelector = ".tistory-plugins-katex-currency";
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView(
+      "<p>Cases: $12, $20 / $1,299.99 / from $12 / $12~$20</p>",
+    );
+
+    await loadKatexPlugin();
+
+    const paragraph = getRequiredElement(article, "p", HTMLParagraphElement);
+    const protectedCurrencies = Array.from(
+      paragraph.querySelectorAll<HTMLSpanElement>(protectedCurrencySelector),
+    );
+
+    expect(article).toHaveTextContent(
+      "Cases: $12, $20 / $1,299.99 / from $12 / $12~$20",
+    );
+    expect(protectedCurrencies.map((element) => element.textContent)).toEqual([
+      "$12",
+      "$20",
+      "$1,299.99",
+      "$12",
+      "$12",
+      "$20",
+    ]);
+    expect(capturedTextRuns).toEqual([
+      "Cases: ",
+      ", ",
+      " / ",
+      " / from ",
+      " / ",
+      "~",
+    ]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });
 
   it("keeps numeric inline math when it has a closing delimiter", async () => {
@@ -280,6 +436,41 @@ describe("katex plugin", () => {
     expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
     expect(capturedTextRuns).toEqual([
       "Math stays inline: $2 + 2$ and $14 + x$",
+    ]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps display math delimiters untouched", async () => {
+    let capturedTextRuns: string[] = [];
+    const renderMathInElement = vi.fn(
+      (
+        element: Element,
+        options?: {
+          ignoredClasses?: string[];
+          ignoredTags?: string[];
+        },
+      ) => {
+        const paragraph = getRequiredElement(
+          element,
+          "p",
+          HTMLParagraphElement,
+        );
+        capturedTextRuns = collectRenderableTextRuns(paragraph, options);
+      },
+    );
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView(
+      "<p>Display math: $$x+y$$ and inline $x + y$</p>",
+    );
+
+    await loadKatexPlugin();
+
+    expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(capturedTextRuns).toEqual([
+      "Display math: $$x+y$$ and inline $x + y$",
     ]);
     expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });
