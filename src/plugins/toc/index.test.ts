@@ -255,10 +255,12 @@ describe("toc plugin", () => {
       ".rp-toc-link",
     );
 
+    links[1].focus();
     links[1].dispatchEvent(
       new MouseEvent("click", {
         bubbles: true,
         cancelable: true,
+        detail: 1,
       }),
     );
 
@@ -268,6 +270,7 @@ describe("toc plugin", () => {
       behavior: "smooth",
     });
     expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(document.activeElement).not.toBe(links[1]);
   });
 
   it("updates the active toc item as smooth scrolling crosses headings", async () => {

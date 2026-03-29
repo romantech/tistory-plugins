@@ -506,6 +506,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     for (const entry of entries) {
       entry.link.addEventListener("click", (event) => {
         event.preventDefault();
+        const isPointerActivation = event.detail > 0;
 
         try {
           history.replaceState(null, "", `#${entry.id}`);
@@ -519,6 +520,10 @@ import { getTocConfig } from "@/shared/plugin-config";
           getResolvedHeaderOffset(),
           prefersReducedMotion() ? "auto" : "smooth",
         );
+
+        if (isPointerActivation) {
+          entry.link.blur();
+        }
       });
     }
   }
