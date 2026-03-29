@@ -1,7 +1,7 @@
 {
   "name": "tistory-plugins",
   "description": "Tistory blog plugins distributed via jsDelivr CDN",
-  "version": "0.1.51",
+  "version": "0.1.52",
   "private": true,
   "license": "MIT",
   "repository": {
