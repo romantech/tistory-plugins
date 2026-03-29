@@ -21,7 +21,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const TOOLTIP_VISIBLE_CLASS = "is-visible";
   const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
-  const DEFAULT_PANEL_WIDTH = 240;
+  const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
   const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
