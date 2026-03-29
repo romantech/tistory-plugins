@@ -34,7 +34,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     ".tt-box-comment",
     ".reply",
   ].join(", ");
-  const BOTTOM_BOUNDARY_SELECTOR = ".revenue_unit_wrap";
+  const BOTTOM_BOUNDARY_SELECTOR = ".another-category";
   const PANEL_GAP = 68;
   const VIEWPORT_GUTTER = 24;
   const RIGHT_RAIL_GUTTER = 32;
@@ -578,7 +578,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       Math.round(viewportHeight / 2 - rootHeight / 2),
     );
     const clampEdge =
-      bottomBoundary === scope ? scopeRect.bottom : bottomBoundaryRect.top;
+      bottomBoundary === scope ? scopeRect.bottom : bottomBoundaryRect.bottom;
     const maxTop = Math.round(clampEdge - rootHeight - SAFE_TOP_GAP);
     const revealTop = Math.max(safeTop, Math.round(scopeRect.top));
     const centeredTop = Math.min(desiredTop, maxTop);
