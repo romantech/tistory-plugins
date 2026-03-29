@@ -54,6 +54,14 @@ import { getTocConfig } from "@/shared/plugin-config";
     text: string;
   };
 
+  type TocState = {
+    article: HTMLElement;
+    scope: HTMLElement;
+    bottomBoundary: HTMLElement;
+    entries: TocEntry[];
+    currentActiveId: string;
+  };
+
   let initialized = false;
   let scheduledFrame = 0;
 
@@ -423,9 +431,12 @@ import { getTocConfig } from "@/shared/plugin-config";
       });
     }
 
-    root.addEventListener("mouseleave", () => {
-      hideTooltip(tooltip);
-    });
+    if (root.dataset.tooltipBound !== "true") {
+      root.dataset.tooltipBound = "true";
+      root.addEventListener("mouseleave", () => {
+        hideTooltip(tooltip);
+      });
+    }
   }
 
   function setActive(
@@ -582,54 +593,99 @@ import { getTocConfig } from "@/shared/plugin-config";
     }
   }
 
+  function createState(root: HTMLElement): TocState | null {
+    const article = getTistoryArticle();
+    if (!article) return null;
+
+    const headingItems = getHeadingItems(article);
+    if (headingItems.length < 2) return null;
+
+    const usedIds = new Set<string>();
+    const headings = headingItems.map(({ heading }) => heading);
+
+    const scope = getStickyScope(article, headings);
+    const entries = buildEntries(root, headingItems, usedIds);
+
+    if (entries.length < 2) {
+      return null;
+    }
+
+    setPalette(root, scope);
+
+    return {
+      article,
+      scope,
+      bottomBoundary: getBottomBoundary(article, scope, entries),
+      entries,
+      currentActiveId: "",
+    };
+  }
+
+  function hasDetachedTargets(state: TocState): boolean {
+    if (!state.article.isConnected || !state.scope.isConnected) {
+      return true;
+    }
+
+    if (!state.bottomBoundary.isConnected) {
+      return true;
+    }
+
+    return state.entries.some(({ heading }) => !heading.isConnected);
+  }
+
   function init(): void {
     if (initialized) return;
     initialized = true;
 
     if (document.querySelector(`.${ROOT_CLASS}`)) return;
 
-    const article = getTistoryArticle();
-    if (!article) return;
-
-    const headingItems = getHeadingItems(article);
-    if (headingItems.length < 2) return;
-
-    const usedIds = new Set<string>();
-    const headings = headingItems.map(({ heading }) => heading);
-
-    const scope = getStickyScope(article, headings);
     const root = createRoot();
     const tooltip = createTooltip();
-    const entries = buildEntries(root, headingItems, usedIds);
-
-    if (entries.length < 2) {
+    const initialState = createState(root);
+    if (!initialState) {
       root.remove();
+      tooltip.remove();
       return;
     }
-
-    const bottomBoundary = getBottomBoundary(article, scope, entries);
-    let currentActiveId = "";
-
-    setPalette(root, scope);
+    let state: TocState = initialState;
 
     const activateEntry = (entry: TocEntry, forceReveal = false): void => {
-      currentActiveId = entry.id;
-      setActive(entries, entry.id);
+      state.currentActiveId = entry.id;
+      setActive(state.entries, entry.id);
       revealActiveEntry(root, entry, forceReveal);
     };
 
+    const rebuildState = (): boolean => {
+      const nextState = createState(root);
+      if (!nextState) {
+        root.hidden = true;
+        hideTooltip(tooltip);
+        return false;
+      }
+
+      state = nextState;
+      hideTooltip(tooltip);
+      bindLinkInteractions(state.entries, activateEntry);
+      bindTooltipInteractions(state.entries, root, tooltip);
+      return true;
+    };
+
     const sync = (): void => {
-      alignRoot(root, scope, bottomBoundary);
+      if (hasDetachedTargets(state) && !rebuildState()) {
+        return;
+      }
+
+      alignRoot(root, state.scope, state.bottomBoundary);
       if (root.hidden) {
         hideTooltip(tooltip);
         return;
       }
 
-      syncTooltipState(entries);
-      const activeEntry = setActive(entries, findActiveId(entries));
+      syncTooltipState(state.entries);
+      const activeEntry = setActive(state.entries, findActiveId(state.entries));
       if (!activeEntry) return;
 
-      if (activeEntry.id !== currentActiveId) {
+      if (activeEntry.id !== state.currentActiveId) {
         activateEntry(activeEntry);
       }
     };
@@ -643,13 +699,13 @@ import { getTocConfig } from "@/shared/plugin-config";
       });
     };
 
-    bindLinkInteractions(entries, activateEntry);
-    bindTooltipInteractions(entries, root, tooltip);
+    bindLinkInteractions(state.entries, activateEntry);
+    bindTooltipInteractions(state.entries, root, tooltip);
     sync();
 
     const initialHash = getDecodedHash();
     const initialEntry = initialHash
-      ? entries.find((entry) => entry.id === initialHash)
+      ? state.entries.find((entry) => entry.id === initialHash)
       : undefined;
     if (initialEntry) {
       activateEntry(initialEntry, true);
