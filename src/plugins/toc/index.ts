@@ -415,17 +415,58 @@ import { getTocConfig } from "@/shared/plugin-config";
     });
   }
 
-  function setActive(entries: TocEntry[], activeId: string): void {
+  function setActive(
+    entries: TocEntry[],
+    activeId: string,
+  ): TocEntry | undefined {
+    let activeEntry: TocEntry | undefined;
+
     for (const entry of entries) {
       const isActive = entry.id === activeId;
       entry.link.classList.toggle(ACTIVE_CLASS, isActive);
 
       if (isActive) {
+        activeEntry = entry;
         entry.link.setAttribute("aria-current", "location");
       } else {
         entry.link.removeAttribute("aria-current");
       }
     }
+
+    return activeEntry;
+  }
+
+  function revealActiveEntry(
+    root: HTMLElement,
+    entry: TocEntry,
+    force = false,
+  ): void {
+    const viewportHeight = root.clientHeight;
+    const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
+    if (viewportHeight <= 0 || maxScrollTop <= 0) return;
+
+    const entryTop = entry.link.offsetTop;
+    const entryHeight = Math.max(entry.link.offsetHeight, 20);
+    const entryBottom = entryTop + entryHeight;
+    const currentScrollTop = root.scrollTop;
+    const revealPadding = 18;
+    const visibleTop = currentScrollTop + revealPadding;
+    const visibleBottom = currentScrollTop + viewportHeight - revealPadding;
+
+    if (!force && entryTop >= visibleTop && entryBottom <= visibleBottom) {
+      return;
+    }
+
+    const centeredScrollTop = Math.round(
+      entryTop - (viewportHeight - entryHeight) / 2,
+    );
+    const nextScrollTop = Math.min(
+      maxScrollTop,
+      Math.max(0, centeredScrollTop),
+    );
+
+    if (Math.abs(nextScrollTop - currentScrollTop) <= 1) return;
+    root.scrollTop = nextScrollTop;
   }
 
   function findActiveId(entries: TocEntry[]): string {
@@ -484,7 +525,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       `${Math.round(panelWidth)}px`,
     );
 
-    const rootHeight = Math.max(root.offsetHeight, root.scrollHeight);
+    const rootHeight = Math.max(root.offsetHeight, root.clientHeight);
     const desiredTop = Math.max(
       safeTop,
       Math.round(viewportHeight / 2 - rootHeight / 2),
@@ -492,8 +533,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     const clampEdge =
       bottomBoundary === scope ? scopeRect.bottom : bottomBoundaryRect.top;
     const maxTop = Math.round(clampEdge - rootHeight - SAFE_TOP_GAP);
-
-    const resolvedTop = Math.min(desiredTop, maxTop);
+    const revealTop = Math.max(safeTop, Math.round(scopeRect.top));
+    const centeredTop = Math.min(desiredTop, maxTop);
+    const resolvedTop =
+      maxTop < revealTop ? maxTop : Math.max(revealTop, centeredTop);
 
     if (resolvedTop + rootHeight <= 0) {
       root.hidden = true;
@@ -506,7 +549,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     );
   }
 
-  function bindLinkInteractions(entries: TocEntry[]): void {
+  function bindLinkInteractions(
+    entries: TocEntry[],
+    activateEntry: (entry: TocEntry, forceReveal?: boolean) => void,
+  ): void {
     for (const entry of entries) {
       entry.link.addEventListener("click", (event) => {
         event.preventDefault();
@@ -518,7 +564,7 @@ import { getTocConfig } from "@/shared/plugin-config";
           // 해시 갱신이 실패해도 스크롤은 계속한다.
         }
 
-        setActive(entries, entry.id);
+        activateEntry(entry, true);
         scrollElementIntoViewWithOffset(
           entry.heading,
           getResolvedHeaderOffset(),
@@ -561,8 +607,15 @@ import { getTocConfig } from "@/shared/plugin-config";
     }
 
     const bottomBoundary = getBottomBoundary(article, scope, entries);
+    let currentActiveId = "";
 
     setPalette(root, scope);
+
+    const activateEntry = (entry: TocEntry, forceReveal = false): void => {
+      currentActiveId = entry.id;
+      setActive(entries, entry.id);
+      revealActiveEntry(root, entry, forceReveal);
+    };
 
     const sync = (): void => {
       alignRoot(root, scope, bottomBoundary);
@@ -572,7 +625,12 @@ import { getTocConfig } from "@/shared/plugin-config";
       }
 
       syncTooltipState(entries);
-      setActive(entries, findActiveId(entries));
+      const activeEntry = setActive(entries, findActiveId(entries));
+      if (!activeEntry) return;
+
+      if (activeEntry.id !== currentActiveId) {
+        activateEntry(activeEntry);
+      }
     };
 
     const scheduleSync = (): void => {
@@ -584,13 +642,16 @@ import { getTocConfig } from "@/shared/plugin-config";
       });
     };
 
-    bindLinkInteractions(entries);
+    bindLinkInteractions(entries, activateEntry);
     bindTooltipInteractions(entries, root, tooltip);
     sync();
 
     const initialHash = getDecodedHash();
-    if (initialHash && entries.some((entry) => entry.id === initialHash)) {
-      setActive(entries, initialHash);
+    const initialEntry = initialHash
+      ? entries.find((entry) => entry.id === initialHash)
+      : undefined;
+    if (initialEntry) {
+      activateEntry(initialEntry, true);
     }
 
     window.addEventListener(

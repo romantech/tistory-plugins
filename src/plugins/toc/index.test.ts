@@ -11,6 +11,8 @@ describe("toc plugin", () => {
 
   let originalFonts: PropertyDescriptor | undefined;
   let originalVisualViewport: PropertyDescriptor | undefined;
+  let originalOffsetHeight: PropertyDescriptor | undefined;
+  let originalScrollHeight: PropertyDescriptor | undefined;
 
   let scrollToMock: ReturnType<typeof vi.fn>;
   let replaceStateSpy: ReturnType<typeof vi.spyOn>;
@@ -104,6 +106,14 @@ describe("toc plugin", () => {
       window,
       "visualViewport",
     );
+    originalOffsetHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetHeight",
+    );
+    originalScrollHeight = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "scrollHeight",
+    );
 
     scrollToMock = vi.fn();
 
@@ -149,6 +159,26 @@ describe("toc plugin", () => {
       Object.defineProperty(window, "visualViewport", originalVisualViewport);
     } else {
       Reflect.deleteProperty(window, "visualViewport");
+    }
+
+    if (originalOffsetHeight) {
+      Object.defineProperty(
+        HTMLElement.prototype,
+        "offsetHeight",
+        originalOffsetHeight,
+      );
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "offsetHeight");
+    }
+
+    if (originalScrollHeight) {
+      Object.defineProperty(
+        HTMLElement.prototype,
+        "scrollHeight",
+        originalScrollHeight,
+      );
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
     }
   });
 
@@ -415,6 +445,98 @@ describe("toc plugin", () => {
     expect(links[0]).not.toHaveAttribute("aria-current");
   });
 
+  it("auto-scrolls the toc rail when the active item moves below the visible list", async () => {
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <h2>둘째 섹션</h2>
+      <h2>셋째 섹션</h2>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 2200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2");
+    const topMap = new Map<HTMLElement, number>([
+      [headings[0], 120],
+      [headings[1], 420],
+      [headings[2], 760],
+    ]);
+
+    for (const heading of headings) {
+      Object.defineProperty(heading, "getBoundingClientRect", {
+        configurable: true,
+        value: vi.fn(() => {
+          const top = topMap.get(heading) ?? 0;
+          return {
+            top,
+            bottom: top + 40,
+            left: 0,
+            right: 100,
+            width: 100,
+            height: 40,
+            x: 0,
+            y: top,
+            toJSON: () => ({}),
+          };
+        }),
+      });
+    }
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 320,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 220,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 0;
+
+    topMap.set(headings[0], -280);
+    topMap.set(headings[1], -40);
+    topMap.set(headings[2], 72);
+
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(links[2]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(170);
+  });
+
   it("uses the shared heading scope for layout calculations", async () => {
     const article = renderArticle(
       `
@@ -504,6 +626,61 @@ describe("toc plugin", () => {
 
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     expect(root.hidden).toBe(true);
+  });
+
+  it("moves with the article until it can settle at the viewport center", async () => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 960,
+      writable: true,
+    });
+
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      configurable: true,
+      value: 960,
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get() {
+        return this.classList.contains("rp-toc") ? 447 : 40;
+      },
+    });
+
+    Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
+      configurable: true,
+      get() {
+        return this.classList.contains("rp-toc") ? 447 : 40;
+      },
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <h2>둘째 섹션</h2>
+      <h3>셋째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 320,
+      left: 240,
+      width: 820,
+      height: 2400,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 520 });
+    mockRect(headings[1], { top: 860 });
+    mockRect(headings[2], { top: 1240 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    expect(root.hidden).toBe(false);
+    expect(root.style.getPropertyValue("--rp-toc-top")).toBe("320px");
   });
 
   it("stays hidden on narrower viewports and respects configured levels", async () => {
