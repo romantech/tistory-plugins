@@ -36,6 +36,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const BOTTOM_BOUNDARY_SELECTOR = ".revenue_unit_wrap";
   const PANEL_GAP = 68;
   const VIEWPORT_GUTTER = 24;
+  const RIGHT_RAIL_GUTTER = 32;
   const ACTIVE_OFFSET = 16;
   const SAFE_TOP_GAP = 24;
 
@@ -453,8 +454,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     );
     const scopeRect = scope.getBoundingClientRect();
     const bottomBoundaryRect = bottomBoundary.getBoundingClientRect();
-    const left = scopeRect.right + PANEL_GAP;
-    const availableWidth = viewportWidth - left - VIEWPORT_GUTTER;
+    const maxPanelWidth = viewportWidth - RIGHT_RAIL_GUTTER - VIEWPORT_GUTTER;
+    const panelWidth = Math.min(DEFAULT_PANEL_WIDTH, maxPanelWidth);
+    const left = viewportWidth - RIGHT_RAIL_GUTTER - panelWidth;
+    const articleGap = left - scopeRect.right;
     const safeTop = getResolvedHeaderOffset() + SAFE_TOP_GAP;
     const shouldShow =
       viewportWidth >= MIN_DESKTOP_WIDTH &&
@@ -462,7 +465,8 @@ import { getTocConfig } from "@/shared/plugin-config";
       scopeRect.right > 0 &&
       scopeRect.bottom > 0 &&
       scopeRect.top < viewportHeight &&
-      availableWidth >= MIN_PANEL_WIDTH;
+      panelWidth >= MIN_PANEL_WIDTH &&
+      articleGap >= PANEL_GAP;
 
     if (!shouldShow) {
       root.hidden = true;
@@ -477,7 +481,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     );
     root.style.setProperty(
       "--rp-toc-width",
-      `${Math.round(Math.min(DEFAULT_PANEL_WIDTH, availableWidth))}px`,
+      `${Math.round(panelWidth)}px`,
     );
 
     const rootHeight = Math.max(root.offsetHeight, root.scrollHeight);

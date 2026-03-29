@@ -455,7 +455,7 @@ describe("toc plugin", () => {
 
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     expect(root.hidden).toBe(false);
-    expect(root.style.getPropertyValue("--rp-toc-left")).toBe("1128px");
+    expect(root.style.getPropertyValue("--rp-toc-left")).toBe("1328px");
     expect(root.style.getPropertyValue("--rp-toc-width")).toBe("240px");
   });
 
