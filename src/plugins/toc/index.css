@@ -2,14 +2,17 @@
   --rp-toc-ink: 24 24 27;
   --rp-toc-surface: 255 255 255;
   --rp-toc-font-family: inherit;
+  --rp-toc-font-size: 13px;
   --rp-toc-tooltip-max-width: 280px;
+  --rp-toc-rail-space: 42px;
+  --rp-toc-bar-height: 5px;
   --rp-toc-bar-end: 4px;
   --rp-toc-collapsed-width: 44px;
   --rp-toc-scrollbar-lane: 12px;
   --rp-toc-top: 112px;
   --rp-toc-left: auto;
   --rp-toc-safe-top: 108px;
-  --rp-toc-width: 240px;
+  --rp-toc-width: 252px;
   position: fixed;
   top: var(--rp-toc-top);
   left: var(--rp-toc-left);
@@ -21,7 +24,7 @@
   overscroll-behavior: contain;
   padding: 0;
   border: 0;
-  font-size: 13px;
+  font-size: var(--rp-toc-font-size);
   line-height: 1.6;
   letter-spacing: -0.01em;
   font-family: var(--rp-toc-font-family);
@@ -73,7 +76,7 @@
 }
 
 .rp-toc-item {
-  margin: 0 0 6px;
+  margin: 0 0 3px;
 }
 
 .rp-toc-link,
@@ -86,9 +89,9 @@
   --rp-toc-indent: 0px;
   display: block;
   min-height: 16px;
-  padding: 2px calc(42px + var(--rp-toc-indent)) 2px 12px;
+  padding: 2px calc(var(--rp-toc-rail-space) + var(--rp-toc-indent)) 2px 12px;
   /* biome-ignore lint/complexity/noImportantStyles: 스킨의 visited 링크 색보다 TOC 상태 색이 우선이어야 함 */
-  color: rgb(var(--rp-toc-ink) / 0.54) !important;
+  color: rgb(var(--rp-toc-ink) / 0.5) !important;
   text-decoration: none;
   pointer-events: none;
   white-space: nowrap;
@@ -147,9 +150,9 @@
   top: 50%;
   right: var(--rp-toc-bar-end);
   width: var(--rp-toc-bar-width, 28px);
-  height: 5px;
+  height: var(--rp-toc-bar-height);
   border-radius: 999px;
-  background: rgb(var(--rp-toc-ink) / 0.26);
+  background: rgb(var(--rp-toc-ink) / 0.22);
   transform: translateY(-50%);
   transition: background-color 0.18s ease;
 }
@@ -157,12 +160,12 @@
 .rp-toc-link:hover,
 .rp-toc-link:focus-visible {
   /* biome-ignore lint/complexity/noImportantStyles: hover 상태가 전역 링크 색보다 우선해야 함 */
-  color: rgb(var(--rp-toc-ink) / 0.76) !important;
+  color: rgb(var(--rp-toc-ink) / 0.74) !important;
 }
 
 .rp-toc-link:hover::before,
 .rp-toc-link:focus-visible::before {
-  background: rgb(var(--rp-toc-ink) / 0.42);
+  background: rgb(var(--rp-toc-ink) / 0.4);
 }
 
 .rp-toc-link:focus-visible {
@@ -171,7 +174,8 @@
 
 .rp-toc-link[data-level] {
   /* biome-ignore lint/complexity/noImportantStyles: 레벨별 우측 rail 여백을 스킨 링크 규칙보다 우선한다 */
-  padding-right: 42px !important;
+  padding-right: var(--rp-toc-rail-space) !important;
+  font-size: var(--rp-toc-font-size);
 }
 
 .rp-toc-link[data-level="2"] {
@@ -180,22 +184,18 @@
 
 .rp-toc-link[data-level="3"] {
   --rp-toc-bar-width: 18px;
-  font-size: 12px;
 }
 
 .rp-toc-link[data-level="4"] {
-  --rp-toc-bar-width: 16px;
-  font-size: 12px;
+  --rp-toc-bar-width: 12px;
 }
 
 .rp-toc-link[data-level="5"] {
-  --rp-toc-bar-width: 14px;
-  font-size: 11px;
+  --rp-toc-bar-width: 8px;
 }
 
 .rp-toc-link[data-level="6"] {
-  --rp-toc-bar-width: 12px;
-  font-size: 11px;
+  --rp-toc-bar-width: 6px;
 }
 
 .rp-toc-link.is-active,
@@ -205,7 +205,7 @@
 .rp-toc-link.is-active:focus,
 .rp-toc-link.is-active:focus-visible {
   /* biome-ignore lint/complexity/noImportantStyles: active 상태가 전역 링크 색보다 우선해야 함 */
-  color: rgb(var(--rp-toc-ink) / 0.96) !important;
+  color: rgb(var(--rp-toc-ink) / 0.92) !important;
 }
 
 .rp-toc-link.is-active::before {
@@ -223,8 +223,8 @@
   box-shadow: 0 12px 28px rgb(0 0 0 / 0.18);
   color: rgb(var(--rp-toc-ink, 24 24 27) / 0.96);
   font-family: var(--rp-toc-font-family);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: var(--rp-toc-font-size, 13px);
+  line-height: 1.4;
   white-space: normal;
   word-break: keep-all;
   opacity: 0;

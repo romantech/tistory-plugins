@@ -21,12 +21,12 @@ import { getTocConfig } from "@/shared/plugin-config";
   const TOOLTIP_VISIBLE_CLASS = "is-visible";
   const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
-  const DEFAULT_PANEL_WIDTH = 240;
+  const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
+  const RELATED_CATEGORY_SELECTORS = [".another-category", ".another_category"];
   const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
-    ".another-category",
-    ".another_category",
+    ...RELATED_CATEGORY_SELECTORS,
     ".container_postbtn",
     "#comments",
     ".comments",
@@ -34,7 +34,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     ".tt-box-comment",
     ".reply",
   ].join(", ");
-  const BOTTOM_BOUNDARY_SELECTOR = ".revenue_unit_wrap";
+  const BOTTOM_BOUNDARY_SELECTOR = RELATED_CATEGORY_SELECTORS.join(", ");
   const PANEL_GAP = 68;
   const VIEWPORT_GUTTER = 24;
   const RIGHT_RAIL_GUTTER = 32;
@@ -578,7 +578,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       Math.round(viewportHeight / 2 - rootHeight / 2),
     );
     const clampEdge =
-      bottomBoundary === scope ? scopeRect.bottom : bottomBoundaryRect.top;
+      bottomBoundary === scope ? scopeRect.bottom : bottomBoundaryRect.bottom;
     const maxTop = Math.round(clampEdge - rootHeight - SAFE_TOP_GAP);
     const revealTop = Math.max(safeTop, Math.round(scopeRect.top));
     const centeredTop = Math.min(desiredTop, maxTop);
