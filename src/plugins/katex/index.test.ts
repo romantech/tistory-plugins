@@ -121,6 +121,43 @@ describe("katex plugin", () => {
     );
   });
 
+  it("normalizes ignoredTags before the currency protection pre-pass", async () => {
+    const renderMathInElement = vi.fn();
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    (
+      window as typeof window & {
+        RPPlugins?: Record<string, unknown>;
+      }
+    ).RPPlugins = {
+      katex: {
+        ignoredTags: [" PRE ", "CODE"],
+      },
+    };
+
+    const article = renderArticleView(
+      "<pre>$14 should stay literal</pre><p>Price: $14</p>",
+    );
+
+    await loadKatexPlugin();
+
+    const pre = getRequiredElement(article, "pre", HTMLPreElement);
+    const paragraph = getRequiredElement(article, "p", HTMLParagraphElement);
+
+    expect(pre.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(
+      paragraph.querySelector(".tistory-plugins-katex-currency"),
+    )?.toHaveTextContent("$14");
+    expect(renderMathInElement).toHaveBeenCalledWith(
+      article,
+      expect.objectContaining({
+        ignoredTags: ["pre", "code"],
+      }),
+    );
+  });
+
   it("shields currency-like dollar prefixes from KaTeX auto-render", async () => {
     let capturedTextRuns: string[] = [];
     const renderMathInElement = vi.fn(
@@ -243,6 +280,41 @@ describe("katex plugin", () => {
     expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
     expect(capturedTextRuns).toEqual([
       "Math stays inline: $2 + 2$ and $14 + x$",
+    ]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps comma-separated numeric inline math when it has a closing delimiter", async () => {
+    let capturedTextRuns: string[] = [];
+    const renderMathInElement = vi.fn(
+      (
+        element: Element,
+        options?: {
+          ignoredClasses?: string[];
+          ignoredTags?: string[];
+        },
+      ) => {
+        const paragraph = getRequiredElement(
+          element,
+          "p",
+          HTMLParagraphElement,
+        );
+        capturedTextRuns = collectRenderableTextRuns(paragraph, options);
+      },
+    );
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView(
+      "<p>Math stays inline: $1, 2$ and $1, 2, 3$</p>",
+    );
+
+    await loadKatexPlugin();
+
+    expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(capturedTextRuns).toEqual([
+      "Math stays inline: $1, 2$ and $1, 2, 3$",
     ]);
     expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });

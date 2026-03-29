@@ -51,6 +51,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
   const MATH_COMMAND_PATTERN = /\\[A-Za-z]+/u;
   const MATH_OPERATOR_PATTERN = /[=+\-*/^_<>|()[\]{}]/u;
+  const NUMERIC_SEQUENCE_PATTERN = /^\d+(?:[.,]\d+)?(?:,\s+\d+(?:[.,]\d+)?)+$/u;
 
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
@@ -68,9 +69,10 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
       return [...DEFAULT_IGNORED_TAGS];
     }
 
-    return ignoredTags.filter((tag): tag is KatexIgnoredTag => {
-      return typeof tag === "string" && tag.length > 0;
-    });
+    return ignoredTags
+      .filter((tag): tag is string => typeof tag === "string")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag): tag is KatexIgnoredTag => tag.length > 0);
   }
 
   function getRenderOptions(): KatexRenderOptions {
@@ -163,6 +165,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     if (trimmedContent.length === 0) return false;
     if (MATH_COMMAND_PATTERN.test(trimmedContent)) return true;
     if (MATH_OPERATOR_PATTERN.test(trimmedContent)) return true;
+    if (NUMERIC_SEQUENCE_PATTERN.test(trimmedContent)) return true;
 
     const tokens = trimmedContent.split(/\s+/u);
     const hasStrongMathSignal = tokens.some((token) =>
