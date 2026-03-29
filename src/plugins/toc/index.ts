@@ -40,7 +40,10 @@ import { getTocConfig } from "@/shared/plugin-config";
   const ACTIVE_OFFSET = 16;
   const SAFE_TOP_GAP = 24;
 
-  const USED_IDS = new Set<string>();
+  type HeadingItem = {
+    heading: HTMLElement;
+    text: string;
+  };
 
   type TocEntry = {
     heading: HTMLElement;
@@ -83,6 +86,19 @@ import { getTocConfig } from "@/shared/plugin-config";
     return !heading.closest(BLOCKED_HEADING_ANCESTOR_SELECTOR);
   }
 
+  function getHeadingItems(article: HTMLElement): HeadingItem[] {
+    return Array.from(
+      article.querySelectorAll<HTMLElement>(getResolvedHeadingSelector()),
+    )
+      .map((heading) => ({
+        heading,
+        text: getHeadingText(heading),
+      }))
+      .filter(
+        ({ heading, text }) => isEligibleHeading(heading) && text.length > 0,
+      );
+  }
+
   function prefersReducedMotion(): boolean {
     return (
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
@@ -116,10 +132,10 @@ import { getTocConfig } from "@/shared/plugin-config";
     return true;
   }
 
-  function getSurfaceColor(article: HTMLElement): string {
+  function getSurfaceColor(source: HTMLElement): string {
     const candidates = [
-      article,
-      article.parentElement,
+      source,
+      source.parentElement,
       document.body,
       document.documentElement,
     ];
@@ -136,8 +152,8 @@ import { getTocConfig } from "@/shared/plugin-config";
     return "rgb(255 255 255)";
   }
 
-  function setPalette(root: HTMLElement, article: HTMLElement): void {
-    const styles = getComputedStyle(article);
+  function setPalette(root: HTMLElement, surfaceSource: HTMLElement): void {
+    const styles = getComputedStyle(surfaceSource);
 
     root.style.setProperty(
       "--rp-toc-font-family",
@@ -149,7 +165,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     );
     root.style.setProperty(
       "--rp-toc-surface",
-      parseRgb(getSurfaceColor(article)) ?? "255 255 255",
+      parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255",
     );
   }
 
@@ -259,15 +275,15 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   function buildEntries(
     root: HTMLElement,
-    headings: HTMLElement[],
+    headingItems: HeadingItem[],
+    usedIds: Set<string>,
   ): TocEntry[] {
     const list = getList(root);
     list.innerHTML = "";
 
-    return headings.map((heading) => {
-      const id = ensureHeadingId(heading, USED_IDS);
+    return headingItems.map(({ heading, text }) => {
+      const id = ensureHeadingId(heading, usedIds);
       const level = getHeadingLevel(heading);
-      const text = getHeadingText(heading);
 
       const item = document.createElement("li");
       item.className = `${ROOT_CLASS}-item`;
@@ -575,19 +591,16 @@ import { getTocConfig } from "@/shared/plugin-config";
     const article = getTistoryArticle();
     if (!article) return;
 
-    const headings = Array.from(
-      article.querySelectorAll<HTMLElement>(getResolvedHeadingSelector()),
-    ).filter(
-      (heading) =>
-        isEligibleHeading(heading) && getHeadingText(heading).length > 0,
-    );
+    const headingItems = getHeadingItems(article);
+    if (headingItems.length < 2) return;
 
-    if (headings.length < 2) return;
+    const usedIds = new Set<string>();
+    const headings = headingItems.map(({ heading }) => heading);
 
     const scope = getStickyScope(article, headings);
     const root = createRoot();
     const tooltip = createTooltip();
-    const entries = buildEntries(root, headings);
+    const entries = buildEntries(root, headingItems, usedIds);
 
     if (entries.length < 2) {
       root.remove();
