@@ -308,6 +308,51 @@ describe("toc plugin", () => {
     expect(root.classList.contains("rp-toc--pending")).toBe(false);
   });
 
+  it("preselects the hashed entry while keeping the toc pending until load", async () => {
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      value: "interactive",
+    });
+
+    location.hash = "#둘째-섹션";
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <h2>둘째 섹션</h2>
+      <h3>셋째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 560 });
+    mockRect(headings[2], { top: 900 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    expect(root.classList.contains("rp-toc--pending")).toBe(true);
+    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).not.toHaveAttribute("aria-current");
+
+    window.dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(root.classList.contains("rp-toc--pending")).toBe(false);
+  });
+
   it("updates the hash and scroll position when a toc item is clicked", async () => {
     const article = renderArticle(
       `

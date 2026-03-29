@@ -528,6 +528,13 @@ import { getTocConfig } from "@/shared/plugin-config";
     return active;
   }
 
+  function findHashedEntry(entries: TocEntry[]): TocEntry | undefined {
+    const initialHash = getDecodedHash();
+    if (!initialHash) return undefined;
+
+    return entries.find((entry) => entry.id === initialHash);
+  }
+
   function alignRoot(
     root: HTMLElement,
     scope: HTMLElement,
@@ -742,7 +749,10 @@ import { getTocConfig } from "@/shared/plugin-config";
       }
 
       syncTooltipState(state.entries);
-      const activeEntry = setActive(state.entries, findActiveId(state.entries));
+      const activeId = isInitialLayoutPending
+        ? findHashedEntry(state.entries)?.id || findActiveId(state.entries)
+        : findActiveId(state.entries);
+      const activeEntry = setActive(state.entries, activeId);
       if (!activeEntry) return;
 
       if (activeEntry.id !== state.currentActiveId) {
@@ -781,7 +791,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     const initialHash = getDecodedHash();
     const initialEntry = initialHash
-      ? state.entries.find((entry) => entry.id === initialHash)
+      ? findHashedEntry(state.entries)
       : undefined;
     if (initialEntry) {
       activateEntry(initialEntry, { revealBehavior: "nearest" });
