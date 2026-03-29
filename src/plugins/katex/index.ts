@@ -22,6 +22,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   const KATEX_SCRIPT_ID = "tistory-plugins-katex-js";
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
   const LOAD_PROMISE_KEY = "__tistoryPluginsKatexLoadPromise";
+  const PROTECTED_CURRENCY_CLASS = "tistory-plugins-katex-currency";
   const DEFAULT_DELIMITERS: readonly KatexDelimiter[] = [
     { left: "$$", right: "$$", display: true },
     { left: "$", right: "$", display: false },
@@ -42,6 +43,14 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
 
   const isWhitespace = (char: string | undefined): boolean =>
     typeof char === "string" && /^\s$/u.test(char);
+
+  const isPriceBoundary = (char: string | undefined): boolean =>
+    typeof char === "undefined" ||
+    isWhitespace(char) ||
+    /^[,.;:!?)\]%}]$/u.test(char);
+
+  const MATH_COMMAND_PATTERN = /\\[A-Za-z]+/u;
+  const MATH_OPERATOR_PATTERN = /[=+\-*/^_<>|()[\]{}]/u;
 
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
@@ -72,6 +81,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
         Array.isArray(config.delimiters) && config.delimiters.length > 0
           ? config.delimiters
           : DEFAULT_DELIMITERS,
+      ignoredClasses: [PROTECTED_CURRENCY_CLASS],
       ignoredTags: getIgnoredTags(config),
       strict: asBool(config.strict),
       throwOnError: asBool(config.throwOnError),
@@ -87,26 +97,121 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     );
   }
 
-  function isPriceLikeInlineDollar(text: string, index: number): boolean {
-    if (text[index] !== "$") return false;
-    if (text[index - 1] === "$" || text[index + 1] === "$") return false;
+  function getPriceLikeInlineDollarEnd(
+    text: string,
+    index: number,
+  ): number | null {
+    if (text[index] !== "$") return null;
+    if (text[index - 1] === "$" || text[index + 1] === "$") return null;
 
-    for (let cursor = index + 1; cursor < text.length; cursor += 1) {
-      const char = text[cursor];
-      if (isWhitespace(char)) continue;
-      return isDigit(char);
+    let cursor = index + 1;
+    while (cursor < text.length && isWhitespace(text[cursor])) {
+      cursor += 1;
     }
 
-    return false;
+    if (!isDigit(text[cursor])) return null;
+
+    cursor += 1;
+    while (cursor < text.length) {
+      const char = text[cursor];
+      if (isDigit(char)) {
+        cursor += 1;
+        continue;
+      }
+
+      if ((char === "," || char === ".") && isDigit(text[cursor + 1])) {
+        cursor += 1;
+        continue;
+      }
+
+      break;
+    }
+
+    if (text[cursor] === "$") return null;
+    if (!isPriceBoundary(text[cursor])) return null;
+
+    return cursor;
   }
 
-  function splitPriceLikeInlineDollars(text: string): Text[] | null {
-    const nodes: Text[] = [];
+  function createProtectedCurrencyNode(text: string): HTMLSpanElement {
+    const span = document.createElement("span");
+    span.className = PROTECTED_CURRENCY_CLASS;
+    span.textContent = text;
+
+    return span;
+  }
+
+  function isLikelyInlineMathToken(token: string): boolean {
+    const normalizedToken = token.replace(/^[,.;:!?]+|[,.;:!?]+$/gu, "");
+    if (normalizedToken.length === 0) {
+      return /^[,.;:!?]+$/u.test(token);
+    }
+
+    return (
+      /^[A-Za-z]$/u.test(normalizedToken) ||
+      /^\d+(?:[.,]\d+)*$/u.test(normalizedToken) ||
+      /^\\[A-Za-z]+$/u.test(normalizedToken) ||
+      /^[=+\-*/^_<>|()[\]{}]+$/u.test(normalizedToken)
+    );
+  }
+
+  function isLikelyInlineMathContent(content: string): boolean {
+    if (content.length === 0) return false;
+    if (!/\s/u.test(content)) return true;
+
+    const trimmedContent = content.trim();
+    if (trimmedContent.length === 0) return false;
+    if (MATH_COMMAND_PATTERN.test(trimmedContent)) return true;
+    if (MATH_OPERATOR_PATTERN.test(trimmedContent)) return true;
+
+    const tokens = trimmedContent.split(/\s+/u);
+    const hasStrongMathSignal = tokens.some((token) =>
+      /[A-Za-z\\=+\-*/^_<>|()[\]{}]/u.test(token),
+    );
+    if (!hasStrongMathSignal) return false;
+
+    return tokens.every((token) => isLikelyInlineMathToken(token));
+  }
+
+  function getLikelyInlineMathClosingDollar(
+    text: string,
+    openIndex: number,
+  ): number | null {
+    for (let index = openIndex + 1; index < text.length; index += 1) {
+      if (text[index] !== "$") continue;
+      if (text[index - 1] === "$" || text[index + 1] === "$") continue;
+
+      const inlineMathContent = text.slice(openIndex + 1, index);
+      if (isLikelyInlineMathContent(inlineMathContent)) {
+        return index;
+      }
+    }
+
+    return null;
+  }
+
+  function splitPriceLikeInlineDollars(text: string): Node[] | null {
+    const nodes: Node[] = [];
     let segmentStart = 0;
     let hasSplit = false;
 
     for (let index = 0; index < text.length; index += 1) {
-      if (!isPriceLikeInlineDollar(text, index)) continue;
+      if (text[index] !== "$") continue;
+      if (text[index - 1] === "$" || text[index + 1] === "$") continue;
+
+      const inlineMathClosingDollar = getLikelyInlineMathClosingDollar(
+        text,
+        index,
+      );
+      if (inlineMathClosingDollar !== null) {
+        index = inlineMathClosingDollar;
+        continue;
+      }
+
+      const protectedEnd = getPriceLikeInlineDollarEnd(text, index);
+      if (protectedEnd === null) {
+        continue;
+      }
 
       hasSplit = true;
 
@@ -114,8 +219,9 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
         nodes.push(document.createTextNode(text.slice(segmentStart, index)));
       }
 
-      nodes.push(document.createTextNode("$"));
-      segmentStart = index + 1;
+      nodes.push(createProtectedCurrencyNode(text.slice(index, protectedEnd)));
+      segmentStart = protectedEnd;
+      index = protectedEnd - 1;
     }
 
     if (!hasSplit) return null;
