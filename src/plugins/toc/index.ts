@@ -34,7 +34,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     ".tt-box-comment",
     ".reply",
   ].join(", ");
-  const BOTTOM_BOUNDARY_SELECTOR = ".another-category";
+  const BOTTOM_BOUNDARY_SELECTOR = ".another-category, .another_category";
   const PANEL_GAP = 68;
   const VIEWPORT_GUTTER = 24;
   const RIGHT_RAIL_GUTTER = 32;
