@@ -23,6 +23,7 @@ This file is for coding agents working in this repository. Keep it short, practi
 - Edit source files under `src/`.
 - Shared test utilities live under `test/`, but plugin behavior tests are usually colocated under `src/plugins/<plugin-name>/index.test.ts`.
 - Treat `dist/` as generated output. Do not hand-edit files there unless the user explicitly asks for it.
+- For source-only changes, do not stage or commit `dist/` by default. This repository updates version and `dist/` automatically for same-repo PRs targeting `main`; only include `dist/` when the user explicitly asks for it or the task is a manual build/release sync.
 - `src/plugins/**/index.ts` is the build entry pattern. Esbuild discovers plugins from that file name.
 
 ## Plugin Conventions
