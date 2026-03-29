@@ -212,6 +212,41 @@ describe("katex plugin", () => {
     expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });
 
+  it("does not shield numeric inline math openers with operators", async () => {
+    let capturedTextRuns: string[] = [];
+    const renderMathInElement = vi.fn(
+      (
+        element: Element,
+        options?: {
+          ignoredClasses?: string[];
+          ignoredTags?: string[];
+        },
+      ) => {
+        const paragraph = getRequiredElement(
+          element,
+          "p",
+          HTMLParagraphElement,
+        );
+        capturedTextRuns = collectRenderableTextRuns(paragraph, options);
+      },
+    );
+
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+
+    const article = renderArticleView(
+      "<p>Math stays inline: $2 + 2$ and $14 + x$</p>",
+    );
+
+    await loadKatexPlugin();
+
+    expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(capturedTextRuns).toEqual([
+      "Math stays inline: $2 + 2$ and $14 + x$",
+    ]);
+    expect(renderMathInElement).toHaveBeenCalledTimes(1);
+  });
+
   it("does not shield closing inline-math delimiters followed by digits", async () => {
     let capturedTextRuns: string[] = [];
     const renderMathInElement = vi.fn(

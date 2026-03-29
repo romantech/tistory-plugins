@@ -164,53 +164,52 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     if (MATH_COMMAND_PATTERN.test(trimmedContent)) return true;
     if (MATH_OPERATOR_PATTERN.test(trimmedContent)) return true;
 
-    return trimmedContent
-      .split(/\s+/u)
-      .every((token) => isLikelyInlineMathToken(token));
+    const tokens = trimmedContent.split(/\s+/u);
+    const hasStrongMathSignal = tokens.some((token) =>
+      /[A-Za-z\\=+\-*/^_<>|()[\]{}]/u.test(token),
+    );
+    if (!hasStrongMathSignal) return false;
+
+    return tokens.every((token) => isLikelyInlineMathToken(token));
+  }
+
+  function getLikelyInlineMathClosingDollar(
+    text: string,
+    openIndex: number,
+  ): number | null {
+    for (let index = openIndex + 1; index < text.length; index += 1) {
+      if (text[index] !== "$") continue;
+      if (text[index - 1] === "$" || text[index + 1] === "$") continue;
+
+      const inlineMathContent = text.slice(openIndex + 1, index);
+      if (isLikelyInlineMathContent(inlineMathContent)) {
+        return index;
+      }
+    }
+
+    return null;
   }
 
   function splitPriceLikeInlineDollars(text: string): Node[] | null {
     const nodes: Node[] = [];
     let segmentStart = 0;
     let hasSplit = false;
-    let openInlineMathStart: number | null = null;
 
     for (let index = 0; index < text.length; index += 1) {
       if (text[index] !== "$") continue;
       if (text[index - 1] === "$" || text[index + 1] === "$") continue;
 
-      const protectedEnd = getPriceLikeInlineDollarEnd(text, index);
-
-      if (openInlineMathStart !== null) {
-        const inlineMathContent = text.slice(openInlineMathStart + 1, index);
-
-        if (isLikelyInlineMathContent(inlineMathContent)) {
-          openInlineMathStart = null;
-          continue;
-        }
-
-        if (protectedEnd === null) {
-          openInlineMathStart = index;
-          continue;
-        }
-
-        hasSplit = true;
-
-        if (segmentStart < index) {
-          nodes.push(document.createTextNode(text.slice(segmentStart, index)));
-        }
-
-        nodes.push(
-          createProtectedCurrencyNode(text.slice(index, protectedEnd)),
-        );
-        segmentStart = protectedEnd;
-        index = protectedEnd - 1;
-        openInlineMathStart = null;
+      const inlineMathClosingDollar = getLikelyInlineMathClosingDollar(
+        text,
+        index,
+      );
+      if (inlineMathClosingDollar !== null) {
+        index = inlineMathClosingDollar;
         continue;
       }
 
+      const protectedEnd = getPriceLikeInlineDollarEnd(text, index);
       if (protectedEnd === null) {
-        openInlineMathStart = index;
         continue;
       }
 
