@@ -235,14 +235,14 @@ describe("katex plugin", () => {
     vi.stubGlobal("renderMathInElement", renderMathInElement);
 
     const article = renderArticleView(
-      "<p>Math stays inline: $x$2, $14$15, $x$ 99, and $2x$</p>",
+      "<p>Math stays inline: $x$2, $14$15, $x$ 99, $x + 1$2, $x + 1$ 99, and $2x$</p>",
     );
 
     await loadKatexPlugin();
 
     expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
     expect(capturedTextRuns).toEqual([
-      "Math stays inline: $x$2, $14$15, $x$ 99, and $2x$",
+      "Math stays inline: $x$2, $14$15, $x$ 99, $x + 1$2, $x + 1$ 99, and $2x$",
     ]);
     expect(renderMathInElement).toHaveBeenCalledTimes(1);
   });

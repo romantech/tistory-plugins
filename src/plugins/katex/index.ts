@@ -49,6 +49,9 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     isWhitespace(char) ||
     /^[,.;:!?)\]%}]$/u.test(char);
 
+  const MATH_COMMAND_PATTERN = /\\[A-Za-z]+/u;
+  const MATH_OPERATOR_PATTERN = /[=+\-*/^_<>|()[\]{}]/u;
+
   function isKatexRendered(article: HTMLElement): boolean {
     return article.dataset.katexRendered === "true";
   }
@@ -138,40 +141,76 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     return span;
   }
 
-  function isLikelyInlineMathClosingDollar(
-    text: string,
-    index: number,
-  ): boolean {
-    if (text[index] !== "$") return false;
-    if (text[index - 1] === "$" || text[index + 1] === "$") return false;
-
-    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-      if (text[cursor] !== "$") continue;
-      if (text[cursor - 1] === "$" || text[cursor + 1] === "$") continue;
-
-      const inlineMathContent = text.slice(cursor + 1, index);
-      if (inlineMathContent.length === 0) return false;
-
-      return !/\s/u.test(inlineMathContent);
+  function isLikelyInlineMathToken(token: string): boolean {
+    const normalizedToken = token.replace(/^[,.;:!?]+|[,.;:!?]+$/gu, "");
+    if (normalizedToken.length === 0) {
+      return /^[,.;:!?]+$/u.test(token);
     }
 
-    return false;
+    return (
+      /^[A-Za-z]$/u.test(normalizedToken) ||
+      /^\d+(?:[.,]\d+)*$/u.test(normalizedToken) ||
+      /^\\[A-Za-z]+$/u.test(normalizedToken) ||
+      /^[=+\-*/^_<>|()[\]{}]+$/u.test(normalizedToken)
+    );
+  }
+
+  function isLikelyInlineMathContent(content: string): boolean {
+    if (content.length === 0) return false;
+    if (!/\s/u.test(content)) return true;
+
+    const trimmedContent = content.trim();
+    if (trimmedContent.length === 0) return false;
+    if (MATH_COMMAND_PATTERN.test(trimmedContent)) return true;
+    if (MATH_OPERATOR_PATTERN.test(trimmedContent)) return true;
+
+    return trimmedContent
+      .split(/\s+/u)
+      .every((token) => isLikelyInlineMathToken(token));
   }
 
   function splitPriceLikeInlineDollars(text: string): Node[] | null {
     const nodes: Node[] = [];
     let segmentStart = 0;
     let hasSplit = false;
+    let openInlineMathStart: number | null = null;
 
     for (let index = 0; index < text.length; index += 1) {
       if (text[index] !== "$") continue;
       if (text[index - 1] === "$" || text[index + 1] === "$") continue;
 
       const protectedEnd = getPriceLikeInlineDollarEnd(text, index);
-      if (
-        protectedEnd === null ||
-        isLikelyInlineMathClosingDollar(text, index)
-      ) {
+
+      if (openInlineMathStart !== null) {
+        const inlineMathContent = text.slice(openInlineMathStart + 1, index);
+
+        if (isLikelyInlineMathContent(inlineMathContent)) {
+          openInlineMathStart = null;
+          continue;
+        }
+
+        if (protectedEnd === null) {
+          openInlineMathStart = index;
+          continue;
+        }
+
+        hasSplit = true;
+
+        if (segmentStart < index) {
+          nodes.push(document.createTextNode(text.slice(segmentStart, index)));
+        }
+
+        nodes.push(
+          createProtectedCurrencyNode(text.slice(index, protectedEnd)),
+        );
+        segmentStart = protectedEnd;
+        index = protectedEnd - 1;
+        openInlineMathStart = null;
+        continue;
+      }
+
+      if (protectedEnd === null) {
+        openInlineMathStart = index;
         continue;
       }
 
