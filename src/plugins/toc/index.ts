@@ -44,7 +44,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const SAFE_TOP_GAP = 24;
   const CLICK_NAVIGATION_LOCK_MS = 1400;
   const CLICK_TARGET_FREEZE_MS = 220;
-  const CLICK_NAVIGATION_SETTLE_MS = 120;
+  const CLICK_NAVIGATION_SETTLE_MS = 100;
 
   type HeadingItem = {
     heading: HTMLElement;
@@ -833,9 +833,10 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     const hasReachedNavigationTarget = (): boolean => {
       if (!pendingNavigation) return false;
+      const navigation = pendingNavigation;
 
       const targetEntry = state.entries.find(
-        (entry) => entry.id === pendingNavigation.destinationId,
+        (entry) => entry.id === navigation.destinationId,
       );
       if (!targetEntry) return false;
 
