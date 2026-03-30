@@ -183,11 +183,11 @@
 }
 
 .rp-toc-link[data-level="3"] {
-  --rp-toc-bar-width: 18px;
+  --rp-toc-bar-width: 20px;
 }
 
 .rp-toc-link[data-level="4"] {
-  --rp-toc-bar-width: 12px;
+  --rp-toc-bar-width: 14px;
 }
 
 .rp-toc-link[data-level="5"] {
