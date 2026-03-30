@@ -444,8 +444,51 @@ describe("toc plugin", () => {
       top: 396,
       behavior: "smooth",
     });
-    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[1]).not.toHaveAttribute("aria-current");
     expect(document.activeElement).not.toBe(links[1]);
+  });
+
+  it("keeps the toc expanded briefly after pointer navigation", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>클릭 대상</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1500,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
+
+    vi.advanceTimersByTime(1500);
+    await flushMicrotasks();
+
+    expect(root.classList.contains("is-navigation-locked")).toBe(false);
   });
 
   it("does not recenter the toc rail when a clicked item is already visible", async () => {
@@ -515,8 +558,9 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(root.scrollTop).toBe(36);
-    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(40);
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[1]).not.toHaveAttribute("aria-current");
   });
 
   it("keeps the toc rail stable while active steps toward a lower target", async () => {
@@ -611,8 +655,8 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(links[2]).toHaveAttribute("aria-current", "location");
-    expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).not.toHaveAttribute("aria-current");
     expect(root.scrollTop).toBe(138);
 
     topMap.set(headings[0], -40);
@@ -622,8 +666,16 @@ describe("toc plugin", () => {
     window.dispatchEvent(new Event("scroll"));
     await flushAnimationFrame();
 
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).not.toHaveAttribute("aria-current");
+    expect(root.scrollTop).toBe(138);
+
+    vi.advanceTimersByTime(250);
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
     expect(links[1]).toHaveAttribute("aria-current", "location");
-    expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(links[2]).not.toHaveAttribute("aria-current");
     expect(root.scrollTop).toBe(138);
 
     topMap.set(headings[0], -280);
@@ -728,7 +780,7 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
 
     topMap.set(headings[0], -280);
@@ -739,6 +791,14 @@ describe("toc plugin", () => {
     await flushAnimationFrame();
 
     expect(links[2]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(0);
+
+    vi.advanceTimersByTime(250);
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(links[2]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).not.toHaveAttribute("aria-current");
     expect(root.scrollTop).toBe(0);
 
     topMap.set(headings[0], -40);

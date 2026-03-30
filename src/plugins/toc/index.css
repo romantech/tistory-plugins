@@ -2,10 +2,10 @@
   --rp-toc-ink: 24 24 27;
   --rp-toc-surface: 255 255 255;
   --rp-toc-font-family: inherit;
-  --rp-toc-font-size: 13px;
+  --rp-toc-font-size: 14px;
   --rp-toc-tooltip-max-width: 280px;
   --rp-toc-rail-space: 42px;
-  --rp-toc-bar-height: 5px;
+  --rp-toc-bar-height: 6px;
   --rp-toc-bar-end: 4px;
   --rp-toc-collapsed-width: 44px;
   --rp-toc-scrollbar-lane: 12px;
@@ -119,7 +119,8 @@
 }
 
 .rp-toc:hover .rp-toc-list,
-.rp-toc:focus-within .rp-toc-list {
+.rp-toc:focus-within .rp-toc-list,
+.rp-toc.is-navigation-locked .rp-toc-list {
   clip-path: inset(0);
 }
 
@@ -136,8 +137,8 @@
   position: relative;
   --rp-toc-indent: 0px;
   display: block;
-  min-height: 16px;
-  padding: 2px calc(var(--rp-toc-rail-space) + var(--rp-toc-indent)) 2px 12px;
+  min-height: 20px;
+  padding: 3px calc(var(--rp-toc-rail-space) + var(--rp-toc-indent)) 3px 12px;
   /* biome-ignore lint/complexity/noImportantStyles: 스킨의 visited 링크 색보다 TOC 상태 색이 우선이어야 함 */
   color: rgb(var(--rp-toc-ink) / 0.5) !important;
   text-decoration: none;
@@ -148,7 +149,8 @@
 }
 
 .rp-toc:hover .rp-toc-link,
-.rp-toc:focus-within .rp-toc-link {
+.rp-toc:focus-within .rp-toc-link,
+.rp-toc.is-navigation-locked .rp-toc-link {
   pointer-events: auto;
 }
 
@@ -170,7 +172,8 @@
 }
 
 .rp-toc:hover .rp-toc-label,
-.rp-toc:focus-within .rp-toc-label {
+.rp-toc:focus-within .rp-toc-label,
+.rp-toc.is-navigation-locked .rp-toc-label {
   opacity: 1;
   transform: translateX(0);
 }
@@ -202,7 +205,9 @@
   border-radius: 999px;
   background: rgb(var(--rp-toc-ink) / 0.22);
   transform: translateY(-50%);
-  transition: background-color 0.18s ease;
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .rp-toc-link:hover,
@@ -256,8 +261,17 @@
   color: rgb(var(--rp-toc-ink) / 0.96) !important;
 }
 
+.rp-toc-link.is-active .rp-toc-label {
+  text-shadow:
+    0.014em 0 0 currentColor,
+    -0.014em 0 0 currentColor;
+}
+
 .rp-toc-link.is-active::before {
   background: rgb(var(--rp-toc-ink) / 0.82);
+  box-shadow:
+    0 0 0 1px rgb(var(--rp-toc-ink) / 0.22),
+    0 0 0 4px rgb(var(--rp-toc-ink) / 0.08);
 }
 
 .rp-toc-tooltip {

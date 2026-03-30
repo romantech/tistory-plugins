@@ -21,6 +21,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const TOOLTIP_VISIBLE_CLASS = "is-visible";
   const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
+  const NAVIGATION_LOCK_CLASS = "is-navigation-locked";
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
@@ -42,6 +43,8 @@ import { getTocConfig } from "@/shared/plugin-config";
   const ACTIVE_OFFSET = 16;
   const SAFE_TOP_GAP = 24;
   const CLICK_NAVIGATION_LOCK_MS = 1400;
+  const CLICK_TARGET_FREEZE_MS = 220;
+  const CLICK_NAVIGATION_SETTLE_MS = 120;
 
   type HeadingItem = {
     heading: HTMLElement;
@@ -67,6 +70,9 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   type PendingNavigation = {
     expiresAt: number;
+    targetFreezeExpiresAt: number;
+    frozenActiveId: string;
+    destinationId: string;
   };
 
   type CreatedElement<T extends HTMLElement> = {
@@ -761,6 +767,8 @@ import { getTocConfig } from "@/shared/plugin-config";
     const { element: tooltip, created: tooltipCreated } = createTooltip();
     let isInitialLayoutPending = document.readyState !== "complete";
     let pendingNavigation: PendingNavigation | null = null;
+    let pendingNavigationTimer = 0;
+    let pendingNavigationSettleTimer = 0;
     const initialState = createState(root);
     if (!initialState) {
       if (rootCreated) root.remove();
@@ -771,7 +779,17 @@ import { getTocConfig } from "@/shared/plugin-config";
     setPendingVisibility(root, isInitialLayoutPending);
 
     const clearPendingNavigation = (): void => {
+      if (pendingNavigationTimer) {
+        window.clearTimeout(pendingNavigationTimer);
+        pendingNavigationTimer = 0;
+      }
+      if (pendingNavigationSettleTimer) {
+        window.clearTimeout(pendingNavigationSettleTimer);
+        pendingNavigationSettleTimer = 0;
+      }
       pendingNavigation = null;
+      root.classList.remove(NAVIGATION_LOCK_CLASS);
+      scheduleSync();
     };
 
     const isNavigationLockActive = (): boolean => {
@@ -785,10 +803,63 @@ import { getTocConfig } from "@/shared/plugin-config";
       return true;
     };
 
-    const lockNavigationReveal = (): void => {
+    const lockNavigationReveal = (destinationId: string): void => {
+      if (pendingNavigationTimer) {
+        window.clearTimeout(pendingNavigationTimer);
+      }
+      if (pendingNavigationSettleTimer) {
+        window.clearTimeout(pendingNavigationSettleTimer);
+      }
+
       pendingNavigation = {
         expiresAt: performance.now() + CLICK_NAVIGATION_LOCK_MS,
+        targetFreezeExpiresAt: performance.now() + CLICK_TARGET_FREEZE_MS,
+        frozenActiveId: state.currentActiveId,
+        destinationId,
       };
+      root.classList.add(NAVIGATION_LOCK_CLASS);
+      pendingNavigationTimer = window.setTimeout(() => {
+        clearPendingNavigation();
+      }, CLICK_NAVIGATION_LOCK_MS);
+      pendingNavigationSettleTimer = window.setTimeout(() => {
+        if (hasReachedNavigationTarget()) {
+          clearPendingNavigation();
+          return;
+        }
+
+        pendingNavigationSettleTimer = 0;
+      }, CLICK_NAVIGATION_SETTLE_MS);
+    };
+
+    const hasReachedNavigationTarget = (): boolean => {
+      if (!pendingNavigation) return false;
+
+      const targetEntry = state.entries.find(
+        (entry) => entry.id === pendingNavigation.destinationId,
+      );
+      if (!targetEntry) return false;
+
+      return (
+        targetEntry.heading.getBoundingClientRect().top <=
+        getResolvedHeaderOffset() + ACTIVE_OFFSET
+      );
+    };
+
+    const touchNavigationSettle = (): void => {
+      if (!pendingNavigation) return;
+
+      if (pendingNavigationSettleTimer) {
+        window.clearTimeout(pendingNavigationSettleTimer);
+      }
+
+      pendingNavigationSettleTimer = window.setTimeout(() => {
+        if (hasReachedNavigationTarget()) {
+          clearPendingNavigation();
+          return;
+        }
+
+        pendingNavigationSettleTimer = 0;
+      }, CLICK_NAVIGATION_SETTLE_MS);
     };
 
     const activateEntry = (
@@ -811,8 +882,7 @@ import { getTocConfig } from "@/shared/plugin-config";
         // 해시 갱신이 실패해도 스크롤은 계속한다.
       }
 
-      lockNavigationReveal();
-      activateEntry(entry, { revealBehavior: "nearest" });
+      lockNavigationReveal(entry.id);
       scrollElementIntoViewWithOffset(
         entry.heading,
         getResolvedHeaderOffset(),
@@ -853,9 +923,15 @@ import { getTocConfig } from "@/shared/plugin-config";
       }
 
       syncTooltipState(state.entries);
+      const lockedTargetId =
+        isNavigationLockActive() &&
+        pendingNavigation &&
+        performance.now() <= pendingNavigation.targetFreezeExpiresAt
+          ? pendingNavigation.frozenActiveId
+          : undefined;
       const activeId = isInitialLayoutPending
         ? findHashedEntry(state.entries)?.id || findActiveId(state.entries)
-        : findActiveId(state.entries);
+        : lockedTargetId || findActiveId(state.entries);
       const activeEntry = setActive(state.entries, activeId);
       if (!activeEntry) return;
 
@@ -907,7 +983,14 @@ import { getTocConfig } from "@/shared/plugin-config";
       scheduleSync();
     };
 
-    window.addEventListener("scroll", scheduleSync, { passive: true });
+    window.addEventListener(
+      "scroll",
+      () => {
+        touchNavigationSettle();
+        scheduleSync();
+      },
+      { passive: true },
+    );
     window.addEventListener("resize", scheduleSync, { passive: true });
     window.addEventListener("load", handleLoad, { once: true });
     window.addEventListener("pageshow", scheduleSync);
