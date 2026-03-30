@@ -444,8 +444,101 @@ describe("toc plugin", () => {
       top: 396,
       behavior: "smooth",
     });
-    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[1]).not.toHaveAttribute("aria-current");
     expect(document.activeElement).not.toBe(links[1]);
+  });
+
+  it("keeps the toc expanded briefly after pointer navigation", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>클릭 대상</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1500,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
+
+    vi.advanceTimersByTime(1500);
+    await flushMicrotasks();
+
+    expect(root.classList.contains("is-navigation-locked")).toBe(false);
+  });
+
+  it("stops rescheduling sync frames when the toc becomes hidden mid-navigation", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>클릭 대상</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1500,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    requestAnimationFrameMock.mockClear();
+
+    setViewportWidth(1024);
+    window.dispatchEvent(new Event("resize"));
+    await flushAnimationFrame();
+
+    expect(root.hidden).toBe(true);
+    expect(root.classList.contains("is-navigation-locked")).toBe(false);
+
+    const syncFrameCount = requestAnimationFrameMock.mock.calls.length;
+
+    await flushAll(4);
+
+    expect(requestAnimationFrameMock).toHaveBeenCalledTimes(syncFrameCount);
   });
 
   it("does not recenter the toc rail when a clicked item is already visible", async () => {
@@ -491,7 +584,7 @@ describe("toc plugin", () => {
     });
     Object.defineProperty(links[1], "offsetTop", {
       configurable: true,
-      value: 54,
+      value: 66,
     });
     Object.defineProperty(links[2], "offsetTop", {
       configurable: true,
@@ -515,8 +608,149 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(root.scrollTop).toBe(36);
-    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(root.scrollTop).toBe(40);
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[1]).not.toHaveAttribute("aria-current");
+  });
+
+  it("nudges the toc rail down when a clicked item is clipped by the bottom fade", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>중간 섹션</h3>
+      <h3>클릭 대상</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+    mockRect(headings[2], { top: 520 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 280,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 130,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 40;
+
+    links[2].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(54);
+  });
+
+  it("nudges the toc rail up when a clicked item is clipped by the top fade", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>클릭 대상</h3>
+      <h3>다음 섹션</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+    mockRect(headings[2], { top: 520 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 280,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 90,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 220,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 80;
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(66);
   });
 
   it("keeps the toc rail stable while active steps toward a lower target", async () => {
@@ -592,7 +826,7 @@ describe("toc plugin", () => {
     });
     Object.defineProperty(links[2], "offsetTop", {
       configurable: true,
-      value: 220,
+      value: 214,
     });
 
     for (const link of links) {
@@ -611,8 +845,8 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(links[2]).toHaveAttribute("aria-current", "location");
-    expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).not.toHaveAttribute("aria-current");
     expect(root.scrollTop).toBe(138);
 
     topMap.set(headings[0], -40);
@@ -622,8 +856,16 @@ describe("toc plugin", () => {
     window.dispatchEvent(new Event("scroll"));
     await flushAnimationFrame();
 
+    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).not.toHaveAttribute("aria-current");
+    expect(root.scrollTop).toBe(138);
+
+    vi.advanceTimersByTime(250);
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
     expect(links[1]).toHaveAttribute("aria-current", "location");
-    expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(links[2]).not.toHaveAttribute("aria-current");
     expect(root.scrollTop).toBe(138);
 
     topMap.set(headings[0], -280);
@@ -728,8 +970,9 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(links[0]).toHaveAttribute("aria-current", "location");
+    expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     topMap.set(headings[0], -280);
     topMap.set(headings[1], -40);
@@ -740,6 +983,16 @@ describe("toc plugin", () => {
 
     expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
+
+    vi.advanceTimersByTime(250);
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(links[2]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).not.toHaveAttribute("aria-current");
+    expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     topMap.set(headings[0], -40);
     topMap.set(headings[1], 72);
@@ -750,6 +1003,7 @@ describe("toc plugin", () => {
 
     expect(links[1]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     topMap.set(headings[0], 72);
     topMap.set(headings[1], 360);
@@ -760,6 +1014,12 @@ describe("toc plugin", () => {
 
     expect(links[0]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
+
+    vi.advanceTimersByTime(120);
+    await flushMicrotasks();
+
+    expect(root.classList.contains("is-navigation-locked")).toBe(false);
   });
 
   it("tracks the currently visible heading while scrolling", async () => {

@@ -21,6 +21,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const TOOLTIP_VISIBLE_CLASS = "is-visible";
   const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
+  const NAVIGATION_LOCK_CLASS = "is-navigation-locked";
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
@@ -42,6 +43,8 @@ import { getTocConfig } from "@/shared/plugin-config";
   const ACTIVE_OFFSET = 16;
   const SAFE_TOP_GAP = 24;
   const CLICK_NAVIGATION_LOCK_MS = 1400;
+  const CLICK_TARGET_FREEZE_MS = 220;
+  const CLICK_NAVIGATION_SETTLE_MS = 100;
 
   type HeadingItem = {
     heading: HTMLElement;
@@ -67,6 +70,10 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   type PendingNavigation = {
     expiresAt: number;
+    targetFreezeExpiresAt: number;
+    frozenActiveId: string;
+    destinationId: string;
+    destinationScrollTop: number;
   };
 
   type CreatedElement<T extends HTMLElement> = {
@@ -147,6 +154,22 @@ import { getTocConfig } from "@/shared/plugin-config";
       .join(" ");
   }
 
+  function getRelativeLuminance(rgb: string): number {
+    const channels = rgb
+      .split(/\s+/)
+      .map((value) => Number(value))
+      .slice(0, 3)
+      .map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.03928
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+
+    const [red = 1, green = 1, blue = 1] = channels;
+    return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+  }
+
   function hasVisibleBackground(color: string): boolean {
     if (!color || color === "transparent") return false;
 
@@ -182,6 +205,8 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   function setPalette(root: HTMLElement, surfaceSource: HTMLElement): void {
     const styles = getComputedStyle(surfaceSource);
+    const surfaceRgb =
+      parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255";
 
     root.style.setProperty(
       "--rp-toc-font-family",
@@ -191,10 +216,9 @@ import { getTocConfig } from "@/shared/plugin-config";
       "--rp-toc-ink",
       parseRgb(styles.color) ?? "24 24 27",
     );
-    root.style.setProperty(
-      "--rp-toc-surface",
-      parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255",
-    );
+    root.style.setProperty("--rp-toc-surface", surfaceRgb);
+    root.dataset.surfaceTone =
+      getRelativeLuminance(surfaceRgb) < 0.22 ? "dark" : "light";
   }
 
   function findCommonAncestor(
@@ -449,7 +473,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       document.documentElement.clientHeight,
       0,
     );
-    const gap = 10;
+    const gap = 6;
     const padding = 16;
     const rootLeft = Number.parseFloat(
       root.style.getPropertyValue("--rp-toc-left") || "0",
@@ -495,6 +519,7 @@ import { getTocConfig } from "@/shared/plugin-config";
         "--rp-toc-surface",
         root.style.getPropertyValue("--rp-toc-surface"),
       );
+      tooltip.dataset.surfaceTone = root.dataset.surfaceTone || "light";
     };
 
     const showTooltip = (entry: TocEntry): void => {
@@ -574,11 +599,13 @@ import { getTocConfig } from "@/shared/plugin-config";
     const entryHeight = Math.max(entry.link.offsetHeight, 20);
     const entryBottom = entryTop + entryHeight;
     const currentScrollTop = root.scrollTop;
-    const revealPadding = 18;
+    const revealPadding = 24;
     const visibleTop = currentScrollTop + revealPadding;
     const visibleBottom = currentScrollTop + viewportHeight - revealPadding;
+    const isFullyVisible =
+      entryTop >= visibleTop && entryBottom <= visibleBottom;
 
-    if (!force && entryTop >= visibleTop && entryBottom <= visibleBottom) {
+    if (!force && isFullyVisible) {
       return;
     }
 
@@ -761,6 +788,8 @@ import { getTocConfig } from "@/shared/plugin-config";
     const { element: tooltip, created: tooltipCreated } = createTooltip();
     let isInitialLayoutPending = document.readyState !== "complete";
     let pendingNavigation: PendingNavigation | null = null;
+    let pendingNavigationTimer = 0;
+    let pendingNavigationSettleTimer = 0;
     const initialState = createState(root);
     if (!initialState) {
       if (rootCreated) root.remove();
@@ -770,8 +799,23 @@ import { getTocConfig } from "@/shared/plugin-config";
     let state: TocState = initialState;
     setPendingVisibility(root, isInitialLayoutPending);
 
-    const clearPendingNavigation = (): void => {
+    const clearPendingNavigation = (
+      options: { resync?: boolean } = {},
+    ): void => {
+      if (pendingNavigationTimer) {
+        window.clearTimeout(pendingNavigationTimer);
+        pendingNavigationTimer = 0;
+      }
+      if (pendingNavigationSettleTimer) {
+        window.clearTimeout(pendingNavigationSettleTimer);
+        pendingNavigationSettleTimer = 0;
+      }
       pendingNavigation = null;
+      root.classList.remove(NAVIGATION_LOCK_CLASS);
+
+      if (options.resync) {
+        scheduleSync();
+      }
     };
 
     const isNavigationLockActive = (): boolean => {
@@ -785,10 +829,71 @@ import { getTocConfig } from "@/shared/plugin-config";
       return true;
     };
 
-    const lockNavigationReveal = (): void => {
+    const lockNavigationReveal = (
+      destinationId: string,
+      destinationScrollTop: number,
+    ): void => {
+      if (pendingNavigationTimer) {
+        window.clearTimeout(pendingNavigationTimer);
+      }
+      if (pendingNavigationSettleTimer) {
+        window.clearTimeout(pendingNavigationSettleTimer);
+      }
+
       pendingNavigation = {
         expiresAt: performance.now() + CLICK_NAVIGATION_LOCK_MS,
+        targetFreezeExpiresAt: performance.now() + CLICK_TARGET_FREEZE_MS,
+        frozenActiveId: state.currentActiveId,
+        destinationId,
+        destinationScrollTop,
       };
+      root.classList.add(NAVIGATION_LOCK_CLASS);
+      pendingNavigationTimer = window.setTimeout(() => {
+        clearPendingNavigation({ resync: true });
+      }, CLICK_NAVIGATION_LOCK_MS);
+      pendingNavigationSettleTimer = window.setTimeout(() => {
+        if (hasReachedNavigationTarget()) {
+          clearPendingNavigation({ resync: true });
+          return;
+        }
+
+        pendingNavigationSettleTimer = 0;
+      }, CLICK_NAVIGATION_SETTLE_MS);
+    };
+
+    const hasReachedNavigationTarget = (): boolean => {
+      if (!pendingNavigation) return false;
+      const navigation = pendingNavigation;
+
+      const targetEntry = state.entries.find(
+        (entry) => entry.id === navigation.destinationId,
+      );
+      if (!targetEntry) return false;
+
+      const headerOffset = getResolvedHeaderOffset();
+      const targetTop = targetEntry.heading.getBoundingClientRect().top;
+
+      return (
+        Math.abs(window.scrollY - navigation.destinationScrollTop) <=
+          ACTIVE_OFFSET || Math.abs(targetTop - headerOffset) <= ACTIVE_OFFSET
+      );
+    };
+
+    const touchNavigationSettle = (): void => {
+      if (!pendingNavigation) return;
+
+      if (pendingNavigationSettleTimer) {
+        window.clearTimeout(pendingNavigationSettleTimer);
+      }
+
+      pendingNavigationSettleTimer = window.setTimeout(() => {
+        if (hasReachedNavigationTarget()) {
+          clearPendingNavigation({ resync: true });
+          return;
+        }
+
+        pendingNavigationSettleTimer = 0;
+      }, CLICK_NAVIGATION_SETTLE_MS);
     };
 
     const activateEntry = (
@@ -805,17 +910,25 @@ import { getTocConfig } from "@/shared/plugin-config";
     };
 
     const handleLinkActivation = (entry: TocEntry): void => {
+      const headerOffset = getResolvedHeaderOffset();
+      const destinationScrollTop = Math.max(
+        0,
+        window.scrollY +
+          entry.heading.getBoundingClientRect().top -
+          headerOffset,
+      );
+
       try {
         history.replaceState(null, "", `#${entry.id}`);
       } catch {
         // 해시 갱신이 실패해도 스크롤은 계속한다.
       }
 
-      lockNavigationReveal();
-      activateEntry(entry, { revealBehavior: "nearest" });
+      lockNavigationReveal(entry.id, destinationScrollTop);
+      revealActiveEntry(root, entry, { behavior: "nearest" });
       scrollElementIntoViewWithOffset(
         entry.heading,
-        getResolvedHeaderOffset(),
+        headerOffset,
         prefersReducedMotion() ? "auto" : "smooth",
       );
     };
@@ -853,9 +966,15 @@ import { getTocConfig } from "@/shared/plugin-config";
       }
 
       syncTooltipState(state.entries);
+      const lockedTargetId =
+        isNavigationLockActive() &&
+        pendingNavigation &&
+        performance.now() <= pendingNavigation.targetFreezeExpiresAt
+          ? pendingNavigation.frozenActiveId
+          : undefined;
       const activeId = isInitialLayoutPending
         ? findHashedEntry(state.entries)?.id || findActiveId(state.entries)
-        : findActiveId(state.entries);
+        : lockedTargetId || findActiveId(state.entries);
       const activeEntry = setActive(state.entries, activeId);
       if (!activeEntry) return;
 
@@ -907,7 +1026,14 @@ import { getTocConfig } from "@/shared/plugin-config";
       scheduleSync();
     };
 
-    window.addEventListener("scroll", scheduleSync, { passive: true });
+    window.addEventListener(
+      "scroll",
+      () => {
+        touchNavigationSettle();
+        scheduleSync();
+      },
+      { passive: true },
+    );
     window.addEventListener("resize", scheduleSync, { passive: true });
     window.addEventListener("load", handleLoad, { once: true });
     window.addEventListener("pageshow", scheduleSync);
