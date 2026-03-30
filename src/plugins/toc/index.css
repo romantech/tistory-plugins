@@ -83,7 +83,8 @@
 
 .rp-toc:hover,
 .rp-toc:focus-within {
-  scrollbar-color: rgb(var(--rp-toc-ink) / var(--rp-toc-scrollbar-alpha)) transparent;
+  scrollbar-color: rgb(var(--rp-toc-ink) / var(--rp-toc-scrollbar-alpha))
+    transparent;
 }
 
 .rp-toc:hover::-webkit-scrollbar-thumb,

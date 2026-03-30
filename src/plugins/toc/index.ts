@@ -205,7 +205,8 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   function setPalette(root: HTMLElement, surfaceSource: HTMLElement): void {
     const styles = getComputedStyle(surfaceSource);
-    const surfaceRgb = parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255";
+    const surfaceRgb =
+      parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255";
 
     root.style.setProperty(
       "--rp-toc-font-family",
