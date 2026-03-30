@@ -1336,6 +1336,59 @@ describe("toc plugin", () => {
     expect(links[1].getAttribute("href")).toBe("#또-다른-제목");
   });
 
+  it("updates top and bottom scroll fades as the toc rail scrolls", async () => {
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <h2>둘째 섹션</h2>
+      <h2>셋째 섹션</h2>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 2200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 420 });
+    mockRect(headings[2], { top: 760 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 320,
+    });
+
+    root.scrollTop = 0;
+    window.dispatchEvent(new Event("scroll"));
+    await flushAnimationFrame();
+
+    expect(root.dataset.scrollFade).toBe("bottom");
+
+    root.scrollTop = 80;
+    root.dispatchEvent(new Event("scroll"));
+
+    expect(root.dataset.scrollFade).toBe("both");
+
+    root.scrollTop = 200;
+    root.dispatchEvent(new Event("scroll"));
+
+    expect(root.dataset.scrollFade).toBe("top");
+  });
+
   it("strips heading-anchor markers and ignores related-post headings", async () => {
     const article = renderArticle(
       `
