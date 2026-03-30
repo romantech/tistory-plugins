@@ -363,6 +363,37 @@ import { getTocConfig } from "@/shared/plugin-config";
     root.classList.toggle(PENDING_CLASS, pending);
   }
 
+  function measureRootHeight(root: HTMLElement): number {
+    if (!root.hidden) {
+      return Math.max(root.offsetHeight, root.clientHeight);
+    }
+
+    const previousVisibility = root.style.getPropertyValue("visibility");
+    const previousPointerEvents = root.style.getPropertyValue("pointer-events");
+
+    root.hidden = false;
+    root.style.setProperty("visibility", "hidden");
+    root.style.setProperty("pointer-events", "none");
+
+    const height = Math.max(root.offsetHeight, root.clientHeight);
+
+    root.hidden = true;
+
+    if (previousVisibility) {
+      root.style.setProperty("visibility", previousVisibility);
+    } else {
+      root.style.removeProperty("visibility");
+    }
+
+    if (previousPointerEvents) {
+      root.style.setProperty("pointer-events", previousPointerEvents);
+    } else {
+      root.style.removeProperty("pointer-events");
+    }
+
+    return height;
+  }
+
   function positionTooltip(
     tooltip: HTMLElement,
     link: HTMLAnchorElement,
@@ -583,7 +614,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       return { hidden: true };
     }
 
-    const rootHeight = Math.max(root.offsetHeight, root.clientHeight);
+    const rootHeight = measureRootHeight(root);
     const desiredTop = Math.max(
       safeTop,
       Math.round(viewportHeight / 2 - rootHeight / 2),

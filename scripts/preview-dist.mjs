@@ -8,8 +8,6 @@ import { buildDist } from "./build-dist.mjs";
 
 const REPO_OVERRIDE_PATTERN =
   /^\/gh\/romantech\/tistory-plugins@[^/]+\/(dist\/.+)$/;
-const CHROME_EXECUTABLE_PATH =
-  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const DEFAULT_VIEWPORT = {
   width: 1600,
   height: 1200,
@@ -29,6 +27,24 @@ const BUILD_RELEVANT_EXTENSIONS = new Set([
   ".ts",
   ".tsx",
 ]);
+const SYSTEM_CHROME_EXECUTABLE_PATHS = [
+  process.env.RP_PREVIEW_BROWSER_PATH,
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  process.env.PROGRAMFILES
+    ? `${process.env.PROGRAMFILES}\\Google\\Chrome\\Application\\chrome.exe`
+    : null,
+  process.env["PROGRAMFILES(X86)"]
+    ? `${process.env["PROGRAMFILES(X86)"]}\\Google\\Chrome\\Application\\chrome.exe`
+    : null,
+  process.env.LOCALAPPDATA
+    ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`
+    : null,
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+].filter(Boolean);
 
 async function readLastPreviewUrl() {
   try {
@@ -195,6 +211,19 @@ async function fileExists(path) {
   }
 }
 
+async function findSystemChromeExecutablePath() {
+  for (const executablePath of SYSTEM_CHROME_EXECUTABLE_PATHS) {
+    try {
+      await access(executablePath, fsConstants.X_OK);
+      return executablePath;
+    } catch {
+      // Try the next browser candidate.
+    }
+  }
+
+  return null;
+}
+
 function getContentType(filePath) {
   if (filePath.endsWith(".css")) return MIME_TYPES[".css"];
   if (filePath.endsWith(".js")) return MIME_TYPES[".js"];
@@ -214,13 +243,37 @@ function resolveLocalDistPathFromUrl(url) {
 async function launchBrowser(headless, viewport, maximize) {
   const launchOptions = {
     headless,
-    executablePath: CHROME_EXECUTABLE_PATH,
     args: maximize
       ? ["--start-maximized"]
       : [`--window-size=${viewport.width},${viewport.height}`],
   };
 
-  return chromium.launch(launchOptions);
+  try {
+    return await chromium.launch(launchOptions);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("Executable doesn't exist")
+    ) {
+      const executablePath = await findSystemChromeExecutablePath();
+      if (executablePath) {
+        console.warn(
+          `Playwright Chromium is not installed. Falling back to ${executablePath}.`,
+        );
+
+        return chromium.launch({
+          ...launchOptions,
+          executablePath,
+        });
+      }
+
+      throw new Error(
+        `${error.message}\nNo compatible system Chrome/Chromium executable was found. Run \`pnpm exec playwright install\` or set \`RP_PREVIEW_BROWSER_PATH\`.`,
+      );
+    }
+
+    throw error;
+  }
 }
 
 async function getSourceSnapshot() {
