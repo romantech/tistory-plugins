@@ -578,11 +578,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
     if (viewportHeight <= 0 || maxScrollTop <= 0) return;
 
-    const {
-      behavior = "center",
-      force = false,
-      peekDirection,
-    } = options;
+    const { behavior = "center", force = false, peekDirection } = options;
     const entryTop = entry.link.offsetTop;
     const entryHeight = Math.max(entry.link.offsetHeight, 20);
     const entryBottom = entryTop + entryHeight;
@@ -983,7 +979,9 @@ import { getTocConfig } from "@/shared/plugin-config";
       const currentIndex = state.entries.findIndex(
         ({ id }) => id === state.currentActiveId,
       );
-      const destinationIndex = state.entries.findIndex(({ id }) => id === entry.id);
+      const destinationIndex = state.entries.findIndex(
+        ({ id }) => id === entry.id,
+      );
       const peekDirection =
         currentIndex >= 0 && destinationIndex >= 0
           ? destinationIndex > currentIndex
