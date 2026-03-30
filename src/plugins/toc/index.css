@@ -17,7 +17,7 @@
   --rp-toc-fade-strong-alpha: 0.96;
   --rp-toc-fade-soft-alpha: 0.74;
   --rp-toc-scrollbar-alpha: 0.18;
-  --rp-toc-link-idle-alpha: 0.47;
+  --rp-toc-link-idle-alpha: 0.45;
   --rp-toc-link-hover-alpha: 0.74;
   --rp-toc-link-active-alpha: 0.96;
   --rp-toc-link-hover-surface-alpha: 0;
@@ -51,7 +51,7 @@
   --rp-toc-fade-strong-alpha: 0.82;
   --rp-toc-fade-soft-alpha: 0.44;
   --rp-toc-scrollbar-alpha: 0.26;
-  --rp-toc-link-idle-alpha: 0.64;
+  --rp-toc-link-idle-alpha: 0.62;
   --rp-toc-link-hover-alpha: 0.88;
   --rp-toc-link-active-alpha: 0.98;
   --rp-toc-link-hover-surface-alpha: 0;
