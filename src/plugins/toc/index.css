@@ -12,6 +12,7 @@
   --rp-toc-top: 112px;
   --rp-toc-left: auto;
   --rp-toc-safe-top: 108px;
+  --rp-toc-scroll-fade-size: 18px;
   --rp-toc-width: 252px;
   position: fixed;
   top: var(--rp-toc-top);
@@ -59,6 +60,53 @@
 .rp-toc:hover::-webkit-scrollbar-thumb,
 .rp-toc:focus-within::-webkit-scrollbar-thumb {
   background: rgb(var(--rp-toc-ink) / 0.18);
+}
+
+.rp-toc::before,
+.rp-toc::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  display: block;
+  width: var(--rp-toc-width);
+  height: var(--rp-toc-scroll-fade-size);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 1;
+}
+
+.rp-toc::before {
+  top: 0;
+  margin-bottom: calc(var(--rp-toc-scroll-fade-size) * -1);
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--rp-toc-surface) / 0.96) 0,
+    rgb(var(--rp-toc-surface) / 0.74) 36%,
+    transparent 100%
+  );
+}
+
+.rp-toc::after {
+  bottom: 0;
+  margin-top: calc(var(--rp-toc-scroll-fade-size) * -1);
+  background: linear-gradient(
+    to top,
+    rgb(var(--rp-toc-surface) / 0.96) 0,
+    rgb(var(--rp-toc-surface) / 0.74) 36%,
+    transparent 100%
+  );
+}
+
+.rp-toc[data-scroll-fade="top"]:hover::before,
+.rp-toc[data-scroll-fade="top"]:focus-within::before,
+.rp-toc[data-scroll-fade="both"]:hover::before,
+.rp-toc[data-scroll-fade="both"]:focus-within::before,
+.rp-toc[data-scroll-fade="bottom"]:hover::after,
+.rp-toc[data-scroll-fade="bottom"]:focus-within::after,
+.rp-toc[data-scroll-fade="both"]:hover::after,
+.rp-toc[data-scroll-fade="both"]:focus-within::after {
+  opacity: 1;
 }
 
 .rp-toc-list {
@@ -249,6 +297,8 @@
 @media (prefers-reduced-motion: reduce) {
   .rp-toc,
   .rp-toc-list,
+  .rp-toc::before,
+  .rp-toc::after,
   .rp-toc-link::before,
   .rp-toc-label,
   .rp-toc-tooltip {

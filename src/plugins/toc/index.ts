@@ -24,6 +24,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
+  const SCROLL_FADE_EPSILON = 1;
   const RELATED_CATEGORY_SELECTORS = [".another-category", ".another_category"];
   const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
     ...RELATED_CATEGORY_SELECTORS,
@@ -363,6 +364,44 @@ import { getTocConfig } from "@/shared/plugin-config";
     root.classList.toggle(PENDING_CLASS, pending);
   }
 
+  function syncScrollFadeState(root: HTMLElement): void {
+    if (root.hidden) {
+      delete root.dataset.scrollFade;
+      return;
+    }
+
+    const viewportHeight = root.clientHeight;
+    const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
+    if (
+      viewportHeight <= 0 ||
+      maxScrollTop <= SCROLL_FADE_EPSILON ||
+      Number.isNaN(maxScrollTop)
+    ) {
+      delete root.dataset.scrollFade;
+      return;
+    }
+
+    const hasTopFade = root.scrollTop > SCROLL_FADE_EPSILON;
+    const hasBottomFade = root.scrollTop < maxScrollTop - SCROLL_FADE_EPSILON;
+
+    if (hasTopFade && hasBottomFade) {
+      root.dataset.scrollFade = "both";
+      return;
+    }
+
+    if (hasTopFade) {
+      root.dataset.scrollFade = "top";
+      return;
+    }
+
+    if (hasBottomFade) {
+      root.dataset.scrollFade = "bottom";
+      return;
+    }
+
+    delete root.dataset.scrollFade;
+  }
+
   function measureRootHeight(root: HTMLElement): number {
     if (!root.hidden) {
       return Math.max(root.offsetHeight, root.clientHeight);
@@ -561,6 +600,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     if (Math.abs(nextScrollTop - currentScrollTop) <= 1) return;
     root.scrollTop = nextScrollTop;
+    syncScrollFadeState(root);
   }
 
   function findActiveId(entries: TocEntry[]): string {
@@ -643,6 +683,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   function applyRootLayout(root: HTMLElement, layout: RootLayout): void {
     if (layout.hidden) {
       root.hidden = true;
+      syncScrollFadeState(root);
       return;
     }
 
@@ -784,6 +825,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       if (!nextState) {
         clearPendingNavigation();
         root.hidden = true;
+        syncScrollFadeState(root);
         hideTooltip(tooltip);
         return false;
       }
@@ -805,6 +847,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       if (root.hidden) {
         clearPendingNavigation();
         setPendingVisibility(root, isInitialLayoutPending);
+        syncScrollFadeState(root);
         hideTooltip(tooltip);
         return;
       }
@@ -824,6 +867,7 @@ import { getTocConfig } from "@/shared/plugin-config";
         }
       }
 
+      syncScrollFadeState(root);
       setPendingVisibility(root, isInitialLayoutPending);
       if (isInitialLayoutPending) {
         hideTooltip(tooltip);
@@ -867,6 +911,13 @@ import { getTocConfig } from "@/shared/plugin-config";
     window.addEventListener("resize", scheduleSync, { passive: true });
     window.addEventListener("load", handleLoad, { once: true });
     window.addEventListener("pageshow", scheduleSync);
+    root.addEventListener(
+      "scroll",
+      () => {
+        syncScrollFadeState(root);
+      },
+      { passive: true },
+    );
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", scheduleSync, {
