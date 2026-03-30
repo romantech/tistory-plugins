@@ -512,7 +512,7 @@ async function main() {
     options.plugins.length > 0 ? new Set(options.plugins) : null;
 
   await buildDist({ plugins: selectedPlugins });
-  const injectedAssets =
+  let injectedAssets =
     options.injectPlugins.length > 0
       ? await getInjectAssetEntries(options.injectPlugins)
       : [];
@@ -648,6 +648,9 @@ async function main() {
           console.log(`Source changed: ${reason}`);
           console.log(`Rebuilding: ${rebuildLabel}`);
           await buildDist({ plugins: rebuildPlan.plugins ?? [] });
+          if (options.injectPlugins.length > 0) {
+            injectedAssets = await getInjectAssetEntries(options.injectPlugins);
+          }
           const updated = await loadPreviewPage(
             page,
             options,
