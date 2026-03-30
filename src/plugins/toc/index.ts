@@ -155,6 +155,22 @@ import { getTocConfig } from "@/shared/plugin-config";
       .join(" ");
   }
 
+  function getRelativeLuminance(rgb: string): number {
+    const channels = rgb
+      .split(/\s+/)
+      .map((value) => Number(value))
+      .slice(0, 3)
+      .map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.03928
+          ? normalized / 12.92
+          : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+
+    const [red = 1, green = 1, blue = 1] = channels;
+    return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+  }
+
   function hasVisibleBackground(color: string): boolean {
     if (!color || color === "transparent") return false;
 
@@ -190,6 +206,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
   function setPalette(root: HTMLElement, surfaceSource: HTMLElement): void {
     const styles = getComputedStyle(surfaceSource);
+    const surfaceRgb = parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255";
 
     root.style.setProperty(
       "--rp-toc-font-family",
@@ -199,10 +216,9 @@ import { getTocConfig } from "@/shared/plugin-config";
       "--rp-toc-ink",
       parseRgb(styles.color) ?? "24 24 27",
     );
-    root.style.setProperty(
-      "--rp-toc-surface",
-      parseRgb(getSurfaceColor(surfaceSource)) ?? "255 255 255",
-    );
+    root.style.setProperty("--rp-toc-surface", surfaceRgb);
+    root.dataset.surfaceTone =
+      getRelativeLuminance(surfaceRgb) < 0.22 ? "dark" : "light";
   }
 
   function findCommonAncestor(
@@ -503,6 +519,7 @@ import { getTocConfig } from "@/shared/plugin-config";
         "--rp-toc-surface",
         root.style.getPropertyValue("--rp-toc-surface"),
       );
+      tooltip.dataset.surfaceTone = root.dataset.surfaceTone || "light";
     };
 
     const showTooltip = (entry: TocEntry): void => {
