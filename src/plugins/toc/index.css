@@ -54,11 +54,11 @@
   --rp-toc-fade-soft-alpha: 0.44;
   --rp-toc-scrollbar-alpha: 0.26;
   --rp-toc-link-idle-alpha: 0.62;
-  --rp-toc-link-hover-alpha: 0.88;
+  --rp-toc-link-hover-alpha: 0.9;
   --rp-toc-link-active-alpha: 0.98;
   --rp-toc-link-active-surface-alpha: 0.15;
   --rp-toc-bar-idle-alpha: 0.34;
-  --rp-toc-bar-hover-alpha: 0.56;
+  --rp-toc-bar-hover-alpha: 0.6;
   --rp-toc-bar-active-alpha: 0.95;
   --rp-toc-focus-ring-alpha: 0.52;
   --rp-toc-focus-ring-soft-alpha: 0.2;
