@@ -73,6 +73,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     targetFreezeExpiresAt: number;
     frozenActiveId: string;
     destinationId: string;
+    destinationScrollTop: number;
   };
 
   type CreatedElement<T extends HTMLElement> = {
@@ -778,7 +779,9 @@ import { getTocConfig } from "@/shared/plugin-config";
     let state: TocState = initialState;
     setPendingVisibility(root, isInitialLayoutPending);
 
-    const clearPendingNavigation = (): void => {
+    const clearPendingNavigation = (
+      options: { resync?: boolean } = {},
+    ): void => {
       if (pendingNavigationTimer) {
         window.clearTimeout(pendingNavigationTimer);
         pendingNavigationTimer = 0;
@@ -789,7 +792,10 @@ import { getTocConfig } from "@/shared/plugin-config";
       }
       pendingNavigation = null;
       root.classList.remove(NAVIGATION_LOCK_CLASS);
-      scheduleSync();
+
+      if (options.resync) {
+        scheduleSync();
+      }
     };
 
     const isNavigationLockActive = (): boolean => {
@@ -803,7 +809,10 @@ import { getTocConfig } from "@/shared/plugin-config";
       return true;
     };
 
-    const lockNavigationReveal = (destinationId: string): void => {
+    const lockNavigationReveal = (
+      destinationId: string,
+      destinationScrollTop: number,
+    ): void => {
       if (pendingNavigationTimer) {
         window.clearTimeout(pendingNavigationTimer);
       }
@@ -816,14 +825,15 @@ import { getTocConfig } from "@/shared/plugin-config";
         targetFreezeExpiresAt: performance.now() + CLICK_TARGET_FREEZE_MS,
         frozenActiveId: state.currentActiveId,
         destinationId,
+        destinationScrollTop,
       };
       root.classList.add(NAVIGATION_LOCK_CLASS);
       pendingNavigationTimer = window.setTimeout(() => {
-        clearPendingNavigation();
+        clearPendingNavigation({ resync: true });
       }, CLICK_NAVIGATION_LOCK_MS);
       pendingNavigationSettleTimer = window.setTimeout(() => {
         if (hasReachedNavigationTarget()) {
-          clearPendingNavigation();
+          clearPendingNavigation({ resync: true });
           return;
         }
 
@@ -840,9 +850,13 @@ import { getTocConfig } from "@/shared/plugin-config";
       );
       if (!targetEntry) return false;
 
+      const headerOffset = getResolvedHeaderOffset();
+      const targetTop = targetEntry.heading.getBoundingClientRect().top;
+
       return (
-        targetEntry.heading.getBoundingClientRect().top <=
-        getResolvedHeaderOffset() + ACTIVE_OFFSET
+        Math.abs(window.scrollY - navigation.destinationScrollTop) <=
+          ACTIVE_OFFSET ||
+        Math.abs(targetTop - headerOffset) <= ACTIVE_OFFSET
       );
     };
 
@@ -855,7 +869,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
       pendingNavigationSettleTimer = window.setTimeout(() => {
         if (hasReachedNavigationTarget()) {
-          clearPendingNavigation();
+          clearPendingNavigation({ resync: true });
           return;
         }
 
@@ -877,16 +891,22 @@ import { getTocConfig } from "@/shared/plugin-config";
     };
 
     const handleLinkActivation = (entry: TocEntry): void => {
+      const headerOffset = getResolvedHeaderOffset();
+      const destinationScrollTop = Math.max(
+        0,
+        window.scrollY + entry.heading.getBoundingClientRect().top - headerOffset,
+      );
+
       try {
         history.replaceState(null, "", `#${entry.id}`);
       } catch {
         // 해시 갱신이 실패해도 스크롤은 계속한다.
       }
 
-      lockNavigationReveal(entry.id);
+      lockNavigationReveal(entry.id, destinationScrollTop);
       scrollElementIntoViewWithOffset(
         entry.heading,
-        getResolvedHeaderOffset(),
+        headerOffset,
         prefersReducedMotion() ? "auto" : "smooth",
       );
     };

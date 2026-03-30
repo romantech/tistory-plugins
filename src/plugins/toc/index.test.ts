@@ -491,6 +491,56 @@ describe("toc plugin", () => {
     expect(root.classList.contains("is-navigation-locked")).toBe(false);
   });
 
+  it("stops rescheduling sync frames when the toc becomes hidden mid-navigation", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>클릭 대상</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1500,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    requestAnimationFrameMock.mockClear();
+
+    setViewportWidth(1024);
+    window.dispatchEvent(new Event("resize"));
+    await flushAnimationFrame();
+
+    expect(root.hidden).toBe(true);
+    expect(root.classList.contains("is-navigation-locked")).toBe(false);
+
+    const syncFrameCount = requestAnimationFrameMock.mock.calls.length;
+
+    await flushAll(4);
+
+    expect(requestAnimationFrameMock).toHaveBeenCalledTimes(syncFrameCount);
+  });
+
   it("does not recenter the toc rail when a clicked item is already visible", async () => {
     const article = renderArticle(
       `
@@ -782,6 +832,7 @@ describe("toc plugin", () => {
 
     expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     topMap.set(headings[0], -280);
     topMap.set(headings[1], -40);
@@ -792,6 +843,7 @@ describe("toc plugin", () => {
 
     expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     vi.advanceTimersByTime(250);
     window.dispatchEvent(new Event("scroll"));
@@ -800,6 +852,7 @@ describe("toc plugin", () => {
     expect(links[2]).toHaveAttribute("aria-current", "location");
     expect(links[0]).not.toHaveAttribute("aria-current");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     topMap.set(headings[0], -40);
     topMap.set(headings[1], 72);
@@ -810,6 +863,7 @@ describe("toc plugin", () => {
 
     expect(links[1]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
 
     topMap.set(headings[0], 72);
     topMap.set(headings[1], 360);
@@ -820,6 +874,12 @@ describe("toc plugin", () => {
 
     expect(links[0]).toHaveAttribute("aria-current", "location");
     expect(root.scrollTop).toBe(0);
+    expect(root.classList.contains("is-navigation-locked")).toBe(true);
+
+    vi.advanceTimersByTime(120);
+    await flushMicrotasks();
+
+    expect(root.classList.contains("is-navigation-locked")).toBe(false);
   });
 
   it("tracks the currently visible heading while scrolling", async () => {
