@@ -455,7 +455,7 @@ import { getTocConfig } from "@/shared/plugin-config";
       document.documentElement.clientHeight,
       0,
     );
-    const gap = 10;
+    const gap = 6;
     const padding = 16;
     const rootLeft = Number.parseFloat(
       root.style.getPropertyValue("--rp-toc-left") || "0",
