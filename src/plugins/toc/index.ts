@@ -45,6 +45,7 @@ import { getTocConfig } from "@/shared/plugin-config";
   const CLICK_NAVIGATION_LOCK_MS = 1400;
   const CLICK_TARGET_FREEZE_MS = 220;
   const CLICK_NAVIGATION_SETTLE_MS = 100;
+  const MIN_ADJACENT_PEEK_SIZE = 12;
 
   type HeadingItem = {
     heading: HTMLElement;
@@ -570,22 +571,29 @@ import { getTocConfig } from "@/shared/plugin-config";
     options: {
       behavior?: "center" | "nearest";
       force?: boolean;
+      peekDirection?: "forward" | "backward";
     } = {},
   ): void {
     const viewportHeight = root.clientHeight;
     const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
     if (viewportHeight <= 0 || maxScrollTop <= 0) return;
 
-    const { behavior = "center", force = false } = options;
+    const {
+      behavior = "center",
+      force = false,
+      peekDirection,
+    } = options;
     const entryTop = entry.link.offsetTop;
     const entryHeight = Math.max(entry.link.offsetHeight, 20);
     const entryBottom = entryTop + entryHeight;
     const currentScrollTop = root.scrollTop;
-    const revealPadding = 18;
+    const revealPadding = 24;
     const visibleTop = currentScrollTop + revealPadding;
     const visibleBottom = currentScrollTop + viewportHeight - revealPadding;
+    const isFullyVisible =
+      entryTop >= visibleTop && entryBottom <= visibleBottom;
 
-    if (!force && entryTop >= visibleTop && entryBottom <= visibleBottom) {
+    if (!force && isFullyVisible && !peekDirection) {
       return;
     }
 
@@ -596,11 +604,78 @@ import { getTocConfig } from "@/shared/plugin-config";
         nextScrollTop = entryTop - revealPadding;
       } else if (entryBottom > visibleBottom) {
         nextScrollTop = entryBottom - viewportHeight + revealPadding;
-      } else {
+      } else if (!peekDirection) {
         return;
       }
     } else {
       nextScrollTop = Math.round(entryTop - (viewportHeight - entryHeight) / 2);
+    }
+
+    if (
+      peekDirection === "forward" &&
+      isFullyVisible &&
+      nextScrollTop >= currentScrollTop - 1
+    ) {
+      const nextItem = entry.link.parentElement?.nextElementSibling;
+      const nextLink =
+        nextItem instanceof HTMLElement
+          ? nextItem.querySelector<HTMLAnchorElement>(`.${LINK_CLASS}`)
+          : null;
+
+      if (nextLink instanceof HTMLAnchorElement) {
+        const nextHeight = Math.max(nextLink.offsetHeight, 20);
+        const adjacentRevealSize = Math.max(MIN_ADJACENT_PEEK_SIZE, nextHeight);
+        const entryMidpoint = entryTop + entryHeight / 2;
+        const viewportMidpoint = nextScrollTop + viewportHeight / 2;
+        const nextPeekBoundary =
+          nextScrollTop + viewportHeight - revealPadding - adjacentRevealSize;
+
+        if (
+          entryMidpoint >= viewportMidpoint &&
+          nextLink.offsetTop > nextPeekBoundary
+        ) {
+          nextScrollTop = Math.max(
+            nextScrollTop,
+            nextLink.offsetTop -
+              (viewportHeight - revealPadding - adjacentRevealSize),
+          );
+        }
+      }
+    }
+
+    if (
+      peekDirection === "backward" &&
+      isFullyVisible &&
+      nextScrollTop <= currentScrollTop + 1
+    ) {
+      const previousItem = entry.link.parentElement?.previousElementSibling;
+      const previousLink =
+        previousItem instanceof HTMLElement
+          ? previousItem.querySelector<HTMLAnchorElement>(`.${LINK_CLASS}`)
+          : null;
+
+      if (previousLink instanceof HTMLAnchorElement) {
+        const previousHeight = Math.max(previousLink.offsetHeight, 20);
+        const adjacentRevealSize = Math.max(
+          MIN_ADJACENT_PEEK_SIZE,
+          previousHeight,
+        );
+        const previousBottom = previousLink.offsetTop + previousHeight;
+        const entryMidpoint = entryTop + entryHeight / 2;
+        const viewportMidpoint = nextScrollTop + viewportHeight / 2;
+        const previousPeekBoundary =
+          nextScrollTop + revealPadding + adjacentRevealSize;
+
+        if (
+          entryMidpoint <= viewportMidpoint &&
+          previousBottom < previousPeekBoundary
+        ) {
+          nextScrollTop = Math.min(
+            nextScrollTop,
+            previousBottom - revealPadding - adjacentRevealSize,
+          );
+        }
+      }
     }
 
     nextScrollTop = Math.min(maxScrollTop, Math.max(0, nextScrollTop));
@@ -905,6 +980,22 @@ import { getTocConfig } from "@/shared/plugin-config";
       }
 
       lockNavigationReveal(entry.id, destinationScrollTop);
+      const currentIndex = state.entries.findIndex(
+        ({ id }) => id === state.currentActiveId,
+      );
+      const destinationIndex = state.entries.findIndex(({ id }) => id === entry.id);
+      const peekDirection =
+        currentIndex >= 0 && destinationIndex >= 0
+          ? destinationIndex > currentIndex
+            ? "forward"
+            : destinationIndex < currentIndex
+              ? "backward"
+              : undefined
+          : undefined;
+      revealActiveEntry(root, entry, {
+        behavior: "nearest",
+        peekDirection,
+      });
       scrollElementIntoViewWithOffset(
         entry.heading,
         headerOffset,

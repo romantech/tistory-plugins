@@ -584,7 +584,7 @@ describe("toc plugin", () => {
     });
     Object.defineProperty(links[1], "offsetTop", {
       configurable: true,
-      value: 54,
+      value: 66,
     });
     Object.defineProperty(links[2], "offsetTop", {
       configurable: true,
@@ -611,6 +611,298 @@ describe("toc plugin", () => {
     expect(root.scrollTop).toBe(40);
     expect(links[0]).toHaveAttribute("aria-current", "location");
     expect(links[1]).not.toHaveAttribute("aria-current");
+  });
+
+  it("nudges the toc rail down when a clicked item is clipped by the bottom fade", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>중간 섹션</h3>
+      <h3>클릭 대상</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+    mockRect(headings[2], { top: 520 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 280,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 130,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 40;
+
+    links[2].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(54);
+  });
+
+  it("peeks at the next toc item when clicking a lower visible entry", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>중간 섹션</h3>
+      <h3>클릭 대상</h3>
+      <h3>다음 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+    mockRect(headings[2], { top: 520 });
+    mockRect(headings[3], { top: 860 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 360,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 110,
+    });
+    Object.defineProperty(links[3], "offsetTop", {
+      configurable: true,
+      value: 150,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 40;
+
+    links[2].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(74);
+  });
+
+  it("peeks at the previous toc item when clicking an upper visible entry", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>이전 섹션</h3>
+      <h3>클릭 대상</h3>
+      <h3>다음 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: -260 });
+    mockRect(headings[1], { top: -40 });
+    mockRect(headings[2], { top: 180 });
+    mockRect(headings[3], { top: 80 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 360,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 54,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 100,
+    });
+    Object.defineProperty(links[3], "offsetTop", {
+      configurable: true,
+      value: 150,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 70;
+
+    links[2].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(30);
+  });
+
+  it("nudges the toc rail up when a clicked item is clipped by the top fade", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>클릭 대상</h3>
+      <h3>다음 섹션</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+    mockRect(headings[2], { top: 520 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    Object.defineProperty(root, "clientHeight", {
+      configurable: true,
+      value: 120,
+    });
+    Object.defineProperty(root, "scrollHeight", {
+      configurable: true,
+      value: 280,
+    });
+
+    Object.defineProperty(links[0], "offsetTop", {
+      configurable: true,
+      value: 0,
+    });
+    Object.defineProperty(links[1], "offsetTop", {
+      configurable: true,
+      value: 90,
+    });
+    Object.defineProperty(links[2], "offsetTop", {
+      configurable: true,
+      value: 220,
+    });
+
+    for (const link of links) {
+      Object.defineProperty(link, "offsetHeight", {
+        configurable: true,
+        value: 20,
+      });
+    }
+
+    root.scrollTop = 80;
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.scrollTop).toBe(66);
   });
 
   it("keeps the toc rail stable while active steps toward a lower target", async () => {
@@ -686,7 +978,7 @@ describe("toc plugin", () => {
     });
     Object.defineProperty(links[2], "offsetTop", {
       configurable: true,
-      value: 220,
+      value: 214,
     });
 
     for (const link of links) {
