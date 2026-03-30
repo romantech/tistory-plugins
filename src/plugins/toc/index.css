@@ -61,7 +61,7 @@
   --rp-toc-link-hover-alpha: 0.88;
   --rp-toc-link-active-alpha: 0.98;
   --rp-toc-link-hover-surface-alpha: 0.08;
-  --rp-toc-link-active-surface-alpha: 0.09;
+  --rp-toc-link-active-surface-alpha: 0.11;
   --rp-toc-bar-idle-alpha: 0.34;
   --rp-toc-bar-hover-alpha: 0.56;
   --rp-toc-bar-active-alpha: 0.95;
@@ -177,6 +177,7 @@
   position: relative;
   --rp-toc-indent: 0px;
   display: block;
+  isolation: isolate;
   min-height: 16px;
   padding: var(--rp-toc-link-block)
     calc(var(--rp-toc-rail-space) + var(--rp-toc-indent))
@@ -210,6 +211,8 @@
   overflow: hidden;
   text-overflow: clip;
   white-space: nowrap;
+  position: relative;
+  z-index: 1;
   opacity: 0;
   transform: translateX(8px);
   transition:
@@ -223,6 +226,24 @@
 .rp-toc.is-navigation-locked .rp-toc-label {
   opacity: 1;
   transform: translateX(0);
+}
+
+.rp-toc-link::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: calc(
+    var(--rp-toc-bar-width, 28px) +
+    var(--rp-toc-bar-end) +
+    var(--rp-toc-bar-end)
+  );
+  border-radius: inherit;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
+  opacity: 0;
+  transition: opacity 0.18s ease;
 }
 
 .rp-toc-link.is-truncated .rp-toc-label {
@@ -251,6 +272,7 @@
   height: var(--rp-toc-bar-height);
   border-radius: 999px;
   background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-idle-alpha));
+  z-index: 1;
   transform: translateY(-50%);
   transition:
     background-color 0.18s ease,
@@ -319,11 +341,21 @@
   box-shadow: none;
 }
 
+.rp-toc-link.is-active::after {
+  opacity: 1;
+}
+
 .rp-toc:hover .rp-toc-link.is-active,
 .rp-toc:focus-within .rp-toc-link.is-active,
 .rp-toc.is-navigation-locked .rp-toc-link.is-active {
   background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
   box-shadow: 0 0 12px rgb(var(--rp-toc-ink) / var(--rp-toc-active-glow-alpha));
+}
+
+.rp-toc:hover .rp-toc-link.is-active::after,
+.rp-toc:focus-within .rp-toc-link.is-active::after,
+.rp-toc.is-navigation-locked .rp-toc-link.is-active::after {
+  opacity: 0;
 }
 
 .rp-toc-link.is-active .rp-toc-label {
@@ -389,6 +421,7 @@
   .rp-toc-list,
   .rp-toc::before,
   .rp-toc::after,
+  .rp-toc-link::after,
   .rp-toc-link::before,
   .rp-toc-label,
   .rp-toc-tooltip {
