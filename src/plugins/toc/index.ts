@@ -855,8 +855,7 @@ import { getTocConfig } from "@/shared/plugin-config";
 
       return (
         Math.abs(window.scrollY - navigation.destinationScrollTop) <=
-          ACTIVE_OFFSET ||
-        Math.abs(targetTop - headerOffset) <= ACTIVE_OFFSET
+          ACTIVE_OFFSET || Math.abs(targetTop - headerOffset) <= ACTIVE_OFFSET
       );
     };
 
@@ -894,7 +893,9 @@ import { getTocConfig } from "@/shared/plugin-config";
       const headerOffset = getResolvedHeaderOffset();
       const destinationScrollTop = Math.max(
         0,
-        window.scrollY + entry.heading.getBoundingClientRect().top - headerOffset,
+        window.scrollY +
+          entry.heading.getBoundingClientRect().top -
+          headerOffset,
       );
 
       try {
