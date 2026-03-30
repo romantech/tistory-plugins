@@ -71,6 +71,7 @@ async function writeLastPreviewUrl(url) {
 
 async function parseArgs(argv) {
   const options = {
+    injectPlugins: [],
     plugins: [],
     headless: false,
     watch: false,
@@ -99,6 +100,20 @@ async function parseArgs(argv) {
 
     if (argument === "--headless") {
       options.headless = true;
+      continue;
+    }
+
+    if (argument === "--inject") {
+      const value = argv[index + 1];
+      if (!value) throw new Error("Missing plugin name after --inject.");
+
+      options.injectPlugins.push(
+        ...value
+          .split(",")
+          .map((plugin) => plugin.trim())
+          .filter(Boolean),
+      );
+      index += 1;
       continue;
     }
 
@@ -150,6 +165,17 @@ async function parseArgs(argv) {
       continue;
     }
 
+    if (argument.startsWith("--inject=")) {
+      const [, rawValue = ""] = argument.split("=", 2);
+      options.injectPlugins.push(
+        ...rawValue
+          .split(",")
+          .map((plugin) => plugin.trim())
+          .filter(Boolean),
+      );
+      continue;
+    }
+
     if (argument.startsWith("--close-after-ms=")) {
       const [, rawValue = ""] = argument.split("=", 2);
       const parsed = Number.parseInt(rawValue, 10);
@@ -193,11 +219,18 @@ async function parseArgs(argv) {
 
   if (!options.url) {
     throw new Error(
-      "Usage: pnpm preview <url> [--plugin toc] [--watch] [--headless] [--close-after-ms 1000]\nTip: after the first run with a URL, you can reuse the last URL with just `pnpm preview`.",
+      "Usage: pnpm preview <url> [--plugin <plugin>] [--inject <plugin>] [--watch] [--headless] [--close-after-ms 1000]\nTip: after the first run with a URL, you can reuse the last URL with just `pnpm preview`.",
     );
   }
 
+  options.injectPlugins = [...new Set(options.injectPlugins)].sort();
   options.plugins = [...new Set(options.plugins)].sort();
+
+  if (options.injectPlugins.length > 0 && options.plugins.length > 0) {
+    throw new Error(
+      "Do not combine --inject with --plugin. Use one mode only.",
+    );
+  }
 
   return options;
 }
@@ -238,6 +271,52 @@ function resolveLocalDistPathFromUrl(url) {
   if (!matched) return null;
 
   return resolve(process.cwd(), matched[1]);
+}
+
+async function getInjectAssetEntries(plugins) {
+  const assets = [];
+
+  for (const plugin of plugins) {
+    const cssPath = resolve(process.cwd(), `dist/${plugin}/index.min.css`);
+    const jsPath = resolve(process.cwd(), `dist/${plugin}/index.min.js`);
+
+    if (await fileExists(cssPath)) {
+      assets.push({
+        plugin,
+        type: "css",
+        localPath: cssPath,
+      });
+    }
+
+    if (await fileExists(jsPath)) {
+      assets.push({
+        plugin,
+        type: "js",
+        localPath: jsPath,
+      });
+    }
+  }
+
+  if (assets.length === 0) {
+    throw new Error(
+      `No injectable dist assets were found for: ${plugins.join(", ")}`,
+    );
+  }
+
+  return assets;
+}
+
+async function injectAssets(page, assets) {
+  for (const asset of assets) {
+    if (asset.type === "css") {
+      await page.addStyleTag({ path: asset.localPath });
+      continue;
+    }
+
+    await page.addScriptTag({ path: asset.localPath });
+  }
+
+  await page.waitForTimeout(50);
 }
 
 async function launchBrowser(headless, viewport, maximize) {
@@ -384,7 +463,7 @@ function getRebuildPlan(changedFiles, selectedPlugins) {
   };
 }
 
-async function loadPreviewPage(page, options, mode) {
+async function loadPreviewPage(page, options, mode, injectedAssets = []) {
   if (mode === "initial") {
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     await writeLastPreviewUrl(options.url);
@@ -393,6 +472,10 @@ async function loadPreviewPage(page, options, mode) {
   }
 
   await page.waitForLoadState("networkidle").catch(() => {});
+
+  if (options.injectPlugins.length > 0) {
+    await injectAssets(page, injectedAssets);
+  }
 
   const title = await page.title();
   const diagnostics = await page.evaluate(() => {
@@ -423,11 +506,16 @@ function logDiagnostics(title, diagnostics) {
 
 async function main() {
   const options = await parseArgs(process.argv.slice(2));
-  const buildPlugins = options.plugins;
+  const selectedPlugins =
+    options.injectPlugins.length > 0 ? options.injectPlugins : options.plugins;
   const overrideSet =
     options.plugins.length > 0 ? new Set(options.plugins) : null;
 
-  await buildDist({ plugins: buildPlugins });
+  await buildDist({ plugins: selectedPlugins });
+  const injectedAssets =
+    options.injectPlugins.length > 0
+      ? await getInjectAssetEntries(options.injectPlugins)
+      : [];
 
   const maximizeWindow = !options.headless && !options.viewportExplicit;
   const browser = await launchBrowser(
@@ -449,49 +537,57 @@ async function main() {
   const fulfilledAssets = [];
   let stopWatching = () => {};
 
-  await page.route("https://cdn.jsdelivr.net/**", async (route) => {
-    const requestUrl = route.request().url();
-    const localPath = resolveLocalDistPathFromUrl(requestUrl);
+  if (options.injectPlugins.length === 0) {
+    await page.route("https://cdn.jsdelivr.net/**", async (route) => {
+      const requestUrl = route.request().url();
+      const localPath = resolveLocalDistPathFromUrl(requestUrl);
 
-    if (!localPath) {
-      await route.continue();
-      return;
-    }
+      if (!localPath) {
+        await route.continue();
+        return;
+      }
 
-    const plugin = localPath.split("/dist/")[1]?.split("/")[0];
+      const plugin = localPath.split("/dist/")[1]?.split("/")[0];
 
-    if (overrideSet && (!plugin || !overrideSet.has(plugin))) {
-      await route.continue();
-      return;
-    }
+      if (overrideSet && (!plugin || !overrideSet.has(plugin))) {
+        await route.continue();
+        return;
+      }
 
-    if (!(await fileExists(localPath))) {
-      await route.continue();
-      return;
-    }
+      if (!(await fileExists(localPath))) {
+        await route.continue();
+        return;
+      }
 
-    fulfilledAssets.push({
-      url: requestUrl,
-      localPath,
+      fulfilledAssets.push({
+        url: requestUrl,
+        localPath,
+      });
+
+      await route.fulfill({
+        status: 200,
+        contentType: getContentType(localPath),
+        body: await readFile(localPath),
+      });
     });
-
-    await route.fulfill({
-      status: 200,
-      contentType: getContentType(localPath),
-      body: await readFile(localPath),
-    });
-  });
+  }
 
   const { title, diagnostics } = await loadPreviewPage(
     page,
     options,
     "initial",
+    injectedAssets,
   );
 
   console.log(`Preview ready: ${options.url}`);
   logDiagnostics(title, diagnostics);
 
-  if (fulfilledAssets.length > 0) {
+  if (options.injectPlugins.length > 0) {
+    console.log("Injected assets:");
+    for (const asset of injectedAssets) {
+      console.log(`- ${asset.plugin} ${asset.type}: ${asset.localPath}`);
+    }
+  } else if (fulfilledAssets.length > 0) {
     console.log("Overridden assets:");
     for (const asset of fulfilledAssets) {
       console.log(`- ${asset.url} -> ${asset.localPath}`);
@@ -530,7 +626,7 @@ async function main() {
         const changedFiles = getChangedFiles(lastSnapshot, nextSnapshot);
         if (changedFiles.length === 0) return;
 
-        const rebuildPlan = getRebuildPlan(changedFiles, options.plugins);
+        const rebuildPlan = getRebuildPlan(changedFiles, selectedPlugins);
         lastSnapshot = nextSnapshot;
 
         if (rebuildPlan.plugins !== null && rebuildPlan.plugins.length === 0) {
@@ -552,7 +648,12 @@ async function main() {
           console.log(`Source changed: ${reason}`);
           console.log(`Rebuilding: ${rebuildLabel}`);
           await buildDist({ plugins: rebuildPlan.plugins ?? [] });
-          const updated = await loadPreviewPage(page, options, "reload");
+          const updated = await loadPreviewPage(
+            page,
+            options,
+            "reload",
+            injectedAssets,
+          );
           console.log(`Preview reloaded: ${reason}`);
           logDiagnostics(updated.title, updated.diagnostics);
         } catch (error) {

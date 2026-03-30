@@ -113,15 +113,15 @@ window.RPPlugins = {
 
 ## 개발 명령어
 
-| 명령어 | 설명 |
-| --- | --- |
-| `pnpm clean` | `dist` 폴더를 정리합니다. |
-| `pnpm build` | `dist` 폴더를 정리한 뒤 배포용 파일을 생성합니다. |
-| `pnpm preview <url>` | 실제 블로그 페이지를 열고 jsDelivr `dist/*` 요청을 로컬 빌드 결과로 override합니다. 기본적으로 watch 모드로 동작하며, 첫 실행 이후에는 마지막 URL을 재사용할 수 있습니다. |
-| `pnpm preview --plugin toc` | 특정 플러그인만 빌드하고 override 범위를 제한합니다. watch 중에도 해당 플러그인 범위로 재빌드합니다. |
-| `pnpm check` | Biome 검사를 읽기 전용으로 수행합니다. |
-| `pnpm check:write` | Biome 검사 결과를 가능한 범위에서 자동 수정합니다. |
-| `pnpm typecheck` | TypeScript 타입 검사를 수행합니다. |
-| `pnpm test` | Vitest 테스트를 실행합니다. |
-| `pnpm test:watch` | 테스트를 watch 모드로 실행합니다. |
-
+| 명령어                               | 설명                                                                                                               |
+|-----------------------------------|------------------------------------------------------------------------------------------------------------------|
+| `pnpm clean`                      | `dist` 폴더를 정리합니다.                                                                                                |
+| `pnpm build`                      | `dist` 폴더를 정리한 뒤 배포용 파일을 생성합니다.                                                                                  |
+| `pnpm preview <url>`              | 실제 블로그 페이지를 열고 jsDelivr `dist/*` 요청을 로컬 빌드 결과로 override합니다. 기본적으로 watch 모드로 동작하며, 첫 실행 이후에는 마지막 URL을 재사용할 수 있습니다. |
+| `pnpm preview --plugin <plugin>`  | 특정 플러그인만 빌드하고 override 범위를 제한합니다. watch 중에도 해당 플러그인 범위로 재빌드합니다.                                                  |
+| `pnpm preview <url> --inject <plugin>` | 플러그인을 설치하지 않은 블로그에도 선택한 로컬 `dist` 에셋을 직접 주입해 미리 확인합니다. 여러 플러그인은 쉼표로 구분할 수 있고, watch 중에도 해당 범위로 재빌드합니다.           |
+| `pnpm check`                      | Biome 검사를 읽기 전용으로 수행합니다.                                                                                         |
+| `pnpm check:write`                | Biome 검사 결과를 가능한 범위에서 자동 수정합니다.                                                                                  |
+| `pnpm typecheck`                  | TypeScript 타입 검사를 수행합니다.                                                                                         |
+| `pnpm test`                       | Vitest 테스트를 실행합니다.                                                                                               |
+| `pnpm test:watch`                 | 테스트를 watch 모드로 실행합니다.                                                                                            |
