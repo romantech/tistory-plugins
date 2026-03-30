@@ -64,6 +64,9 @@ This file is for coding agents working in this repository. Keep it short, practi
 - If a plugin introduces new global state, update the reset logic in `test/setup.ts`.
 - The test environment uses `happy-dom`; do not assume a real browser network or layout engine.
 - For non-trivial plugin changes, run `pnpm check`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Use `pnpm preview` to open a real blog page with local `dist/*` assets overriding the jsDelivr requests. The script runs in watch mode by default and remembers the last preview URL.
+- `pnpm preview --plugin toc` limits build/override scope to specific plugins. Without `--plugin`, the initial run builds all plugins.
+- Watch rebuilds are scoped by changed files: `src/plugins/<name>/**` rebuilds that plugin only, while `src/shared/**` falls back to a full rebuild.
 
 ## Documentation Updates
 

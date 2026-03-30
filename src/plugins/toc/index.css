@@ -205,11 +205,11 @@
 .rp-toc-link.is-active:focus,
 .rp-toc-link.is-active:focus-visible {
   /* biome-ignore lint/complexity/noImportantStyles: active 상태가 전역 링크 색보다 우선해야 함 */
-  color: rgb(var(--rp-toc-ink) / 0.92) !important;
+  color: rgb(var(--rp-toc-ink) / 0.96) !important;
 }
 
 .rp-toc-link.is-active::before {
-  background: rgb(var(--rp-toc-ink) / 0.72);
+  background: rgb(var(--rp-toc-ink) / 0.82);
 }
 
 .rp-toc-tooltip {

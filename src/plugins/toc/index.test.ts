@@ -269,6 +269,55 @@ describe("toc plugin", () => {
     expect(document.querySelectorAll(".rp-toc-link")).toHaveLength(2);
   });
 
+  it("does not bind duplicate click handlers when loaded again", async () => {
+    const article = renderArticle(
+      `
+      <h2>첫 번째</h2>
+      <h3>두 번째</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 100,
+      left: 240,
+      width: 820,
+      height: 1500,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 80 });
+    mockRect(headings[1], { top: 180 });
+
+    await loadTocPlugin();
+    await flushAll();
+    await loadTocPlugin();
+    await flushAll();
+
+    scrollToMock.mockClear();
+    replaceStateSpy.mockClear();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(replaceStateSpy).toHaveBeenCalledTimes(1);
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 396,
+      behavior: "smooth",
+    });
+  });
+
   it("keeps the toc invisible until the load event settles the initial layout", async () => {
     Object.defineProperty(document, "readyState", {
       configurable: true,

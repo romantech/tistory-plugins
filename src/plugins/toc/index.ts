@@ -68,6 +68,19 @@ import { getTocConfig } from "@/shared/plugin-config";
     expiresAt: number;
   };
 
+  type CreatedElement<T extends HTMLElement> = {
+    element: T;
+    created: boolean;
+  };
+
+  type RootLayout = {
+    hidden: boolean;
+    left?: number;
+    top?: number;
+    width?: number;
+    safeTop?: number;
+  };
+
   let initialized = false;
   let scheduledFrame = 0;
 
@@ -246,9 +259,11 @@ import { getTocConfig } from "@/shared/plugin-config";
     return scope;
   }
 
-  function createRoot(): HTMLElement {
+  function createRoot(): CreatedElement<HTMLElement> {
     const existingRoot = document.querySelector<HTMLElement>(`.${ROOT_CLASS}`);
-    if (existingRoot) return existingRoot;
+    if (existingRoot) {
+      return { element: existingRoot, created: false };
+    }
 
     const root = document.createElement("nav");
     root.className = ROOT_CLASS;
@@ -260,14 +275,16 @@ import { getTocConfig } from "@/shared/plugin-config";
     root.append(list);
 
     document.body.append(root);
-    return root;
+    return { element: root, created: true };
   }
 
-  function createTooltip(): HTMLElement {
+  function createTooltip(): CreatedElement<HTMLElement> {
     const existingTooltip = document.querySelector<HTMLElement>(
       `.${TOOLTIP_CLASS}`,
     );
-    if (existingTooltip) return existingTooltip;
+    if (existingTooltip) {
+      return { element: existingTooltip, created: false };
+    }
 
     const tooltip = document.createElement("div");
     tooltip.className = TOOLTIP_CLASS;
@@ -275,7 +292,7 @@ import { getTocConfig } from "@/shared/plugin-config";
     tooltip.setAttribute("role", "tooltip");
 
     document.body.append(tooltip);
-    return tooltip;
+    return { element: tooltip, created: true };
   }
 
   function getList(root: HTMLElement): HTMLOListElement {
@@ -535,11 +552,11 @@ import { getTocConfig } from "@/shared/plugin-config";
     return entries.find((entry) => entry.id === initialHash);
   }
 
-  function alignRoot(
+  function getRootLayout(
     root: HTMLElement,
     scope: HTMLElement,
     bottomBoundary: HTMLElement,
-  ): void {
+  ): RootLayout {
     const viewportWidth = getViewportWidth();
     const viewportHeight = Math.max(
       window.innerHeight,
@@ -563,14 +580,8 @@ import { getTocConfig } from "@/shared/plugin-config";
       articleGap >= PANEL_GAP;
 
     if (!shouldShow) {
-      root.hidden = true;
-      return;
+      return { hidden: true };
     }
-
-    root.hidden = false;
-    root.style.setProperty("--rp-toc-left", `${Math.round(left)}px`);
-    root.style.setProperty("--rp-toc-safe-top", `${Math.round(safeTop)}px`);
-    root.style.setProperty("--rp-toc-width", `${Math.round(panelWidth)}px`);
 
     const rootHeight = Math.max(root.offsetHeight, root.clientHeight);
     const desiredTop = Math.max(
@@ -586,11 +597,29 @@ import { getTocConfig } from "@/shared/plugin-config";
       maxTop < revealTop ? maxTop : Math.max(revealTop, centeredTop);
 
     if (resolvedTop + rootHeight <= 0) {
+      return { hidden: true };
+    }
+
+    return {
+      hidden: false,
+      left: Math.round(left),
+      top: resolvedTop,
+      width: Math.round(panelWidth),
+      safeTop: Math.round(safeTop),
+    };
+  }
+
+  function applyRootLayout(root: HTMLElement, layout: RootLayout): void {
+    if (layout.hidden) {
       root.hidden = true;
       return;
     }
 
-    root.style.setProperty("--rp-toc-top", `${resolvedTop}px`);
+    root.hidden = false;
+    root.style.setProperty("--rp-toc-left", `${layout.left}px`);
+    root.style.setProperty("--rp-toc-top", `${layout.top}px`);
+    root.style.setProperty("--rp-toc-width", `${layout.width}px`);
+    root.style.setProperty("--rp-toc-safe-top", `${layout.safeTop}px`);
   }
 
   function bindLinkInteractions(
@@ -656,14 +685,14 @@ import { getTocConfig } from "@/shared/plugin-config";
 
     if (document.querySelector(`.${ROOT_CLASS}`)) return;
 
-    const root = createRoot();
-    const tooltip = createTooltip();
+    const { element: root, created: rootCreated } = createRoot();
+    const { element: tooltip, created: tooltipCreated } = createTooltip();
     let isInitialLayoutPending = document.readyState !== "complete";
     let pendingNavigation: PendingNavigation | null = null;
     const initialState = createState(root);
     if (!initialState) {
-      root.remove();
-      tooltip.remove();
+      if (rootCreated) root.remove();
+      if (tooltipCreated) tooltip.remove();
       return;
     }
     let state: TocState = initialState;
@@ -740,7 +769,8 @@ import { getTocConfig } from "@/shared/plugin-config";
         return;
       }
 
-      alignRoot(root, state.scope, state.bottomBoundary);
+      const layout = getRootLayout(root, state.scope, state.bottomBoundary);
+      applyRootLayout(root, layout);
       if (root.hidden) {
         clearPendingNavigation();
         setPendingVisibility(root, isInitialLayoutPending);
