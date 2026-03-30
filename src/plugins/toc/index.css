@@ -384,7 +384,10 @@
   border-radius: 10px;
   background: rgb(var(--rp-toc-surface, 255 255 255) / 0.96);
   box-shadow: 0 12px 28px rgb(0 0 0 / 0.18);
-  color: rgb(var(--rp-toc-ink, 24 24 27) / 0.96);
+  color: rgb(
+    var(--rp-toc-ink, 24 24 27) /
+    var(--rp-toc-link-active-alpha, 0.96)
+  );
   font-family: var(--rp-toc-font-family);
   font-size: var(--rp-toc-font-size, 14px);
   line-height: 1.4;
