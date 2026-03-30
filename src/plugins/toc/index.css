@@ -22,14 +22,10 @@
   --rp-toc-link-idle-alpha: 0.45;
   --rp-toc-link-hover-alpha: 0.74;
   --rp-toc-link-active-alpha: 0.96;
-  --rp-toc-link-hover-surface-alpha: 0.04;
   --rp-toc-link-active-surface-alpha: 0.1;
   --rp-toc-bar-idle-alpha: 0.22;
   --rp-toc-bar-hover-alpha: 0.4;
   --rp-toc-bar-active-alpha: 0.82;
-  --rp-toc-active-ring-alpha: 0.24;
-  --rp-toc-active-ring-soft-alpha: 0.06;
-  --rp-toc-active-glow-alpha: 0.05;
   --rp-toc-focus-ring-alpha: 0.36;
   --rp-toc-focus-ring-soft-alpha: 0.14;
   --rp-toc-focus-surface-alpha: 0.08;
@@ -60,14 +56,10 @@
   --rp-toc-link-idle-alpha: 0.62;
   --rp-toc-link-hover-alpha: 0.88;
   --rp-toc-link-active-alpha: 0.98;
-  --rp-toc-link-hover-surface-alpha: 0.08;
-  --rp-toc-link-active-surface-alpha: 0.11;
+  --rp-toc-link-active-surface-alpha: 0.15;
   --rp-toc-bar-idle-alpha: 0.34;
   --rp-toc-bar-hover-alpha: 0.56;
   --rp-toc-bar-active-alpha: 0.95;
-  --rp-toc-active-ring-alpha: 0.24;
-  --rp-toc-active-ring-soft-alpha: 0.06;
-  --rp-toc-active-glow-alpha: 0.1;
   --rp-toc-focus-ring-alpha: 0.52;
   --rp-toc-focus-ring-soft-alpha: 0.2;
   --rp-toc-focus-surface-alpha: 0.12;
@@ -243,7 +235,7 @@
   border-radius: inherit;
   background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
   opacity: 0;
-  transition: opacity 0.18s ease;
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .rp-toc-link.is-truncated .rp-toc-label {
@@ -282,7 +274,7 @@
 .rp-toc-link:hover {
   /* biome-ignore lint/complexity/noImportantStyles: hover 상태가 전역 링크 색보다 우선해야 함 */
   color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-hover-alpha)) !important;
-  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-hover-surface-alpha));
+  background: transparent;
 }
 
 .rp-toc-link:hover::before {
@@ -348,8 +340,8 @@
 .rp-toc:hover .rp-toc-link.is-active,
 .rp-toc:focus-within .rp-toc-link.is-active,
 .rp-toc.is-navigation-locked .rp-toc-link.is-active {
-  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
-  box-shadow: 0 0 12px rgb(var(--rp-toc-ink) / var(--rp-toc-active-glow-alpha));
+  background: transparent;
+  box-shadow: none;
 }
 
 .rp-toc:hover .rp-toc-link.is-active::after,
@@ -359,9 +351,7 @@
 }
 
 .rp-toc-link.is-active .rp-toc-label {
-  text-shadow:
-    0.014em 0 0 currentColor,
-    -0.014em 0 0 currentColor;
+  font-weight: 600;
 }
 
 .rp-toc-link.is-active::before {
