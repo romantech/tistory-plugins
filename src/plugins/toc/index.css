@@ -4,10 +4,12 @@
   --rp-toc-font-family: inherit;
   --rp-toc-font-size: 14px;
   --rp-toc-tooltip-max-width: 280px;
-  --rp-toc-rail-space: 42px;
+  --rp-toc-rail-space: 52px;
+  --rp-toc-link-start: 16px;
+  --rp-toc-link-block: 3px;
   --rp-toc-bar-height: 5px;
-  --rp-toc-bar-end: 4px;
-  --rp-toc-collapsed-width: 44px;
+  --rp-toc-bar-end: 12px;
+  --rp-toc-collapsed-width: 52px;
   --rp-toc-scrollbar-lane: 12px;
   --rp-toc-top: 112px;
   --rp-toc-left: auto;
@@ -20,13 +22,13 @@
   --rp-toc-link-idle-alpha: 0.45;
   --rp-toc-link-hover-alpha: 0.74;
   --rp-toc-link-active-alpha: 0.96;
-  --rp-toc-link-hover-surface-alpha: 0;
-  --rp-toc-link-active-surface-alpha: 0;
+  --rp-toc-link-active-surface-alpha: 0.1;
   --rp-toc-bar-idle-alpha: 0.22;
   --rp-toc-bar-hover-alpha: 0.4;
   --rp-toc-bar-active-alpha: 0.82;
-  --rp-toc-active-ring-alpha: 0.24;
-  --rp-toc-active-ring-soft-alpha: 0.06;
+  --rp-toc-focus-ring-alpha: 0.36;
+  --rp-toc-focus-ring-soft-alpha: 0.14;
+  --rp-toc-focus-surface-alpha: 0.08;
   position: fixed;
   top: var(--rp-toc-top);
   left: var(--rp-toc-left);
@@ -52,15 +54,15 @@
   --rp-toc-fade-soft-alpha: 0.44;
   --rp-toc-scrollbar-alpha: 0.26;
   --rp-toc-link-idle-alpha: 0.62;
-  --rp-toc-link-hover-alpha: 0.88;
+  --rp-toc-link-hover-alpha: 0.9;
   --rp-toc-link-active-alpha: 0.98;
-  --rp-toc-link-hover-surface-alpha: 0;
-  --rp-toc-link-active-surface-alpha: 0;
+  --rp-toc-link-active-surface-alpha: 0.15;
   --rp-toc-bar-idle-alpha: 0.34;
-  --rp-toc-bar-hover-alpha: 0.56;
-  --rp-toc-bar-active-alpha: 0.92;
-  --rp-toc-active-ring-alpha: 0.32;
-  --rp-toc-active-ring-soft-alpha: 0.1;
+  --rp-toc-bar-hover-alpha: 0.6;
+  --rp-toc-bar-active-alpha: 0.95;
+  --rp-toc-focus-ring-alpha: 0.52;
+  --rp-toc-focus-ring-soft-alpha: 0.2;
+  --rp-toc-focus-surface-alpha: 0.12;
 }
 
 .rp-toc--pending {
@@ -155,7 +157,7 @@
 }
 
 .rp-toc-item {
-  margin: 0 0 3px;
+  margin: 0 0 2px;
 }
 
 .rp-toc-link,
@@ -167,8 +169,11 @@
   position: relative;
   --rp-toc-indent: 0px;
   display: block;
+  isolation: isolate;
   min-height: 16px;
-  padding: 2px calc(var(--rp-toc-rail-space) + var(--rp-toc-indent)) 2px 12px;
+  padding: var(--rp-toc-link-block)
+    calc(var(--rp-toc-rail-space) + var(--rp-toc-indent))
+    var(--rp-toc-link-block) var(--rp-toc-link-start);
   /* biome-ignore lint/complexity/noImportantStyles: 스킨의 visited 링크 색보다 TOC 상태 색이 우선이어야 함 */
   color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-idle-alpha)) !important;
   text-decoration: none;
@@ -177,7 +182,10 @@
   overflow: hidden;
   text-overflow: clip;
   border-radius: 999px;
-  transition: background-color 0.18s ease;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .rp-toc:hover .rp-toc-link,
@@ -195,6 +203,8 @@
   overflow: hidden;
   text-overflow: clip;
   white-space: nowrap;
+  position: relative;
+  z-index: 1;
   opacity: 0;
   transform: translateX(8px);
   transition:
@@ -208,6 +218,24 @@
 .rp-toc.is-navigation-locked .rp-toc-label {
   opacity: 1;
   transform: translateX(0);
+}
+
+.rp-toc-link::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: calc(
+    var(--rp-toc-bar-width, 28px) +
+    var(--rp-toc-bar-end) +
+    var(--rp-toc-bar-end)
+  );
+  border-radius: inherit;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
+  opacity: 0;
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .rp-toc-link.is-truncated .rp-toc-label {
@@ -236,26 +264,35 @@
   height: var(--rp-toc-bar-height);
   border-radius: 999px;
   background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-idle-alpha));
+  z-index: 1;
   transform: translateY(-50%);
   transition:
     background-color 0.18s ease,
     box-shadow 0.18s ease;
 }
 
-.rp-toc-link:hover,
-.rp-toc-link:focus-visible {
+.rp-toc-link:hover {
   /* biome-ignore lint/complexity/noImportantStyles: hover 상태가 전역 링크 색보다 우선해야 함 */
   color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-hover-alpha)) !important;
-  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-hover-surface-alpha));
+  background: transparent;
 }
 
-.rp-toc-link:hover::before,
-.rp-toc-link:focus-visible::before {
+.rp-toc-link:hover::before {
   background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-hover-alpha));
 }
 
 .rp-toc-link:focus-visible {
   outline: none;
+  /* biome-ignore lint/complexity/noImportantStyles: focus 상태가 스킨 링크 스타일보다 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha)) !important;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-focus-surface-alpha));
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-alpha)),
+    0 0 0 4px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-soft-alpha));
+}
+
+.rp-toc-link:focus-visible::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
 }
 
 .rp-toc-link[data-level] {
@@ -292,18 +329,40 @@
 .rp-toc-link.is-active:focus-visible {
   /* biome-ignore lint/complexity/noImportantStyles: active 상태가 전역 링크 색보다 우선해야 함 */
   color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha)) !important;
-  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
+  background: transparent;
+  box-shadow: none;
+}
+
+.rp-toc-link.is-active::after {
+  opacity: 1;
+}
+
+.rp-toc:hover .rp-toc-link.is-active,
+.rp-toc:focus-within .rp-toc-link.is-active,
+.rp-toc.is-navigation-locked .rp-toc-link.is-active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.rp-toc:hover .rp-toc-link.is-active::after,
+.rp-toc:focus-within .rp-toc-link.is-active::after,
+.rp-toc.is-navigation-locked .rp-toc-link.is-active::after {
+  opacity: 0;
 }
 
 .rp-toc-link.is-active .rp-toc-label {
-  text-shadow:
-    0.014em 0 0 currentColor,
-    -0.014em 0 0 currentColor;
+  font-weight: 600;
 }
 
 .rp-toc-link.is-active::before {
   background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
-  box-shadow: 0 0 0 1px rgb(var(--rp-toc-ink) / var(--rp-toc-active-ring-alpha));
+  box-shadow: none;
+}
+
+.rp-toc-link.is-active:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-alpha)),
+    0 0 0 4px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-soft-alpha));
 }
 
 .rp-toc-tooltip {
@@ -315,7 +374,10 @@
   border-radius: 10px;
   background: rgb(var(--rp-toc-surface, 255 255 255) / 0.96);
   box-shadow: 0 12px 28px rgb(0 0 0 / 0.18);
-  color: rgb(var(--rp-toc-ink, 24 24 27) / 0.96);
+  color: rgb(
+    var(--rp-toc-ink, 24 24 27) /
+    var(--rp-toc-link-active-alpha, 0.96)
+  );
   font-family: var(--rp-toc-font-family);
   font-size: var(--rp-toc-font-size, 14px);
   line-height: 1.4;
@@ -352,6 +414,7 @@
   .rp-toc-list,
   .rp-toc::before,
   .rp-toc::after,
+  .rp-toc-link::after,
   .rp-toc-link::before,
   .rp-toc-label,
   .rp-toc-tooltip {
