@@ -11,6 +11,18 @@ import {
 } from "@/shared/headings";
 import { getTocConfig } from "@/shared/plugin-config";
 import { ensurePluginStylesheet } from "@/shared/stylesheet";
+import {
+  createNavigationLockController,
+  type NavigationLockController,
+} from "./navigation-lock";
+import {
+  hasDetachedTargets,
+  type RootLayout,
+  resolveActiveId,
+  resolveRootLayout,
+  type TocEntry,
+  type TocState,
+} from "./runtime";
 
 const CURRENT_SCRIPT =
   document.currentScript instanceof HTMLScriptElement
@@ -33,6 +45,7 @@ const CURRENT_SCRIPT =
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
+  const MIN_SCOPE_WIDTH = 480;
   const SCROLL_FADE_EPSILON = 1;
   const RELATED_CATEGORY_SELECTORS = [".another-category", ".another_category"];
   const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
@@ -59,42 +72,9 @@ const CURRENT_SCRIPT =
     text: string;
   };
 
-  type TocEntry = {
-    heading: HTMLElement;
-    id: string;
-    level: number;
-    link: HTMLAnchorElement;
-    label: HTMLSpanElement;
-    text: string;
-  };
-
-  type TocState = {
-    article: HTMLElement;
-    scope: HTMLElement;
-    bottomBoundary: HTMLElement;
-    entries: TocEntry[];
-    currentActiveId: string;
-  };
-
-  type PendingNavigation = {
-    expiresAt: number;
-    targetFreezeExpiresAt: number;
-    frozenActiveId: string;
-    destinationId: string;
-    destinationScrollTop: number;
-  };
-
   type CreatedElement<T extends HTMLElement> = {
     element: T;
     created: boolean;
-  };
-
-  type RootLayout = {
-    hidden: boolean;
-    left?: number;
-    top?: number;
-    width?: number;
-    safeTop?: number;
   };
 
   let initialized = false;
@@ -326,6 +306,23 @@ const CURRENT_SCRIPT =
 
     document.body.append(tooltip);
     return { element: tooltip, created: true };
+  }
+
+  function cleanupCreatedElements(
+    root: HTMLElement,
+    tooltip: HTMLElement,
+    options: {
+      rootCreated: boolean;
+      tooltipCreated: boolean;
+    },
+  ): void {
+    if (options.rootCreated) {
+      root.remove();
+    }
+
+    if (options.tooltipCreated) {
+      tooltip.remove();
+    }
   }
 
   function getList(root: HTMLElement): HTMLOListElement {
@@ -663,56 +660,36 @@ const CURRENT_SCRIPT =
     scope: HTMLElement,
     bottomBoundary: HTMLElement,
   ): RootLayout {
-    const viewportWidth = getViewportWidth();
-    const viewportHeight = Math.max(
-      window.innerHeight,
-      document.documentElement.clientHeight,
-      0,
-    );
     const scopeRect = scope.getBoundingClientRect();
-    const bottomBoundaryRect = bottomBoundary.getBoundingClientRect();
-    const maxPanelWidth = viewportWidth - RIGHT_RAIL_GUTTER - VIEWPORT_GUTTER;
-    const panelWidth = Math.min(DEFAULT_PANEL_WIDTH, maxPanelWidth);
-    const left = viewportWidth - RIGHT_RAIL_GUTTER - panelWidth;
-    const articleGap = left - scopeRect.right;
-    const safeTop = getResolvedHeaderOffset() + SAFE_TOP_GAP;
-    const shouldShow =
-      viewportWidth >= MIN_DESKTOP_WIDTH &&
-      scopeRect.width >= 480 &&
-      scopeRect.right > 0 &&
-      scopeRect.bottom > 0 &&
-      scopeRect.top < viewportHeight &&
-      panelWidth >= MIN_PANEL_WIDTH &&
-      articleGap >= PANEL_GAP;
 
-    if (!shouldShow) {
-      return { hidden: true };
-    }
-
-    const rootHeight = measureRootHeight(root);
-    const desiredTop = Math.max(
-      safeTop,
-      Math.round(viewportHeight / 2 - rootHeight / 2),
+    return resolveRootLayout(
+      {
+        bottomBoundaryRect:
+          bottomBoundary === scope
+            ? scopeRect
+            : bottomBoundary.getBoundingClientRect(),
+        headerOffset: getResolvedHeaderOffset(),
+        rootHeight: measureRootHeight(root),
+        scopeRect,
+        useScopeBottomBoundary: bottomBoundary === scope,
+        viewportHeight: Math.max(
+          window.innerHeight,
+          document.documentElement.clientHeight,
+          0,
+        ),
+        viewportWidth: getViewportWidth(),
+      },
+      {
+        defaultPanelWidth: DEFAULT_PANEL_WIDTH,
+        minDesktopWidth: MIN_DESKTOP_WIDTH,
+        minPanelWidth: MIN_PANEL_WIDTH,
+        minScopeWidth: MIN_SCOPE_WIDTH,
+        panelGap: PANEL_GAP,
+        rightRailGutter: RIGHT_RAIL_GUTTER,
+        safeTopGap: SAFE_TOP_GAP,
+        viewportGutter: VIEWPORT_GUTTER,
+      },
     );
-    const clampEdge =
-      bottomBoundary === scope ? scopeRect.bottom : bottomBoundaryRect.bottom;
-    const maxTop = Math.round(clampEdge - rootHeight - SAFE_TOP_GAP);
-    const revealTop = Math.max(safeTop, Math.round(scopeRect.top));
-    const centeredTop = Math.min(desiredTop, maxTop);
-    const resolvedTop =
-      maxTop < revealTop ? maxTop : Math.max(revealTop, centeredTop);
-
-    if (resolvedTop + rootHeight <= 0) {
-      return { hidden: true };
-    }
-
-    return {
-      hidden: false,
-      left: Math.round(left),
-      top: resolvedTop,
-      width: Math.round(panelWidth),
-      safeTop: Math.round(safeTop),
-    };
   }
 
   function applyRootLayout(root: HTMLElement, layout: RootLayout): void {
@@ -774,18 +751,6 @@ const CURRENT_SCRIPT =
     };
   }
 
-  function hasDetachedTargets(state: TocState): boolean {
-    if (!state.article.isConnected || !state.scope.isConnected) {
-      return true;
-    }
-
-    if (!state.bottomBoundary.isConnected) {
-      return true;
-    }
-
-    return state.entries.some(({ heading }) => !heading.isConnected);
-  }
-
   function init(): void {
     if (initialized) return;
     initialized = true;
@@ -795,129 +760,54 @@ const CURRENT_SCRIPT =
     const { element: root, created: rootCreated } = createRoot();
     const { element: tooltip, created: tooltipCreated } = createTooltip();
     let isInitialLayoutPending = document.readyState !== "complete";
-    let pendingNavigation: PendingNavigation | null = null;
-    let pendingNavigationTimer = 0;
-    let pendingNavigationSettleTimer = 0;
     const initialState = createState(root);
     if (!initialState) {
-      if (rootCreated) root.remove();
-      if (tooltipCreated) tooltip.remove();
+      cleanupCreatedElements(root, tooltip, {
+        rootCreated,
+        tooltipCreated,
+      });
       return;
     }
+
     let state: TocState = initialState;
     setPendingVisibility(root, isInitialLayoutPending);
 
-    const clearPendingNavigation = (
-      options: { resync?: boolean } = {},
-    ): void => {
-      if (pendingNavigationTimer) {
-        window.clearTimeout(pendingNavigationTimer);
-        pendingNavigationTimer = 0;
-      }
-      if (pendingNavigationSettleTimer) {
-        window.clearTimeout(pendingNavigationSettleTimer);
-        pendingNavigationSettleTimer = 0;
-      }
-      pendingNavigation = null;
-      root.classList.remove(NAVIGATION_LOCK_CLASS);
+    function scheduleSync(): void {
+      if (scheduledFrame) return;
 
-      if (options.resync) {
-        scheduleSync();
-      }
-    };
+      scheduledFrame = requestAnimationFrame(() => {
+        scheduledFrame = 0;
+        sync();
+      });
+    }
 
-    const isNavigationLockActive = (): boolean => {
-      if (!pendingNavigation) return false;
+    const navigationLock: NavigationLockController =
+      createNavigationLockController({
+        activeOffset: ACTIVE_OFFSET,
+        getHeaderOffset: getResolvedHeaderOffset,
+        getState: () => state,
+        navigationLockClass: NAVIGATION_LOCK_CLASS,
+        root,
+        scheduleSync,
+        settleDelayMs: CLICK_NAVIGATION_SETTLE_MS,
+        targetFreezeMs: CLICK_TARGET_FREEZE_MS,
+        timeoutMs: CLICK_NAVIGATION_LOCK_MS,
+      });
 
-      if (performance.now() > pendingNavigation.expiresAt) {
-        clearPendingNavigation();
-        return false;
-      }
-
-      return true;
-    };
-
-    const lockNavigationReveal = (
-      destinationId: string,
-      destinationScrollTop: number,
-    ): void => {
-      if (pendingNavigationTimer) {
-        window.clearTimeout(pendingNavigationTimer);
-      }
-      if (pendingNavigationSettleTimer) {
-        window.clearTimeout(pendingNavigationSettleTimer);
-      }
-
-      pendingNavigation = {
-        expiresAt: performance.now() + CLICK_NAVIGATION_LOCK_MS,
-        targetFreezeExpiresAt: performance.now() + CLICK_TARGET_FREEZE_MS,
-        frozenActiveId: state.currentActiveId,
-        destinationId,
-        destinationScrollTop,
-      };
-      root.classList.add(NAVIGATION_LOCK_CLASS);
-      pendingNavigationTimer = window.setTimeout(() => {
-        clearPendingNavigation({ resync: true });
-      }, CLICK_NAVIGATION_LOCK_MS);
-      pendingNavigationSettleTimer = window.setTimeout(() => {
-        if (hasReachedNavigationTarget()) {
-          clearPendingNavigation({ resync: true });
-          return;
-        }
-
-        pendingNavigationSettleTimer = 0;
-      }, CLICK_NAVIGATION_SETTLE_MS);
-    };
-
-    const hasReachedNavigationTarget = (): boolean => {
-      if (!pendingNavigation) return false;
-      const navigation = pendingNavigation;
-
-      const targetEntry = state.entries.find(
-        (entry) => entry.id === navigation.destinationId,
-      );
-      if (!targetEntry) return false;
-
-      const headerOffset = getResolvedHeaderOffset();
-      const targetTop = targetEntry.heading.getBoundingClientRect().top;
-
-      return (
-        Math.abs(window.scrollY - navigation.destinationScrollTop) <=
-          ACTIVE_OFFSET || Math.abs(targetTop - headerOffset) <= ACTIVE_OFFSET
-      );
-    };
-
-    const touchNavigationSettle = (): void => {
-      if (!pendingNavigation) return;
-
-      if (pendingNavigationSettleTimer) {
-        window.clearTimeout(pendingNavigationSettleTimer);
-      }
-
-      pendingNavigationSettleTimer = window.setTimeout(() => {
-        if (hasReachedNavigationTarget()) {
-          clearPendingNavigation({ resync: true });
-          return;
-        }
-
-        pendingNavigationSettleTimer = 0;
-      }, CLICK_NAVIGATION_SETTLE_MS);
-    };
-
-    const activateEntry = (
+    function activateEntry(
       entry: TocEntry,
       options: {
         revealBehavior?: "center" | "nearest";
       } = {},
-    ): void => {
+    ): void {
       state.currentActiveId = entry.id;
       setActive(state.entries, entry.id);
       revealActiveEntry(root, entry, {
         behavior: options.revealBehavior,
       });
-    };
+    }
 
-    const handleLinkActivation = (entry: TocEntry): void => {
+    function handleLinkActivation(entry: TocEntry): void {
       const headerOffset = getResolvedHeaderOffset();
       const destinationScrollTop = Math.max(
         0,
@@ -932,19 +822,19 @@ const CURRENT_SCRIPT =
         // 해시 갱신이 실패해도 스크롤은 계속한다.
       }
 
-      lockNavigationReveal(entry.id, destinationScrollTop);
+      navigationLock.lock(entry.id, destinationScrollTop);
       revealActiveEntry(root, entry, { behavior: "nearest" });
       scrollElementIntoViewWithOffset(
         entry.heading,
         headerOffset,
         prefersReducedMotion() ? "auto" : "smooth",
       );
-    };
+    }
 
-    const rebuildState = (): boolean => {
+    function rebuildState(): boolean {
       const nextState = createState(root);
       if (!nextState) {
-        clearPendingNavigation();
+        navigationLock.clear();
         root.hidden = true;
         syncScrollFadeState(root);
         hideTooltip(tooltip);
@@ -956,9 +846,9 @@ const CURRENT_SCRIPT =
       bindLinkInteractions(state.entries, handleLinkActivation);
       bindTooltipInteractions(state.entries, root, tooltip);
       return true;
-    };
+    }
 
-    const sync = (): void => {
+    function sync(): void {
       if (hasDetachedTargets(state) && !rebuildState()) {
         return;
       }
@@ -966,7 +856,7 @@ const CURRENT_SCRIPT =
       const layout = getRootLayout(root, state.scope, state.bottomBoundary);
       applyRootLayout(root, layout);
       if (root.hidden) {
-        clearPendingNavigation();
+        navigationLock.clear();
         setPendingVisibility(root, isInitialLayoutPending);
         syncScrollFadeState(root);
         hideTooltip(tooltip);
@@ -974,22 +864,19 @@ const CURRENT_SCRIPT =
       }
 
       syncTooltipState(state.entries);
-      const lockedTargetId =
-        isNavigationLockActive() &&
-        pendingNavigation &&
-        performance.now() <= pendingNavigation.targetFreezeExpiresAt
-          ? pendingNavigation.frozenActiveId
-          : undefined;
-      const activeId = isInitialLayoutPending
-        ? findHashedEntry(state.entries)?.id || findActiveId(state.entries)
-        : lockedTargetId || findActiveId(state.entries);
+      const activeId = resolveActiveId({
+        activeId: findActiveId(state.entries),
+        hashedId: findHashedEntry(state.entries)?.id,
+        isInitialLayoutPending,
+        lockedTargetId: navigationLock.getFrozenActiveId(),
+      });
       const activeEntry = setActive(state.entries, activeId);
       if (!activeEntry) return;
 
       if (activeEntry.id !== state.currentActiveId) {
         state.currentActiveId = activeEntry.id;
 
-        if (!isNavigationLockActive()) {
+        if (!navigationLock.isActive()) {
           revealActiveEntry(root, activeEntry);
         }
       }
@@ -999,23 +886,14 @@ const CURRENT_SCRIPT =
       if (isInitialLayoutPending) {
         hideTooltip(tooltip);
       }
-    };
+    }
 
-    const scheduleSync = (): void => {
-      if (scheduledFrame) return;
-
-      scheduledFrame = requestAnimationFrame(() => {
-        scheduledFrame = 0;
-        sync();
-      });
-    };
-
-    const markInitialLayoutReady = (): void => {
+    function markInitialLayoutReady(): void {
       if (!isInitialLayoutPending) return;
 
       isInitialLayoutPending = false;
       scheduleSync();
-    };
+    }
 
     bindLinkInteractions(state.entries, handleLinkActivation);
     bindTooltipInteractions(state.entries, root, tooltip);
@@ -1037,7 +915,7 @@ const CURRENT_SCRIPT =
     window.addEventListener(
       "scroll",
       () => {
-        touchNavigationSettle();
+        navigationLock.touchSettle();
         scheduleSync();
       },
       { passive: true },
