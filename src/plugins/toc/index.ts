@@ -23,6 +23,24 @@ import {
   type TocEntry,
   type TocState,
 } from "./runtime";
+import {
+  applyRootLayout as applyViewLayout,
+  bindLinkInteractions,
+  bindTooltipInteractions,
+  buildEntries,
+  cleanupCreatedElements,
+  createRoot,
+  createTooltip,
+  type HeadingItem,
+  hideTooltip,
+  measureRootHeight,
+  revealActiveEntry,
+  setActive,
+  setPendingVisibility,
+  syncScrollFadeState,
+  syncTooltipState,
+  type TocViewConfig,
+} from "./view";
 
 const CURRENT_SCRIPT =
   document.currentScript instanceof HTMLScriptElement
@@ -67,18 +85,21 @@ const CURRENT_SCRIPT =
   const CLICK_TARGET_FREEZE_MS = 220;
   const CLICK_NAVIGATION_SETTLE_MS = 100;
 
-  type HeadingItem = {
-    heading: HTMLElement;
-    text: string;
-  };
-
-  type CreatedElement<T extends HTMLElement> = {
-    element: T;
-    created: boolean;
-  };
-
   let initialized = false;
   let scheduledFrame = 0;
+
+  const viewConfig: TocViewConfig = {
+    activeClass: ACTIVE_CLASS,
+    labelClass: LABEL_CLASS,
+    linkClass: LINK_CLASS,
+    listClass: LIST_CLASS,
+    pendingClass: PENDING_CLASS,
+    rootClass: ROOT_CLASS,
+    scrollFadeEpsilon: SCROLL_FADE_EPSILON,
+    tooltipClass: TOOLTIP_CLASS,
+    tooltipVisibleClass: TOOLTIP_VISIBLE_CLASS,
+    truncatedClass: TRUNCATED_CLASS,
+  };
 
   function getResolvedHeadingSelector(): string {
     return getHeadingSelector(getTocConfig().levels, DEFAULT_HEADING_SELECTOR);
@@ -272,369 +293,6 @@ const CURRENT_SCRIPT =
     return scope;
   }
 
-  function createRoot(): CreatedElement<HTMLElement> {
-    const existingRoot = document.querySelector<HTMLElement>(`.${ROOT_CLASS}`);
-    if (existingRoot) {
-      return { element: existingRoot, created: false };
-    }
-
-    const root = document.createElement("nav");
-    root.className = ROOT_CLASS;
-    root.hidden = true;
-    root.setAttribute("aria-label", "본문 목차");
-
-    const list = document.createElement("ol");
-    list.className = LIST_CLASS;
-    root.append(list);
-
-    document.body.append(root);
-    return { element: root, created: true };
-  }
-
-  function createTooltip(): CreatedElement<HTMLElement> {
-    const existingTooltip = document.querySelector<HTMLElement>(
-      `.${TOOLTIP_CLASS}`,
-    );
-    if (existingTooltip) {
-      return { element: existingTooltip, created: false };
-    }
-
-    const tooltip = document.createElement("div");
-    tooltip.className = TOOLTIP_CLASS;
-    tooltip.hidden = true;
-    tooltip.setAttribute("role", "tooltip");
-
-    document.body.append(tooltip);
-    return { element: tooltip, created: true };
-  }
-
-  function cleanupCreatedElements(
-    root: HTMLElement,
-    tooltip: HTMLElement,
-    options: {
-      rootCreated: boolean;
-      tooltipCreated: boolean;
-    },
-  ): void {
-    if (options.rootCreated) {
-      root.remove();
-    }
-
-    if (options.tooltipCreated) {
-      tooltip.remove();
-    }
-  }
-
-  function getList(root: HTMLElement): HTMLOListElement {
-    const list = root.querySelector(`.${LIST_CLASS}`);
-    if (!(list instanceof HTMLOListElement)) {
-      throw new Error("TOC list not found");
-    }
-
-    return list;
-  }
-
-  function buildEntries(
-    root: HTMLElement,
-    headingItems: HeadingItem[],
-    usedIds: Set<string>,
-  ): TocEntry[] {
-    const list = getList(root);
-    list.innerHTML = "";
-
-    return headingItems.map(({ heading, text }) => {
-      const id = ensureHeadingId(heading, usedIds);
-      const level = getHeadingLevel(heading);
-
-      const item = document.createElement("li");
-      item.className = `${ROOT_CLASS}-item`;
-
-      const link = document.createElement("a");
-      link.className = LINK_CLASS;
-      link.href = `#${id}`;
-      link.dataset.level = `${level}`;
-      link.dataset.tooltip = text;
-      link.setAttribute("aria-label", text);
-
-      const label = document.createElement("span");
-      label.className = LABEL_CLASS;
-      label.textContent = text;
-
-      link.append(label);
-
-      item.append(link);
-      list.append(item);
-
-      return {
-        heading,
-        id,
-        level,
-        link,
-        label,
-        text,
-      };
-    });
-  }
-
-  function syncTooltipState(entries: TocEntry[]): void {
-    for (const entry of entries) {
-      const isTruncated = entry.label.scrollWidth > entry.label.clientWidth + 1;
-      entry.link.classList.toggle(TRUNCATED_CLASS, isTruncated);
-    }
-  }
-
-  function hideTooltip(tooltip: HTMLElement): void {
-    tooltip.hidden = true;
-    tooltip.classList.remove(TOOLTIP_VISIBLE_CLASS);
-    tooltip.textContent = "";
-  }
-
-  function setPendingVisibility(root: HTMLElement, pending: boolean): void {
-    root.classList.toggle(PENDING_CLASS, pending);
-  }
-
-  function syncScrollFadeState(root: HTMLElement): void {
-    if (root.hidden) {
-      delete root.dataset.scrollFade;
-      return;
-    }
-
-    const viewportHeight = root.clientHeight;
-    const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
-    if (
-      viewportHeight <= 0 ||
-      maxScrollTop <= SCROLL_FADE_EPSILON ||
-      Number.isNaN(maxScrollTop)
-    ) {
-      delete root.dataset.scrollFade;
-      return;
-    }
-
-    const hasTopFade = root.scrollTop > SCROLL_FADE_EPSILON;
-    const hasBottomFade = root.scrollTop < maxScrollTop - SCROLL_FADE_EPSILON;
-
-    if (hasTopFade && hasBottomFade) {
-      root.dataset.scrollFade = "both";
-      return;
-    }
-
-    if (hasTopFade) {
-      root.dataset.scrollFade = "top";
-      return;
-    }
-
-    if (hasBottomFade) {
-      root.dataset.scrollFade = "bottom";
-      return;
-    }
-
-    delete root.dataset.scrollFade;
-  }
-
-  function measureRootHeight(root: HTMLElement): number {
-    if (!root.hidden) {
-      return Math.max(root.offsetHeight, root.clientHeight);
-    }
-
-    const previousVisibility = root.style.getPropertyValue("visibility");
-    const previousPointerEvents = root.style.getPropertyValue("pointer-events");
-
-    root.hidden = false;
-    root.style.setProperty("visibility", "hidden");
-    root.style.setProperty("pointer-events", "none");
-
-    const height = Math.max(root.offsetHeight, root.clientHeight);
-
-    root.hidden = true;
-
-    if (previousVisibility) {
-      root.style.setProperty("visibility", previousVisibility);
-    } else {
-      root.style.removeProperty("visibility");
-    }
-
-    if (previousPointerEvents) {
-      root.style.setProperty("pointer-events", previousPointerEvents);
-    } else {
-      root.style.removeProperty("pointer-events");
-    }
-
-    return height;
-  }
-
-  function positionTooltip(
-    tooltip: HTMLElement,
-    link: HTMLAnchorElement,
-    root: HTMLElement,
-  ): void {
-    const linkRect = link.getBoundingClientRect();
-    const viewportWidth = Math.max(
-      window.innerWidth,
-      document.documentElement.clientWidth,
-      0,
-    );
-    const viewportHeight = Math.max(
-      window.innerHeight,
-      document.documentElement.clientHeight,
-      0,
-    );
-    const gap = 6;
-    const padding = 16;
-    const rootLeft = Number.parseFloat(
-      root.style.getPropertyValue("--rp-toc-left") || "0",
-    );
-    const maxWidth = Math.min(320, Math.max(180, viewportWidth - padding * 2));
-
-    tooltip.style.setProperty("--rp-toc-tooltip-max-width", `${maxWidth}px`);
-    tooltip.style.left = "0px";
-    tooltip.style.top = "0px";
-
-    const tooltipWidth = tooltip.offsetWidth;
-    const tooltipHeight = tooltip.offsetHeight;
-    const spaceRight = viewportWidth - linkRect.right - padding;
-    const placeRight = spaceRight >= tooltipWidth || rootLeft <= tooltipWidth;
-    const left = placeRight
-      ? Math.min(linkRect.right + gap, viewportWidth - tooltipWidth - padding)
-      : Math.max(padding, linkRect.left - tooltipWidth - gap);
-    const top = Math.min(
-      Math.max(padding, linkRect.top + linkRect.height / 2 - tooltipHeight / 2),
-      viewportHeight - tooltipHeight - padding,
-    );
-
-    tooltip.dataset.side = placeRight ? "right" : "left";
-    tooltip.style.left = `${Math.round(left)}px`;
-    tooltip.style.top = `${Math.round(top)}px`;
-  }
-
-  function bindTooltipInteractions(
-    entries: TocEntry[],
-    root: HTMLElement,
-    tooltip: HTMLElement,
-  ): void {
-    const syncTooltipPalette = (): void => {
-      tooltip.style.setProperty(
-        "--rp-toc-font-family",
-        root.style.getPropertyValue("--rp-toc-font-family"),
-      );
-      tooltip.style.setProperty(
-        "--rp-toc-ink",
-        root.style.getPropertyValue("--rp-toc-ink"),
-      );
-      tooltip.style.setProperty(
-        "--rp-toc-surface",
-        root.style.getPropertyValue("--rp-toc-surface"),
-      );
-      tooltip.dataset.surfaceTone = root.dataset.surfaceTone || "light";
-    };
-
-    const showTooltip = (entry: TocEntry): void => {
-      if (!entry.link.classList.contains(TRUNCATED_CLASS)) {
-        hideTooltip(tooltip);
-        return;
-      }
-
-      syncTooltipPalette();
-      tooltip.textContent = entry.text;
-      tooltip.hidden = false;
-      tooltip.classList.add(TOOLTIP_VISIBLE_CLASS);
-      positionTooltip(tooltip, entry.link, root);
-    };
-
-    for (const entry of entries) {
-      entry.link.addEventListener("mouseenter", () => {
-        showTooltip(entry);
-      });
-      entry.link.addEventListener("focus", () => {
-        showTooltip(entry);
-      });
-      entry.link.addEventListener("mouseleave", () => {
-        hideTooltip(tooltip);
-      });
-      entry.link.addEventListener("blur", () => {
-        hideTooltip(tooltip);
-      });
-      entry.link.addEventListener("click", () => {
-        hideTooltip(tooltip);
-      });
-    }
-
-    if (root.dataset.tooltipBound !== "true") {
-      root.dataset.tooltipBound = "true";
-      root.addEventListener("mouseleave", () => {
-        hideTooltip(tooltip);
-      });
-    }
-  }
-
-  function setActive(
-    entries: TocEntry[],
-    activeId: string,
-  ): TocEntry | undefined {
-    let activeEntry: TocEntry | undefined;
-
-    for (const entry of entries) {
-      const isActive = entry.id === activeId;
-      entry.link.classList.toggle(ACTIVE_CLASS, isActive);
-
-      if (isActive) {
-        activeEntry = entry;
-        entry.link.setAttribute("aria-current", "location");
-      } else {
-        entry.link.removeAttribute("aria-current");
-      }
-    }
-
-    return activeEntry;
-  }
-
-  function revealActiveEntry(
-    root: HTMLElement,
-    entry: TocEntry,
-    options: {
-      behavior?: "center" | "nearest";
-      force?: boolean;
-    } = {},
-  ): void {
-    const viewportHeight = root.clientHeight;
-    const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
-    if (viewportHeight <= 0 || maxScrollTop <= 0) return;
-
-    const { behavior = "center", force = false } = options;
-    const entryTop = entry.link.offsetTop;
-    const entryHeight = Math.max(entry.link.offsetHeight, 20);
-    const entryBottom = entryTop + entryHeight;
-    const currentScrollTop = root.scrollTop;
-    const revealPadding = 24;
-    const visibleTop = currentScrollTop + revealPadding;
-    const visibleBottom = currentScrollTop + viewportHeight - revealPadding;
-    const isFullyVisible =
-      entryTop >= visibleTop && entryBottom <= visibleBottom;
-
-    if (!force && isFullyVisible) {
-      return;
-    }
-
-    let nextScrollTop = currentScrollTop;
-
-    if (behavior === "nearest") {
-      if (entryTop < visibleTop) {
-        nextScrollTop = entryTop - revealPadding;
-      } else if (entryBottom > visibleBottom) {
-        nextScrollTop = entryBottom - viewportHeight + revealPadding;
-      } else {
-        return;
-      }
-    } else {
-      nextScrollTop = Math.round(entryTop - (viewportHeight - entryHeight) / 2);
-    }
-
-    nextScrollTop = Math.min(maxScrollTop, Math.max(0, nextScrollTop));
-
-    if (Math.abs(nextScrollTop - currentScrollTop) <= 1) return;
-    root.scrollTop = nextScrollTop;
-    syncScrollFadeState(root);
-  }
-
   function findActiveId(entries: TocEntry[]): string {
     const activationTop = getResolvedHeaderOffset() + ACTIVE_OFFSET;
     let active = entries[0]?.id ?? "";
@@ -692,35 +350,11 @@ const CURRENT_SCRIPT =
     );
   }
 
-  function applyRootLayout(root: HTMLElement, layout: RootLayout): void {
-    if (layout.hidden) {
-      root.hidden = true;
-      syncScrollFadeState(root);
-      return;
-    }
-
-    root.hidden = false;
-    root.style.setProperty("--rp-toc-left", `${layout.left}px`);
-    root.style.setProperty("--rp-toc-top", `${layout.top}px`);
-    root.style.setProperty("--rp-toc-width", `${layout.width}px`);
-    root.style.setProperty("--rp-toc-safe-top", `${layout.safeTop}px`);
-  }
-
-  function bindLinkInteractions(
-    entries: TocEntry[],
-    handleLinkActivation: (entry: TocEntry) => void,
+  function applyResolvedRootLayout(
+    root: HTMLElement,
+    layout: RootLayout,
   ): void {
-    for (const entry of entries) {
-      entry.link.addEventListener("click", (event) => {
-        event.preventDefault();
-        const isPointerActivation = event.detail > 0;
-        handleLinkActivation(entry);
-
-        if (isPointerActivation) {
-          entry.link.blur();
-        }
-      });
-    }
+    applyViewLayout(root, layout, viewConfig);
   }
 
   function createState(root: HTMLElement): TocState | null {
@@ -734,7 +368,14 @@ const CURRENT_SCRIPT =
     const headings = headingItems.map(({ heading }) => heading);
 
     const scope = getStickyScope(article, headings);
-    const entries = buildEntries(root, headingItems, usedIds);
+    const entries = buildEntries({
+      config: viewConfig,
+      ensureHeadingId,
+      getHeadingLevel,
+      headingItems,
+      root,
+      usedIds,
+    });
 
     if (entries.length < 2) {
       return null;
@@ -757,8 +398,9 @@ const CURRENT_SCRIPT =
 
     if (document.querySelector(`.${ROOT_CLASS}`)) return;
 
-    const { element: root, created: rootCreated } = createRoot();
-    const { element: tooltip, created: tooltipCreated } = createTooltip();
+    const { element: root, created: rootCreated } = createRoot(viewConfig);
+    const { element: tooltip, created: tooltipCreated } =
+      createTooltip(viewConfig);
     let isInitialLayoutPending = document.readyState !== "complete";
     const initialState = createState(root);
     if (!initialState) {
@@ -770,7 +412,7 @@ const CURRENT_SCRIPT =
     }
 
     let state: TocState = initialState;
-    setPendingVisibility(root, isInitialLayoutPending);
+    setPendingVisibility(root, isInitialLayoutPending, viewConfig);
 
     function scheduleSync(): void {
       if (scheduledFrame) return;
@@ -801,8 +443,8 @@ const CURRENT_SCRIPT =
       } = {},
     ): void {
       state.currentActiveId = entry.id;
-      setActive(state.entries, entry.id);
-      revealActiveEntry(root, entry, {
+      setActive(state.entries, entry.id, viewConfig);
+      revealActiveEntry(root, entry, viewConfig, {
         behavior: options.revealBehavior,
       });
     }
@@ -823,7 +465,7 @@ const CURRENT_SCRIPT =
       }
 
       navigationLock.lock(entry.id, destinationScrollTop);
-      revealActiveEntry(root, entry, { behavior: "nearest" });
+      revealActiveEntry(root, entry, viewConfig, { behavior: "nearest" });
       scrollElementIntoViewWithOffset(
         entry.heading,
         headerOffset,
@@ -836,15 +478,20 @@ const CURRENT_SCRIPT =
       if (!nextState) {
         navigationLock.clear();
         root.hidden = true;
-        syncScrollFadeState(root);
-        hideTooltip(tooltip);
+        syncScrollFadeState(root, viewConfig);
+        hideTooltip(tooltip, viewConfig);
         return false;
       }
 
       state = nextState;
-      hideTooltip(tooltip);
+      hideTooltip(tooltip, viewConfig);
       bindLinkInteractions(state.entries, handleLinkActivation);
-      bindTooltipInteractions(state.entries, root, tooltip);
+      bindTooltipInteractions({
+        config: viewConfig,
+        entries: state.entries,
+        root,
+        tooltip,
+      });
       return true;
     }
 
@@ -854,37 +501,37 @@ const CURRENT_SCRIPT =
       }
 
       const layout = getRootLayout(root, state.scope, state.bottomBoundary);
-      applyRootLayout(root, layout);
+      applyResolvedRootLayout(root, layout);
       if (root.hidden) {
         navigationLock.clear();
-        setPendingVisibility(root, isInitialLayoutPending);
-        syncScrollFadeState(root);
-        hideTooltip(tooltip);
+        setPendingVisibility(root, isInitialLayoutPending, viewConfig);
+        syncScrollFadeState(root, viewConfig);
+        hideTooltip(tooltip, viewConfig);
         return;
       }
 
-      syncTooltipState(state.entries);
+      syncTooltipState(state.entries, viewConfig);
       const activeId = resolveActiveId({
         activeId: findActiveId(state.entries),
         hashedId: findHashedEntry(state.entries)?.id,
         isInitialLayoutPending,
         lockedTargetId: navigationLock.getFrozenActiveId(),
       });
-      const activeEntry = setActive(state.entries, activeId);
+      const activeEntry = setActive(state.entries, activeId, viewConfig);
       if (!activeEntry) return;
 
       if (activeEntry.id !== state.currentActiveId) {
         state.currentActiveId = activeEntry.id;
 
         if (!navigationLock.isActive()) {
-          revealActiveEntry(root, activeEntry);
+          revealActiveEntry(root, activeEntry, viewConfig);
         }
       }
 
-      syncScrollFadeState(root);
-      setPendingVisibility(root, isInitialLayoutPending);
+      syncScrollFadeState(root, viewConfig);
+      setPendingVisibility(root, isInitialLayoutPending, viewConfig);
       if (isInitialLayoutPending) {
-        hideTooltip(tooltip);
+        hideTooltip(tooltip, viewConfig);
       }
     }
 
@@ -896,7 +543,12 @@ const CURRENT_SCRIPT =
     }
 
     bindLinkInteractions(state.entries, handleLinkActivation);
-    bindTooltipInteractions(state.entries, root, tooltip);
+    bindTooltipInteractions({
+      config: viewConfig,
+      entries: state.entries,
+      root,
+      tooltip,
+    });
     sync();
 
     const initialHash = getDecodedHash();
@@ -926,7 +578,7 @@ const CURRENT_SCRIPT =
     root.addEventListener(
       "scroll",
       () => {
-        syncScrollFadeState(root);
+        syncScrollFadeState(root, viewConfig);
       },
       { passive: true },
     );
