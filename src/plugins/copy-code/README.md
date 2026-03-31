@@ -1,17 +1,21 @@
 # copy-code
 
-티스토리 본문 코드블록에 복사 버튼을 붙여 주는 플러그인입니다.
+티스토리 본문 코드블록에 복사 버튼을 추가합니다.
 
 ## 주요 기능
 
+- 기본 상태에서는 복사 버튼 대신 간결한 언어 축약 라벨을 표시합니다. 언어를 찾지 못하면 `Code`를 표시합니다.
 - `<code>`를 포함한 `pre` 블록에만 복사 버튼을 추가합니다.
-- 기본 상태에서는 우측 상단에 간결한 언어 축약 라벨을 표시합니다. 언어를 찾지 못하면 `Code`를 표시합니다.
-- 데스크톱에서는 코드블록 hover 또는 focus 상태에서만 복사 버튼을 표시합니다.
-- 모바일에서는 코드블록을 한 번 터치하면 복사 버튼을 표시하고, 바깥 영역을 터치하거나 복사 상태가 끝나면 다시 언어 라벨로 돌아갑니다.
 - 보안 컨텍스트에서는 `Clipboard API`를 우선 사용하고, 사용할 수 없으면 `execCommand("copy")`로 복사합니다.
 - 줄바꿈을 유지한 채 복사합니다. `highlight.js` 줄 번호 마크업(`.hljs-ln-code`, `.hljs-ln-line`)도 처리합니다.
-- `pre[data-ke-language]`, `data-language`, `lang`, `language-*` 클래스 등에서 언어명을 감지합니다.
-- 이미 처리한 블록은 `data-copy-code-ready="true"`를 남겨 중복 초기화를 막습니다.
+- 대표적으로 `pre` 또는 내부 `code`의 `data-ke-language`, `data-language`, `data-code-language`, `lang`, `language-*`, `lang-*`, `brush: js` 같은 값에서 언어명을 감지합니다.
+- 같은 코드블록에 버튼이 중복으로 붙지 않도록 한 번만 초기화합니다.
+
+## 동작 방식
+
+- 데스크톱: 코드블록 hover 또는 focus 상태에서만 복사 버튼을 표시합니다.
+- 모바일: 코드블록을 터치하면 복사 버튼을 표시하고, 바깥 영역을 터치하거나 복사 상태가 끝나면 다시 언어 라벨을 표시합니다.
+
 
 ## 본문 컨테이너 감지
 
@@ -26,10 +30,20 @@
 - `#article`
 - `.article_cont`
 
-아래 셀렉터는 fallback 후보로 사용합니다.
+아래 셀렉터는 fallback 후보로 사용하며, 글 길이와 콘텐츠 신호가 충분할 때만 채택합니다.
 
 - `.tt_article_useless_p_margin`
 - `.inner_content`
+
+스킨 구조가 다르면 `window.RPPlugins.articleSelectors`로 우선 탐색할 본문 셀렉터를 지정할 수 있습니다. 지정한 셀렉터를 먼저 확인한 뒤, 기본 후보를 이어서 탐색합니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    articleSelectors: [".article-view", ".contents_style"],
+  };
+</script>
+```
 
 ## 버튼 상태
 
@@ -41,7 +55,7 @@
 
 ## 선택 설정
 
-`window.RPPlugins.copyCode`로 버튼 문구를 조정할 수 있습니다.
+`window.RPPlugins.copyCode`로 버튼 문구를 조정할 수 있습니다. 설정 코드는 스크립트보다 먼저 선언해야 합니다.
 
 ```html
 <script>
@@ -73,4 +87,3 @@
 
 - 빈 코드블록이거나 복사 실패 시 버튼이 `Failed` 상태로 바뀝니다.
 - 코드블록 안에 `<code>` 요소가 없으면 버튼을 추가하지 않습니다.
-- 복사 버튼 텍스트는 `Copy`, `Copied`, `Failed` 입니다.

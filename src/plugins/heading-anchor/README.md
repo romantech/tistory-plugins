@@ -23,10 +23,20 @@
 - `#article`
 - `.article_cont`
 
-아래 셀렉터는 fallback 후보로 사용합니다.
+아래 셀렉터는 fallback 후보로 사용하며, 글 길이와 콘텐츠 신호가 충분할 때만 채택합니다.
 
 - `.tt_article_useless_p_margin`
 - `.inner_content`
+
+스킨 구조가 다르면 `window.RPPlugins.articleSelectors`로 우선 탐색할 본문 셀렉터를 지정할 수 있습니다. 지정한 셀렉터를 먼저 확인한 뒤, 기본 후보를 이어서 탐색합니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    articleSelectors: [".article-view", ".contents_style"],
+  };
+</script>
+```
 
 ## 처리 대상
 
@@ -36,7 +46,7 @@
 
 ## 선택 설정
 
-`window.RPPlugins.headingAnchor` 속성을 통해 처리할 제목 레벨과 해시 이동 오프셋을 조정할 수 있습니다.
+`window.RPPlugins.headingAnchor` 속성을 통해 처리할 제목 레벨과 해시 이동 오프셋을 조정할 수 있습니다. 설정 코드는 스크립트보다 먼저 선언해야 합니다.
 
 ```html
 <script>
