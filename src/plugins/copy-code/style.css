@@ -1,15 +1,21 @@
 .rp-copy-code-wrapper {
   position: relative;
-  --rp-copy-code-label-color: rgba(184, 192, 201, 0.72);
+  --rp-copy-code-label-color: rgba(230, 237, 243, 0.4);
+  --rp-copy-code-overlay-top: 0.75rem;
+  --rp-copy-code-overlay-right: 0.75rem;
+  --rp-copy-code-button-bg: rgba(240, 246, 252, 0.04);
+  --rp-copy-code-button-hover-bg: rgba(88, 166, 255, 0.1);
+  --rp-copy-code-button-success-bg: rgba(63, 185, 80, 0.12);
+  --rp-copy-code-button-error-bg: rgba(248, 81, 73, 0.12);
 }
 
 .rp-copy-code-button,
 .rp-copy-code-label {
   position: absolute;
-  top: 0.625rem;
-  right: 0.625rem;
+  top: var(--rp-copy-code-overlay-top);
+  right: var(--rp-copy-code-overlay-right);
   z-index: 10;
-  max-width: calc(100% - 1.25rem);
+  max-width: calc(100% - 1.75rem);
   user-select: none;
 }
 
@@ -17,41 +23,37 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  height: 26px;
-  padding: 0 6px 2px;
-  border: 1px solid rgba(240, 246, 252, 0.16);
-  border-radius: 5px;
-  background: rgba(33, 38, 45, 0.55);
-  color: #c9d1d9;
+  min-width: 46px;
+  height: 22px;
+  padding: 0 8px 1px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--rp-copy-code-button-bg);
+  color: rgba(240, 246, 252, 0.72);
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: 0;
+  letter-spacing: 0.08em;
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
   touch-action: manipulation;
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
   transition:
     color 0.18s ease,
     background-color 0.18s ease,
-    border-color 0.18s ease,
     opacity 0.18s ease;
 }
 
 .rp-copy-code-label {
   color: var(--rp-copy-code-label-color);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   opacity: 1;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.16em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.24);
   text-transform: uppercase;
   transition:
     color 0.18s ease,
@@ -63,30 +65,29 @@
 }
 
 .rp-copy-code-button:hover {
-  background: rgba(48, 54, 61, 0.68);
-  border-color: rgba(240, 246, 252, 0.28);
+  background: var(--rp-copy-code-button-hover-bg);
   color: #f0f6fc;
 }
 
 .rp-copy-code-button:focus-visible {
   opacity: 1;
   pointer-events: auto;
-  outline: 2px solid #2f81f7;
-  outline-offset: 2px;
+  outline: none;
+  background: var(--rp-copy-code-button-hover-bg);
+  box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.42);
+  color: #f0f6fc;
 }
 
 .rp-copy-code-button.is-copied {
-  background: rgba(35, 134, 54, 0.22);
-  border-color: rgba(63, 185, 80, 0.45);
-  color: #3fb950;
+  background: var(--rp-copy-code-button-success-bg);
+  color: #93d8a3;
   opacity: 1;
   pointer-events: auto;
 }
 
 .rp-copy-code-button.is-error {
-  background: rgba(248, 81, 73, 0.2);
-  border-color: rgba(248, 81, 73, 0.4);
-  color: #ff7b72;
+  background: var(--rp-copy-code-button-error-bg);
+  color: #ffb3ac;
   opacity: 1;
   pointer-events: auto;
 }
