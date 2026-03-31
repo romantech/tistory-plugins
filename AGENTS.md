@@ -30,7 +30,7 @@ This file is for coding agents working in this repository. Keep it short, practi
 - Edit source files under `src/`.
 - Shared test utilities live under `test/`, but plugin behavior tests are usually colocated under `src/plugins/<plugin-name>/index.test.ts`.
 - Treat `dist/` as generated output. Do not hand-edit files there unless the user explicitly asks for it.
-- For source-only changes, do not stage or commit `dist/` by default. This repository updates version and `dist/` automatically for same-repo PRs targeting `main`; only include `dist/` when the user explicitly asks for it or the task is a manual build/release sync.
+- For source-only changes, do not stage or commit `dist/` by default. This repository updates a version and `dist/` automatically for same-repo PRs targeting `main`; only include `dist/` when the user explicitly asks for it or the task is a manual build/release sync.
 - `src/plugins/**/index.ts` is the build entry pattern. Esbuild discovers plugins from that file name.
 
 ## Plugin Conventions
@@ -64,9 +64,11 @@ This file is for coding agents working in this repository. Keep it short, practi
 - If a plugin introduces new global state, update the reset logic in `test/setup.ts`.
 - The test environment uses `happy-dom`; do not assume a real browser network or layout engine.
 - For non-trivial plugin changes, run `pnpm check`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
-- Use `pnpm preview` to open a real blog page with local `dist/*` assets overriding the jsDelivr requests. The script runs in watch mode by default and remembers the last preview URL.
-- `pnpm preview --plugin toc` limits build/override scope to specific plugins. Without `--plugin`, the initial run builds all plugins.
-- Watch rebuilds are scoped by changed files: `src/plugins/<name>/**` rebuilds that plugin only, while `src/shared/**` falls back to a full rebuild.
+- Use `pnpm preview` to verify plugin changes on a real Tistory page with local `dist/*` assets overriding jsDelivr requests. The script runs in watch mode by default and remembers the last preview URL.
+- For visual validation on a live page, prefer `pnpm preview` over injecting built code through Chrome DevTools MCP.
+- After `pnpm preview` opens the Playwright Chromium window, navigate within that browser instead of reinjecting assets manually; the override stays active for page navigation in that session.
+- `pnpm preview --plugin toc` limits build and override scope to specific plugins. Without `--plugin`, the initial run builds all plugins.
+- Changed files scope watch rebuilds: `src/plugins/<name>/**` rebuilds that plugin only, while `src/shared/**` falls back to a full rebuild.
 
 ## Documentation Updates
 
