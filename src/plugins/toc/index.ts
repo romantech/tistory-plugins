@@ -10,8 +10,16 @@ import {
   scrollElementIntoViewWithOffset,
 } from "@/shared/headings";
 import { getTocConfig } from "@/shared/plugin-config";
+import { ensurePluginStylesheet } from "@/shared/stylesheet";
+
+const CURRENT_SCRIPT =
+  document.currentScript instanceof HTMLScriptElement
+    ? document.currentScript
+    : null;
 
 (() => {
+  ensurePluginStylesheet("toc", CURRENT_SCRIPT);
+
   const ROOT_CLASS = "rp-toc";
   const PENDING_CLASS = `${ROOT_CLASS}--pending`;
   const LIST_CLASS = `${ROOT_CLASS}-list`;

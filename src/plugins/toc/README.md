@@ -56,17 +56,7 @@
 
 ## 설치 방법
 
-### 1. CSS 추가
-
-아래 코드를 `</head>` 위에 삽입합니다.
-
-```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.css">
-```
-
-### 2. JS 추가
-
-아래 코드를 `</body>` 위에 삽입합니다.
+티스토리 HTML 편집 페이지에서 아래 코드를 `</body>` 위에 삽입합니다. 스크립트가 실행되면 같은 경로의 `index.min.css`를 자동으로 로드합니다.
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.js"></script>
