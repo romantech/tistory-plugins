@@ -10,8 +10,16 @@ import {
   scrollElementIntoViewWithOffset,
 } from "@/shared/headings";
 import { getHeadingAnchorConfig } from "@/shared/plugin-config";
+import { ensurePluginStylesheet } from "@/shared/stylesheet";
+
+const CURRENT_SCRIPT =
+  document.currentScript instanceof HTMLScriptElement
+    ? document.currentScript
+    : null;
 
 (() => {
+  ensurePluginStylesheet("heading-anchor", CURRENT_SCRIPT);
+
   const LINK_CLASS = "rp-heading-anchor";
   const TARGET_CLASS = "rp-heading-target";
   const POST_LOAD_CORRECTION_DELAYS = [120, 320, 700] as const;

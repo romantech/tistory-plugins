@@ -1,4 +1,5 @@
 import {
+  appendPluginScript,
   getRequiredElement,
   getRequiredElements,
   renderArticle,
@@ -113,6 +114,7 @@ describe("heading-anchor plugin", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    appendPluginScript("heading-anchor");
 
     originalReadyState = Object.getOwnPropertyDescriptor(
       document,
@@ -189,7 +191,17 @@ describe("heading-anchor plugin", () => {
     await loadHeadingAnchorPlugin();
 
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3, h4");
+    const stylesheet = document.head.querySelector(
+      "#tistory-plugins-heading-anchor-css",
+    );
+
     expect(headings).toHaveLength(4);
+    expect(stylesheet).toBeInstanceOf(HTMLLinkElement);
+    expect(stylesheet).toHaveAttribute("rel", "stylesheet");
+    expect(stylesheet).toHaveAttribute(
+      "href",
+      "https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.css",
+    );
 
     expect(headings[0].id).toBe("첫-번째-섹션");
     expect(headings[1].id).toBe("첫-번째-섹션-2");
@@ -248,6 +260,9 @@ describe("heading-anchor plugin", () => {
     await loadHeadingAnchorPlugin();
 
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const stylesheets = document.head.querySelectorAll(
+      "#tistory-plugins-heading-anchor-css",
+    );
 
     for (const heading of headings) {
       expect(heading.querySelectorAll(".rp-heading-anchor")).toHaveLength(1);
@@ -255,6 +270,8 @@ describe("heading-anchor plugin", () => {
         heading.querySelectorAll(".rp-heading-anchor-marker"),
       ).toHaveLength(1);
     }
+
+    expect(stylesheets).toHaveLength(1);
   });
 
   it("updates the hash and scrolls using the header offset when an anchor is clicked", async () => {

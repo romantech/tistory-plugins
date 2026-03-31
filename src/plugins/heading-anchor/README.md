@@ -50,21 +50,11 @@
 ```
 
 - `levels`: 앵커를 추가할 제목 레벨.
-- `headerOffset`: 해시 이동 시 사용할 헤더 오프셋 픽셀 값.
+- `headerOffset`: 해시 이동 시 사용할 헤더 오프셋 픽셀 값. 미지정 시 `:root`의 `--header-height` 값을 사용하며, 해당 값이 없으면 기본값 `84px`를 사용합니다.
 
 ## 설치 방법
 
-### 1. CSS 추가
-
-아래 코드를 `</head>` 위에 삽입합니다.
-
-```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.css">
-```
-
-### 2. JS 추가
-
-아래 코드를 `</body>` 위에 삽입합니다.
+티스토리 HTML 편집 페이지에서 아래 코드를 `</body>` 위에 삽입합니다. 스크립트가 실행되면 같은 경로의 `index.min.css`를 자동으로 로드합니다.
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
@@ -77,16 +67,6 @@
 3. 제목 안에 링크가 없으면 텍스트 전체를 앵커로 감싸고 끝에 `#` 마커를 붙입니다.
 4. 사용자가 제목을 클릭하면 현재 섹션 해시를 갱신하고 헤더 높이를 반영해 스크롤합니다.
 5. 해시가 있는 URL로 직접 들어온 경우 여러 시점에서 위치를 다시 맞춰 이미지, 폰트, 뷰포트 변화로 생기는 오차를 줄입니다.
-
-## 헤더 높이 조정
-
-고정 헤더 높이가 기본값 `84px`와 다르면 CSS 변수만 덮어쓰면 됩니다.
-
-```css
-:root {
-  --header-height: 72px;
-}
-```
 
 ## 참고 사항
 

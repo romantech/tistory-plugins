@@ -2,8 +2,16 @@ import "./style.css";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
 import { getCopyCodeConfig } from "@/shared/plugin-config";
+import { ensurePluginStylesheet } from "@/shared/stylesheet";
+
+const CURRENT_SCRIPT =
+  document.currentScript instanceof HTMLScriptElement
+    ? document.currentScript
+    : null;
 
 (() => {
+  ensurePluginStylesheet("copy-code", CURRENT_SCRIPT);
+
   const WRAPPER_CLASS = "rp-copy-code-wrapper";
   const BUTTON_CLASS = "rp-copy-code-button";
   const COPIED_CLASS = "is-copied";

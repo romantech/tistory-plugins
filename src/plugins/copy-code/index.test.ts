@@ -1,4 +1,8 @@
-import { renderArticle, renderArticleView } from "@test/dom";
+import {
+  appendPluginScript,
+  renderArticle,
+  renderArticleView,
+} from "@test/dom";
 import { createPluginLoader } from "@test/load-plugin";
 import { fireEvent, screen, waitFor } from "@testing-library/dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +13,8 @@ describe("copy-code plugin", () => {
   );
 
   beforeEach(() => {
+    appendPluginScript("copy-code");
+
     Object.defineProperty(window, "isSecureContext", {
       configurable: true,
       value: true,
@@ -37,9 +43,18 @@ describe("copy-code plugin", () => {
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
+    const stylesheet = document.head.querySelector(
+      "#tistory-plugins-copy-code-css",
+    );
 
     expect(buttons).toHaveLength(2);
     expect(wrappers).toHaveLength(2);
+    expect(stylesheet).toBeInstanceOf(HTMLLinkElement);
+    expect(stylesheet).toHaveAttribute("rel", "stylesheet");
+    expect(stylesheet).toHaveAttribute(
+      "href",
+      "https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.css",
+    );
     expect(buttons[0]).toHaveTextContent("Copy");
     expect(buttons[1]).toHaveTextContent("Copy");
   });
@@ -66,9 +81,13 @@ describe("copy-code plugin", () => {
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
+    const stylesheets = document.head.querySelectorAll(
+      "#tistory-plugins-copy-code-css",
+    );
 
     expect(buttons).toHaveLength(1);
     expect(wrappers).toHaveLength(1);
+    expect(stylesheets).toHaveLength(1);
   });
 
   it("copies code text with Clipboard API and shows success state", async () => {

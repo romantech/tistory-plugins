@@ -19,7 +19,7 @@
 
 ## 설치 방법
 
-아래 스크립트를 `</body>` 위에 삽입합니다.
+티스토리 HTML 편집 페이지에서 아래 코드를 `</body>` 위에 삽입합니다.
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/focus-guard/index.min.js"></script>

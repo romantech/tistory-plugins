@@ -1,4 +1,5 @@
 import {
+  appendPluginScript,
   getRequiredElement,
   getRequiredElements,
   renderArticle,
@@ -102,6 +103,7 @@ describe("toc plugin", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    appendPluginScript("toc");
 
     originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
     originalVisualViewport = Object.getOwnPropertyDescriptor(
@@ -228,9 +230,16 @@ describe("toc plugin", () => {
 
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+    const stylesheet = document.head.querySelector("#tistory-plugins-toc-css");
 
     expect(root.hidden).toBe(false);
     expect(root.parentElement).toBe(document.body);
+    expect(stylesheet).toBeInstanceOf(HTMLLinkElement);
+    expect(stylesheet).toHaveAttribute("rel", "stylesheet");
+    expect(stylesheet).toHaveAttribute(
+      "href",
+      "https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.css",
+    );
     expect(links).toHaveLength(4);
     expect(links[0].getAttribute("href")).toBe("#소개");
     expect(links[0].dataset.tooltip).toBe("소개");
@@ -267,6 +276,9 @@ describe("toc plugin", () => {
 
     expect(document.querySelectorAll(".rp-toc")).toHaveLength(1);
     expect(document.querySelectorAll(".rp-toc-link")).toHaveLength(2);
+    expect(document.querySelectorAll("#tistory-plugins-toc-css")).toHaveLength(
+      1,
+    );
   });
 
   it("does not bind duplicate click handlers when loaded again", async () => {
