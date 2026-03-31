@@ -42,12 +42,14 @@ describe("copy-code plugin", () => {
     await loadCopyCodePlugin();
 
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
+    const labels = screen.getAllByText("Code");
     const wrappers = document.querySelectorAll(".rp-copy-code-wrapper");
     const stylesheet = document.head.querySelector(
       "#tistory-plugins-copy-code-css",
     );
 
     expect(buttons).toHaveLength(2);
+    expect(labels).toHaveLength(2);
     expect(wrappers).toHaveLength(2);
     expect(stylesheet).toBeInstanceOf(HTMLLinkElement);
     expect(stylesheet).toHaveAttribute("rel", "stylesheet");
@@ -57,6 +59,16 @@ describe("copy-code plugin", () => {
     );
     expect(buttons[0]).toHaveTextContent("Copy");
     expect(buttons[1]).toHaveTextContent("Copy");
+  });
+
+  it("renders a detected language label when language metadata exists", async () => {
+    renderArticle(`
+      <pre data-ke-language="javascript"><code>const a = 1;</code></pre>
+    `);
+
+    await loadCopyCodePlugin();
+
+    expect(screen.getByText("JS")).toBeInTheDocument();
   });
 
   it("does not add a button when pre does not contain code", async () => {
@@ -135,7 +147,7 @@ describe("copy-code plugin", () => {
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
-      expect(button).toHaveTextContent("Error");
+      expect(button).toHaveTextContent("Failed");
       expect(button).toHaveClass("is-error");
     });
 
@@ -201,7 +213,7 @@ describe("copy-code plugin", () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(button).toHaveTextContent("Error");
+      expect(button).toHaveTextContent("Failed");
       expect(button).toHaveClass("is-error");
     });
 
@@ -209,6 +221,102 @@ describe("copy-code plugin", () => {
 
     await waitFor(() => {
       expect(button).toHaveTextContent("Copy");
+    });
+  });
+
+  it("shows the copy button on touch and hides it after touching outside", async () => {
+    renderArticle(`
+      <pre><code>const a = 1;</code></pre>
+    `);
+
+    await loadCopyCodePlugin();
+
+    const wrapper = document.querySelector(".rp-copy-code-wrapper");
+    if (!(wrapper instanceof HTMLElement)) {
+      throw new Error("Expected wrapper element");
+    }
+
+    expect(wrapper).not.toHaveClass("is-touch-active");
+
+    wrapper.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        pointerType: "touch",
+      }),
+    );
+
+    expect(wrapper).toHaveClass("is-touch-active");
+
+    document.body.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        pointerType: "touch",
+      }),
+    );
+
+    expect(wrapper).not.toHaveClass("is-touch-active");
+  });
+
+  it("toggles the hover visibility class when the pointer enters and leaves", async () => {
+    renderArticle(`
+      <pre><code>const a = 1;</code></pre>
+    `);
+
+    await loadCopyCodePlugin();
+
+    const wrapper = document.querySelector(".rp-copy-code-wrapper");
+    if (!(wrapper instanceof HTMLElement)) {
+      throw new Error("Expected wrapper element");
+    }
+
+    expect(wrapper).not.toHaveClass("is-button-visible");
+    expect(wrapper).not.toHaveClass("is-label-hidden");
+
+    fireEvent.mouseEnter(wrapper);
+    expect(wrapper).toHaveClass("is-button-visible");
+    expect(wrapper).toHaveClass("is-label-hidden");
+
+    fireEvent.mouseLeave(wrapper);
+    expect(wrapper).not.toHaveClass("is-button-visible");
+  });
+
+  it("returns to the language label after touch copy feedback resets", async () => {
+    vi.useFakeTimers();
+
+    renderArticle(`
+      <pre data-ke-language="javascript"><code>const a = 1;</code></pre>
+    `);
+
+    await loadCopyCodePlugin();
+
+    const wrapper = document.querySelector(".rp-copy-code-wrapper");
+    if (!(wrapper instanceof HTMLElement)) {
+      throw new Error("Expected wrapper element");
+    }
+
+    const button = screen.getByRole("button", { name: "Copy code" });
+
+    wrapper.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        pointerType: "touch",
+      }),
+    );
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Copied");
+      expect(wrapper).toHaveClass("is-touch-active");
+    });
+
+    vi.advanceTimersByTime(2000);
+
+    await waitFor(() => {
+      expect(button).toHaveTextContent("Copy");
+      expect(wrapper).not.toHaveClass("is-touch-active");
+      expect(wrapper).not.toHaveClass("is-label-hidden");
+      expect(screen.getByText("JS")).toBeInTheDocument();
     });
   });
 
