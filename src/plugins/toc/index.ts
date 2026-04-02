@@ -306,6 +306,7 @@ const CURRENT_SCRIPT =
     function clearMobileDrag(): void {
       mobileDragState.active = false;
       mobileDragState.pointerId = -1;
+      root.dataset.mobilePressed = "false";
       root.dataset.mobileDragging = "false";
     }
 
@@ -352,7 +353,8 @@ const CURRENT_SCRIPT =
         mobileDragState.baseTop = rect.top;
         mobileDragState.width = rect.width;
         mobileDragState.height = rect.height;
-        root.dataset.mobileDragging = "true";
+        root.dataset.mobilePressed = "true";
+        root.dataset.mobileDragging = "false";
 
         if (
           "setPointerCapture" in toggleButton &&
@@ -384,6 +386,8 @@ const CURRENT_SCRIPT =
         }
 
         mobileDragState.moved = true;
+        root.dataset.mobilePressed = "false";
+        root.dataset.mobileDragging = "true";
 
         const visualViewport = window.visualViewport;
         const viewportWidth = Math.max(

@@ -115,7 +115,8 @@
   touch-action: none;
   transition:
     background 0.18s ease,
-    box-shadow 0.18s ease;
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-toggle::before {
@@ -150,6 +151,14 @@
 
 .rp-toc[data-layout="mobile"] .rp-toc-toggle:hover {
   background: var(--rp-toc-mobile-toggle-bg-hover);
+}
+
+.rp-toc[data-layout="mobile"][data-mobile-pressed="true"] .rp-toc-toggle {
+  transform: translateY(-2px) scale(0.982);
+  box-shadow:
+    0 18px 30px rgb(0 0 0 / 0.22),
+    0 8px 18px rgb(0 0 0 / 0.14),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.034);
 }
 
 .rp-toc[data-layout="mobile"][data-mobile-dragging="true"] .rp-toc-toggle {
