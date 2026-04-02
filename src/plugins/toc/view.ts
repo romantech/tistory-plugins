@@ -614,6 +614,7 @@ export function applyRootLayout(
   }
 
   toggleButton.hidden = false;
+  root.style.setProperty("--rp-toc-mobile-offset-x", "0px");
   setMobileExpanded(root, root.dataset.mobileExpanded === "true", config);
   root.style.removeProperty("--rp-toc-left");
   root.style.removeProperty("--rp-toc-top");

@@ -289,13 +289,9 @@ const CURRENT_SCRIPT =
       active: false,
       pointerId: -1,
       moved: false,
-      startClientX: 0,
       startClientY: 0,
-      startOffsetX: 0,
       startOffsetY: 0,
-      baseLeft: 0,
       baseTop: 0,
-      width: 0,
       height: 0,
     };
 
@@ -352,17 +348,11 @@ const CURRENT_SCRIPT =
         mobileDragState.active = true;
         mobileDragState.pointerId = "pointerId" in event ? event.pointerId : -1;
         mobileDragState.moved = false;
-        mobileDragState.startClientX = event.clientX;
         mobileDragState.startClientY = event.clientY;
-        mobileDragState.startOffsetX = getMobileOffset(
-          "--rp-toc-mobile-offset-x",
-        );
         mobileDragState.startOffsetY = getMobileOffset(
           "--rp-toc-mobile-offset-y",
         );
-        mobileDragState.baseLeft = rect.left;
         mobileDragState.baseTop = rect.top;
-        mobileDragState.width = rect.width;
         mobileDragState.height = rect.height;
         root.dataset.mobilePressed = "true";
         root.dataset.mobileDragging = "false";
@@ -387,11 +377,10 @@ const CURRENT_SCRIPT =
           return;
         }
 
-        const deltaX = event.clientX - mobileDragState.startClientX;
         const deltaY = event.clientY - mobileDragState.startClientY;
         if (
           !mobileDragState.moved &&
-          Math.hypot(deltaX, deltaY) < MOBILE_DRAG_THRESHOLD
+          Math.abs(deltaY) < MOBILE_DRAG_THRESHOLD
         ) {
           return;
         }
@@ -401,10 +390,6 @@ const CURRENT_SCRIPT =
         root.dataset.mobileDragging = "true";
 
         const visualViewport = window.visualViewport;
-        const viewportWidth = Math.max(
-          visualViewport?.width ?? 0,
-          getViewportWidth(),
-        );
         const viewportHeight = Math.max(
           visualViewport?.height ?? 0,
           getViewportHeight(),
@@ -414,15 +399,7 @@ const CURRENT_SCRIPT =
           MOBILE_DRAG_GUTTER,
           viewportTopInset + getResolvedHeaderOffset(),
         );
-        const nextLeft = mobileDragState.baseLeft + deltaX;
         const nextTop = mobileDragState.baseTop + deltaY;
-        const clampedLeft = Math.min(
-          Math.max(MOBILE_DRAG_GUTTER, nextLeft),
-          Math.max(
-            MOBILE_DRAG_GUTTER,
-            viewportWidth - mobileDragState.width - MOBILE_DRAG_GUTTER,
-          ),
-        );
         const clampedTop = Math.min(
           Math.max(minTopBoundary, nextTop),
           Math.max(
@@ -432,8 +409,7 @@ const CURRENT_SCRIPT =
         );
 
         setMobileOffset(
-          mobileDragState.startOffsetX +
-            (clampedLeft - mobileDragState.baseLeft),
+          0,
           mobileDragState.startOffsetY + (clampedTop - mobileDragState.baseTop),
         );
       });

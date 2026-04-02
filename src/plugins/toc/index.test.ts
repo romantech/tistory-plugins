@@ -1959,7 +1959,7 @@ describe("toc plugin", () => {
     expect(replaceStateSpy).toHaveBeenLastCalledWith(null, "", "#설치");
   });
 
-  it("lets the mobile toc button move without toggling the panel after a drag", async () => {
+  it("lets the mobile toc button move vertically without toggling the panel after a drag", async () => {
     const article = renderArticle(
       `
       <h2>소개</h2>
@@ -2027,9 +2027,7 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe(
-      "-30px",
-    );
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe("0px");
     expect(root.style.getPropertyValue("--rp-toc-mobile-offset-y")).toBe(
       "-56px",
     );
@@ -2044,6 +2042,125 @@ describe("toc plugin", () => {
 
     expect(panel.getAttribute("aria-hidden")).toBe("true");
     expect(root.dataset.mobileExpanded).toBe("false");
+  });
+
+  it("does not treat horizontal-only movement as a drag", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 100,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const toggle = getRequiredElement(
+      root,
+      ".rp-toc-toggle",
+      HTMLButtonElement,
+    );
+    const panel = getRequiredElement(root, ".rp-toc-panel", HTMLElement);
+
+    mockRect(root, {
+      top: 680,
+      left: 98,
+      width: 280,
+      height: 64,
+    });
+
+    toggle.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 350,
+        clientY: 720,
+      }),
+    );
+    toggle.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 280,
+        clientY: 720,
+      }),
+    );
+    toggle.dispatchEvent(
+      new MouseEvent("pointerup", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 280,
+        clientY: 720,
+      }),
+    );
+
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe("0px");
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-y")).toBe("");
+
+    toggle.click();
+    await flushAnimationFrame();
+
+    expect(panel.getAttribute("aria-hidden")).toBe("false");
+    expect(root.dataset.mobileExpanded).toBe("true");
+  });
+
+  it("resets stale horizontal mobile offset on resize", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 100,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+
+    expect(root.dataset.layout).toBe("mobile");
+
+    root.style.setProperty("--rp-toc-mobile-offset-x", "-120px");
+
+    setViewportWidth(360);
+    window.dispatchEvent(new Event("resize"));
+    await flushAll();
+
+    expect(root.dataset.layout).toBe("mobile");
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe("0px");
   });
 
   it("does not let the mobile toc button enter the header area while dragging", async () => {
