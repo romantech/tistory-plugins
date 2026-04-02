@@ -44,6 +44,12 @@ type TooltipBindingsOptions = {
   tooltip: HTMLElement;
 };
 
+const MOBILE_PANEL_MAX_HEIGHT = 292;
+const MOBILE_PANEL_EDGE_PADDING = 12;
+const MOBILE_PANEL_DIRECTION_UP = "up";
+const MOBILE_PANEL_DIRECTION_DOWN = "down";
+const MOBILE_PANEL_VIEWPORT_BLOCK_CHROME = 24;
+
 export function createRoot(config: TocViewConfig): CreatedElement<HTMLElement> {
   const existingRoot = document.querySelector<HTMLElement>(
     `.${config.rootClass}`,
@@ -590,6 +596,7 @@ export function applyRootLayout(
   if (layout.hidden) {
     setMobileExpanded(root, false, config);
     root.hidden = true;
+    delete root.dataset.mobilePanelDirection;
     syncScrollFadeState(root, config);
     return;
   }
@@ -600,6 +607,7 @@ export function applyRootLayout(
   if (layout.mode === "desktop") {
     root.dataset.mobileExpanded = "false";
     root.dataset.mobileDragging = "false";
+    delete root.dataset.mobilePanelDirection;
     toggleButton.hidden = true;
     panel.hidden = false;
     panel.setAttribute("aria-hidden", "false");
@@ -614,11 +622,84 @@ export function applyRootLayout(
   }
 
   toggleButton.hidden = false;
+  root.style.setProperty("--rp-toc-mobile-offset-x", "0px");
   setMobileExpanded(root, root.dataset.mobileExpanded === "true", config);
   root.style.removeProperty("--rp-toc-left");
   root.style.removeProperty("--rp-toc-top");
   root.style.removeProperty("--rp-toc-width");
   root.style.removeProperty("--rp-toc-safe-top");
+}
+
+function syncMobilePanelPlacement(
+  root: HTMLElement,
+  panel: HTMLElement,
+  toggleButton: HTMLButtonElement,
+): void {
+  const visualViewport = window.visualViewport;
+  const viewportTop = Math.max(0, visualViewport?.offsetTop ?? 0);
+  const fallbackViewportHeight = Math.max(
+    window.innerHeight,
+    document.documentElement.clientHeight,
+    0,
+  );
+  const viewportHeight =
+    visualViewport && visualViewport.height > 0
+      ? visualViewport.height
+      : fallbackViewportHeight;
+  const viewportBottom = viewportTop + viewportHeight;
+  const panelGap = Number.parseFloat(
+    getComputedStyle(root).getPropertyValue("--rp-toc-mobile-panel-gap"),
+  );
+  const resolvedPanelGap = Number.isFinite(panelGap) ? panelGap : 10;
+  const scrollViewportBlockChrome = Number.parseFloat(
+    getComputedStyle(root).getPropertyValue(
+      "--rp-toc-mobile-panel-viewport-block-chrome",
+    ),
+  );
+  const resolvedScrollViewportBlockChrome = Number.isFinite(
+    scrollViewportBlockChrome,
+  )
+    ? scrollViewportBlockChrome
+    : MOBILE_PANEL_VIEWPORT_BLOCK_CHROME;
+  const toggleRect = toggleButton.getBoundingClientRect();
+  const panelHeight = Math.max(
+    panel.offsetHeight,
+    panel.scrollHeight,
+    panel.clientHeight,
+  );
+  const targetPanelHeight = Math.min(
+    MOBILE_PANEL_MAX_HEIGHT,
+    Math.max(panelHeight, panel.clientHeight),
+  );
+  const availableAbove = Math.max(
+    0,
+    toggleRect.top - viewportTop - resolvedPanelGap - MOBILE_PANEL_EDGE_PADDING,
+  );
+  const availableBelow = Math.max(
+    0,
+    viewportBottom -
+      toggleRect.bottom -
+      resolvedPanelGap -
+      MOBILE_PANEL_EDGE_PADDING,
+  );
+  const shouldOpenDown =
+    availableAbove < targetPanelHeight && availableBelow > availableAbove;
+  const availableSpace = Math.max(
+    0,
+    Math.floor(shouldOpenDown ? availableBelow : availableAbove),
+  );
+
+  root.dataset.mobilePanelDirection = shouldOpenDown
+    ? MOBILE_PANEL_DIRECTION_DOWN
+    : MOBILE_PANEL_DIRECTION_UP;
+  const availableContentSpace = Math.max(
+    0,
+    availableSpace - Math.ceil(resolvedScrollViewportBlockChrome),
+  );
+  panel.style.setProperty(
+    "--rp-toc-mobile-panel-max-height",
+    `min(${availableContentSpace}px, 39vh, ${MOBILE_PANEL_MAX_HEIGHT}px)`,
+  );
 }
 
 export function setMobileExpanded(
@@ -631,6 +712,12 @@ export function setMobileExpanded(
 
   root.dataset.mobileExpanded = expanded ? "true" : "false";
   panel.hidden = false;
+  if (root.dataset.layout === "mobile") {
+    syncMobilePanelPlacement(root, panel, toggleButton);
+  } else {
+    delete root.dataset.mobilePanelDirection;
+    panel.style.removeProperty("--rp-toc-mobile-panel-max-height");
+  }
   panel.setAttribute("aria-hidden", expanded ? "false" : "true");
   panel.toggleAttribute("inert", !expanded);
   toggleButton.setAttribute("aria-expanded", expanded ? "true" : "false");

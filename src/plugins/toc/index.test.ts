@@ -57,11 +57,22 @@ describe("toc plugin", () => {
     });
   }
 
-  function setVisualViewport(): void {
+  function setVisualViewport(
+    overrides: Partial<{
+      height: number;
+      offsetTop: number;
+      offsetLeft: number;
+      width: number;
+    }> = {},
+  ): void {
     Object.defineProperty(window, "visualViewport", {
       configurable: true,
       value: {
         addEventListener: vi.fn(),
+        height: overrides.height ?? 0,
+        offsetLeft: overrides.offsetLeft ?? 0,
+        offsetTop: overrides.offsetTop ?? 0,
+        width: overrides.width ?? 0,
       },
     });
   }
@@ -1959,7 +1970,237 @@ describe("toc plugin", () => {
     expect(replaceStateSpy).toHaveBeenLastCalledWith(null, "", "#설치");
   });
 
-  it("lets the mobile toc button move without toggling the panel after a drag", async () => {
+  it("opens the mobile toc panel below the button when there is not enough room above", async () => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 900,
+      writable: true,
+    });
+
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      configurable: true,
+      value: 900,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 100,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const toggle = getRequiredElement(
+      root,
+      ".rp-toc-toggle",
+      HTMLButtonElement,
+    );
+    const panel = getRequiredElement(root, ".rp-toc-panel", HTMLElement);
+
+    mockRect(toggle, {
+      top: 80,
+      left: 330,
+      width: 44,
+      height: 44,
+    });
+
+    Object.defineProperty(panel, "offsetHeight", {
+      configurable: true,
+      value: 240,
+    });
+    Object.defineProperty(panel, "scrollHeight", {
+      configurable: true,
+      value: 240,
+    });
+    Object.defineProperty(panel, "clientHeight", {
+      configurable: true,
+      value: 240,
+    });
+
+    toggle.click();
+    await flushAnimationFrame();
+
+    expect(root.dataset.mobileExpanded).toBe("true");
+    expect(root.dataset.mobilePanelDirection).toBe("down");
+    expect(panel.getAttribute("aria-hidden")).toBe("false");
+  });
+
+  it("clamps the mobile toc panel height to fit the available downward space", async () => {
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 220,
+      writable: true,
+    });
+
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      configurable: true,
+      value: 220,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 0,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const toggle = getRequiredElement(
+      root,
+      ".rp-toc-toggle",
+      HTMLButtonElement,
+    );
+    const panel = getRequiredElement(root, ".rp-toc-panel", HTMLElement);
+
+    mockRect(toggle, {
+      top: 80,
+      left: 330,
+      width: 44,
+      height: 44,
+    });
+
+    Object.defineProperty(panel, "offsetHeight", {
+      configurable: true,
+      value: 240,
+    });
+    Object.defineProperty(panel, "scrollHeight", {
+      configurable: true,
+      value: 240,
+    });
+    Object.defineProperty(panel, "clientHeight", {
+      configurable: true,
+      value: 240,
+    });
+
+    toggle.click();
+    await flushAnimationFrame();
+
+    expect(root.dataset.mobilePanelDirection).toBe("down");
+    expect(
+      panel.style.getPropertyValue("--rp-toc-mobile-panel-max-height"),
+    ).toBe("min(50px, 39vh, 292px)");
+  });
+
+  it("prefers the visual viewport height when placing the mobile toc panel", async () => {
+    setVisualViewport({
+      height: 240,
+      offsetTop: 0,
+      width: 390,
+    });
+
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 900,
+      writable: true,
+    });
+
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      configurable: true,
+      value: 900,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 0,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const toggle = getRequiredElement(
+      root,
+      ".rp-toc-toggle",
+      HTMLButtonElement,
+    );
+    const panel = getRequiredElement(root, ".rp-toc-panel", HTMLElement);
+
+    mockRect(toggle, {
+      top: 120,
+      left: 330,
+      width: 44,
+      height: 44,
+    });
+
+    Object.defineProperty(panel, "offsetHeight", {
+      configurable: true,
+      value: 240,
+    });
+    Object.defineProperty(panel, "scrollHeight", {
+      configurable: true,
+      value: 240,
+    });
+    Object.defineProperty(panel, "clientHeight", {
+      configurable: true,
+      value: 240,
+    });
+
+    toggle.click();
+    await flushAnimationFrame();
+
+    expect(root.dataset.mobilePanelDirection).toBe("up");
+    expect(
+      panel.style.getPropertyValue("--rp-toc-mobile-panel-max-height"),
+    ).toBe("min(74px, 39vh, 292px)");
+  });
+
+  it("lets the mobile toc button move vertically without toggling the panel after a drag", async () => {
     const article = renderArticle(
       `
       <h2>소개</h2>
@@ -2027,9 +2268,7 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe(
-      "-30px",
-    );
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe("0px");
     expect(root.style.getPropertyValue("--rp-toc-mobile-offset-y")).toBe(
       "-56px",
     );
@@ -2044,6 +2283,125 @@ describe("toc plugin", () => {
 
     expect(panel.getAttribute("aria-hidden")).toBe("true");
     expect(root.dataset.mobileExpanded).toBe("false");
+  });
+
+  it("does not treat horizontal-only movement as a drag", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 100,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const toggle = getRequiredElement(
+      root,
+      ".rp-toc-toggle",
+      HTMLButtonElement,
+    );
+    const panel = getRequiredElement(root, ".rp-toc-panel", HTMLElement);
+
+    mockRect(root, {
+      top: 680,
+      left: 98,
+      width: 280,
+      height: 64,
+    });
+
+    toggle.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 350,
+        clientY: 720,
+      }),
+    );
+    toggle.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 280,
+        clientY: 720,
+      }),
+    );
+    toggle.dispatchEvent(
+      new MouseEvent("pointerup", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 280,
+        clientY: 720,
+      }),
+    );
+
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe("0px");
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-y")).toBe("");
+
+    toggle.click();
+    await flushAnimationFrame();
+
+    expect(panel.getAttribute("aria-hidden")).toBe("false");
+    expect(root.dataset.mobileExpanded).toBe("true");
+  });
+
+  it("resets stale horizontal mobile offset on resize", async () => {
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 100,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+
+    expect(root.dataset.layout).toBe("mobile");
+
+    root.style.setProperty("--rp-toc-mobile-offset-x", "-120px");
+
+    setViewportWidth(360);
+    window.dispatchEvent(new Event("resize"));
+    await flushAll();
+
+    expect(root.dataset.layout).toBe("mobile");
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-x")).toBe("0px");
   });
 
   it("does not let the mobile toc button enter the header area while dragging", async () => {
