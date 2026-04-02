@@ -1,0 +1,176 @@
+.rp-toc {
+  --rp-toc-ink: 24 24 27;
+  --rp-toc-surface: 255 255 255;
+  --rp-toc-font-family: inherit;
+  --rp-toc-font-size: 14px;
+  --rp-toc-tooltip-max-width: 280px;
+  --rp-toc-rail-space: 52px;
+  --rp-toc-link-start: 16px;
+  --rp-toc-link-block: 3px;
+  --rp-toc-bar-height: 5px;
+  --rp-toc-bar-end: 12px;
+  --rp-toc-collapsed-width: 52px;
+  --rp-toc-scrollbar-lane: 12px;
+  --rp-toc-top: 112px;
+  --rp-toc-left: auto;
+  --rp-toc-safe-top: 108px;
+  --rp-toc-scroll-fade-size: 18px;
+  --rp-toc-width: 252px;
+  --rp-toc-fade-strong-alpha: 0.96;
+  --rp-toc-fade-soft-alpha: 0.74;
+  --rp-toc-scrollbar-alpha: 0.18;
+  --rp-toc-link-idle-alpha: 0.45;
+  --rp-toc-link-hover-alpha: 0.74;
+  --rp-toc-link-active-alpha: 0.96;
+  --rp-toc-link-active-surface-alpha: 0.1;
+  --rp-toc-bar-idle-alpha: 0.22;
+  --rp-toc-bar-hover-alpha: 0.4;
+  --rp-toc-bar-active-alpha: 0.82;
+  --rp-toc-focus-ring-alpha: 0.36;
+  --rp-toc-focus-ring-soft-alpha: 0.14;
+  --rp-toc-focus-surface-alpha: 0.08;
+  font-size: var(--rp-toc-font-size);
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  font-family: var(--rp-toc-font-family);
+  -webkit-font-smoothing: antialiased;
+}
+
+.rp-toc[data-surface-tone="dark"] {
+  --rp-toc-fade-strong-alpha: 0.82;
+  --rp-toc-fade-soft-alpha: 0.44;
+  --rp-toc-scrollbar-alpha: 0.26;
+  --rp-toc-link-idle-alpha: 0.62;
+  --rp-toc-link-hover-alpha: 0.9;
+  --rp-toc-link-active-alpha: 0.98;
+  --rp-toc-link-active-surface-alpha: 0.11;
+  --rp-toc-bar-idle-alpha: 0.34;
+  --rp-toc-bar-hover-alpha: 0.6;
+  --rp-toc-bar-active-alpha: 0.95;
+  --rp-toc-focus-ring-alpha: 0.52;
+  --rp-toc-focus-ring-soft-alpha: 0.2;
+  --rp-toc-focus-surface-alpha: 0.12;
+}
+
+.rp-toc--pending {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.rp-toc-panel {
+  position: relative;
+}
+
+.rp-toc-toggle {
+  display: none;
+}
+
+.rp-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rp-toc-item {
+  margin: 0 0 2px;
+}
+
+.rp-toc-link,
+.rp-toc-link:visited,
+.rp-toc-link:hover,
+.rp-toc-link:active,
+.rp-toc-link:focus,
+.rp-toc-link:focus-visible {
+  position: relative;
+  display: block;
+  isolation: isolate;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: clip;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.rp-toc-label {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.rp-toc-link.is-truncated .rp-toc-label {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 0,
+    rgb(0 0 0 / 1) calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 0,
+    rgb(0 0 0 / 1) calc(100% - 18px),
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.rp-toc-tooltip {
+  position: fixed;
+  z-index: 30;
+  max-width: var(--rp-toc-tooltip-max-width, 280px);
+  padding: 8px 10px;
+  border: 1px solid rgb(var(--rp-toc-ink, 24 24 27) / 0.1);
+  border-radius: 10px;
+  background: rgb(var(--rp-toc-surface, 255 255 255) / 0.96);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.18);
+  color: rgb(
+    var(--rp-toc-ink, 24 24 27) /
+    var(--rp-toc-link-active-alpha, 0.96)
+  );
+  font-family: var(--rp-toc-font-family);
+  font-size: var(--rp-toc-font-size, 14px);
+  line-height: 1.4;
+  white-space: normal;
+  word-break: keep-all;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition:
+    opacity 0.14s ease,
+    transform 0.18s ease;
+}
+
+.rp-toc-tooltip[data-surface-tone="dark"] {
+  border-color: rgb(var(--rp-toc-ink, 24 24 27) / 0.16);
+  background: rgb(var(--rp-toc-surface, 255 255 255) / 0.84);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.42);
+  backdrop-filter: blur(16px);
+}
+
+.rp-toc-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-toc,
+  .rp-toc[data-layout="desktop"]::before,
+  .rp-toc[data-layout="desktop"]::after,
+  .rp-toc-panel,
+  .rp-toc-list,
+  .rp-toc-link,
+  .rp-toc-link::after,
+  .rp-toc-link::before,
+  .rp-toc-label,
+  .rp-toc-toggle,
+  .rp-toc[data-layout="mobile"] .rp-toc-toggle::before,
+  .rp-toc[data-layout="mobile"] .rp-toc-toggle::after,
+  .rp-toc-tooltip {
+    transition: none;
+  }
+}

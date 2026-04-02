@@ -15,13 +15,30 @@ export type TocState = {
   currentActiveId: string;
 };
 
-export type RootLayout = {
-  hidden: boolean;
-  left?: number;
-  top?: number;
-  width?: number;
-  safeTop?: number;
+export type TocLayoutMode = "desktop" | "mobile";
+
+type HiddenRootLayout = {
+  hidden: true;
 };
+
+type DesktopRootLayout = {
+  hidden: false;
+  mode: "desktop";
+  left: number;
+  top: number;
+  width: number;
+  safeTop: number;
+};
+
+type MobileRootLayout = {
+  hidden: false;
+  mode: "mobile";
+};
+
+export type RootLayout =
+  | HiddenRootLayout
+  | DesktopRootLayout
+  | MobileRootLayout;
 
 type ResolveActiveIdOptions = {
   activeId: string;
@@ -33,6 +50,7 @@ type ResolveActiveIdOptions = {
 type RootLayoutMetrics = {
   bottomBoundaryRect: DOMRect;
   headerOffset: number;
+  mobileAnchorBottom: number;
   rootHeight: number;
   scopeRect: DOMRect;
   useScopeBottomBoundary: boolean;
@@ -43,6 +61,8 @@ type RootLayoutMetrics = {
 type RootLayoutConstraints = {
   defaultPanelWidth: number;
   minDesktopWidth: number;
+  minMobileScopeWidth: number;
+  minMobileWidth: number;
   minPanelWidth: number;
   minScopeWidth: number;
   panelGap: number;
@@ -80,6 +100,7 @@ export function resolveRootLayout(
   {
     bottomBoundaryRect,
     headerOffset,
+    mobileAnchorBottom,
     rootHeight,
     scopeRect,
     useScopeBottomBoundary,
@@ -89,6 +110,8 @@ export function resolveRootLayout(
   {
     defaultPanelWidth,
     minDesktopWidth,
+    minMobileScopeWidth,
+    minMobileWidth,
     minPanelWidth,
     minScopeWidth,
     panelGap,
@@ -97,6 +120,14 @@ export function resolveRootLayout(
     viewportGutter,
   }: RootLayoutConstraints,
 ): RootLayout {
+  const isScopeVisible =
+    scopeRect.right > 0 &&
+    scopeRect.bottom > 0 &&
+    scopeRect.top < viewportHeight;
+  if (!isScopeVisible) {
+    return { hidden: true };
+  }
+
   const maxPanelWidth = viewportWidth - rightRailGutter - viewportGutter;
   const panelWidth = Math.min(defaultPanelWidth, maxPanelWidth);
   const left = viewportWidth - rightRailGutter - panelWidth;
@@ -105,14 +136,24 @@ export function resolveRootLayout(
   const shouldShow =
     viewportWidth >= minDesktopWidth &&
     scopeRect.width >= minScopeWidth &&
-    scopeRect.right > 0 &&
-    scopeRect.bottom > 0 &&
-    scopeRect.top < viewportHeight &&
     panelWidth >= minPanelWidth &&
     articleGap >= panelGap;
 
   if (!shouldShow) {
-    return { hidden: true };
+    const shouldShowMobile =
+      viewportWidth >= minMobileWidth && scopeRect.width >= minMobileScopeWidth;
+    const mobileBoundaryEdge = useScopeBottomBoundary
+      ? scopeRect.bottom
+      : bottomBoundaryRect.top;
+
+    if (!shouldShowMobile || mobileBoundaryEdge <= mobileAnchorBottom) {
+      return { hidden: true };
+    }
+
+    return {
+      hidden: false,
+      mode: "mobile",
+    };
   }
 
   const desiredTop = Math.max(
@@ -134,6 +175,7 @@ export function resolveRootLayout(
 
   return {
     hidden: false,
+    mode: "desktop",
     left: Math.round(left),
     top: resolvedTop,
     width: Math.round(panelWidth),
