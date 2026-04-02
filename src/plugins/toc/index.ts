@@ -65,6 +65,8 @@ const CURRENT_SCRIPT =
   const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
   const NAVIGATION_LOCK_CLASS = "is-navigation-locked";
+  const PENDING_NAVIGATION_CLASS = "is-pending-navigation";
+  const PENDING_NAVIGATION_ROOT_CLASS = "is-navigation-pending";
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
@@ -91,6 +93,11 @@ const CURRENT_SCRIPT =
   const CLICK_NAVIGATION_LOCK_MS = 1400;
   const CLICK_TARGET_FREEZE_MS = 220;
   const CLICK_NAVIGATION_SETTLE_MS = 100;
+  const INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS = 100;
+  const INITIAL_CLICK_LAYOUT_PROBE_FRAMES = 2;
+  const INITIAL_CLICK_LAYOUT_QUIET_WINDOW_MS = 220;
+  const INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE = 2;
+  const INITIAL_CLICK_LAYOUT_WAIT_TIMEOUT_MS = 2200;
   const MOBILE_DRAG_THRESHOLD = 6;
   const MOBILE_DRAG_GUTTER = 12;
 
@@ -272,6 +279,10 @@ const CURRENT_SCRIPT =
 
     let state: TocState = initialState;
     let isMobileExpanded = false;
+    let hasObservedScroll = window.scrollY > 0;
+    let pendingInitialNavigationToken = 0;
+    let pendingInitialNavigationEntryId: string | undefined;
+    let cancelPendingInitialNavigation: (() => void) | null = null;
     setPendingVisibility(root, isInitialLayoutPending, viewConfig);
 
     const mobileDragState = {
@@ -542,7 +553,325 @@ const CURRENT_SCRIPT =
       });
     }
 
-    function handleLinkActivation(entry: TocEntry): void {
+    function clearPendingInitialNavigation(): void {
+      cancelPendingInitialNavigation?.();
+      cancelPendingInitialNavigation = null;
+      pendingInitialNavigationEntryId = undefined;
+      root.classList.remove(PENDING_NAVIGATION_ROOT_CLASS);
+
+      for (const entry of state.entries) {
+        entry.link.classList.remove(PENDING_NAVIGATION_CLASS);
+        entry.link.removeAttribute("aria-busy");
+      }
+    }
+
+    function setPendingInitialNavigationEntry(entry: TocEntry): void {
+      pendingInitialNavigationEntryId = entry.id;
+      root.classList.add(PENDING_NAVIGATION_ROOT_CLASS);
+
+      for (const currentEntry of state.entries) {
+        const isPending = currentEntry.id === entry.id;
+        currentEntry.link.classList.toggle(PENDING_NAVIGATION_CLASS, isPending);
+
+        if (isPending) {
+          currentEntry.link.setAttribute("aria-busy", "true");
+        } else {
+          currentEntry.link.removeAttribute("aria-busy");
+        }
+      }
+    }
+
+    function shouldDelayInitialNavigation(): boolean {
+      return !hasObservedScroll && window.scrollY <= 0;
+    }
+
+    function getEntryDocumentTop(entry: TocEntry): number {
+      return window.scrollY + entry.heading.getBoundingClientRect().top;
+    }
+
+    function getLayoutShiftResourcesBeforeEntry(
+      entry: TocEntry,
+    ): HTMLElement[] {
+      return Array.from(
+        state.article.querySelectorAll("img, iframe, video, embed, object"),
+      ).filter((element): element is HTMLElement => {
+        if (!(element instanceof HTMLElement) || !element.isConnected) {
+          return false;
+        }
+
+        return Boolean(
+          element.compareDocumentPosition(entry.heading) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+      });
+    }
+
+    function primeInitialNavigationResource(resource: HTMLElement): void {
+      if (
+        (resource instanceof HTMLImageElement ||
+          resource instanceof HTMLIFrameElement) &&
+        resource.loading === "lazy"
+      ) {
+        resource.loading = "eager";
+      }
+
+      if (
+        resource instanceof HTMLVideoElement &&
+        (!resource.preload || resource.preload === "none")
+      ) {
+        resource.preload = "metadata";
+      }
+
+      if (
+        resource instanceof HTMLImageElement &&
+        typeof resource.decode === "function"
+      ) {
+        void resource.decode().catch(() => undefined);
+      }
+    }
+
+    function bindInitialNavigationResourceSettle(
+      resource: HTMLElement,
+      onSettled: () => void,
+    ): () => void {
+      const settleEventName =
+        resource instanceof HTMLVideoElement ? "loadeddata" : "load";
+
+      resource.addEventListener(settleEventName, onSettled, { once: true });
+      resource.addEventListener("error", onSettled, { once: true });
+
+      return () => {
+        resource.removeEventListener(settleEventName, onSettled);
+        resource.removeEventListener("error", onSettled);
+      };
+    }
+
+    function resourceNeedsInitialNavigationWait(
+      resource: HTMLElement,
+    ): boolean {
+      if (resource instanceof HTMLImageElement) {
+        return !resource.complete;
+      }
+
+      if (resource instanceof HTMLIFrameElement) {
+        return resource.loading === "lazy";
+      }
+
+      if (resource instanceof HTMLVideoElement) {
+        return resource.readyState < HTMLMediaElement.HAVE_METADATA;
+      }
+
+      return false;
+    }
+
+    function startInitialNavigationLayoutWait(
+      entry: TocEntry,
+      resources: HTMLElement[],
+    ): void {
+      const navigationToken = pendingInitialNavigationToken + 1;
+      pendingInitialNavigationToken = navigationToken;
+      const startTime = performance.now();
+      let lastChangeAt = startTime;
+      let lastDocumentTop = getEntryDocumentTop(entry);
+      const cleanupCallbacks: Array<() => void> = [];
+      let timeoutId = 0;
+      let checkTimerId = 0;
+      let cleaned = false;
+
+      if (resources.length === 0) {
+        performLinkActivation(entry);
+        return;
+      }
+
+      const cleanup = (): void => {
+        if (cleaned) return;
+        cleaned = true;
+
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+          timeoutId = 0;
+        }
+
+        if (checkTimerId) {
+          window.clearTimeout(checkTimerId);
+          checkTimerId = 0;
+        }
+
+        for (const removeListener of cleanupCallbacks) {
+          removeListener();
+        }
+
+        cleanupCallbacks.length = 0;
+        if (cancelPendingInitialNavigation === cleanup) {
+          cancelPendingInitialNavigation = null;
+        }
+      };
+
+      const finish = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        cleanup();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (pendingInitialNavigationToken !== navigationToken) return;
+            performLinkActivation(entry);
+          });
+        });
+      };
+
+      const markLayoutChanged = (): void => {
+        lastChangeAt = performance.now();
+      };
+
+      const check = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        if (!document.contains(entry.heading)) {
+          cleanup();
+          return;
+        }
+
+        const now = performance.now();
+        const nextDocumentTop = getEntryDocumentTop(entry);
+        if (
+          Math.abs(nextDocumentTop - lastDocumentTop) >
+          INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE
+        ) {
+          lastDocumentTop = nextDocumentTop;
+          markLayoutChanged();
+        } else {
+          lastDocumentTop = nextDocumentTop;
+        }
+
+        if (now - lastChangeAt >= INITIAL_CLICK_LAYOUT_QUIET_WINDOW_MS) {
+          finish();
+          return;
+        }
+
+        checkTimerId = window.setTimeout(
+          check,
+          INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS,
+        );
+      };
+
+      cancelPendingInitialNavigation = cleanup;
+
+      for (const resource of resources) {
+        primeInitialNavigationResource(resource);
+        cleanupCallbacks.push(
+          bindInitialNavigationResourceSettle(resource, markLayoutChanged),
+        );
+      }
+
+      timeoutId = window.setTimeout(
+        finish,
+        INITIAL_CLICK_LAYOUT_WAIT_TIMEOUT_MS,
+      );
+
+      checkTimerId = window.setTimeout(
+        check,
+        INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS,
+      );
+    }
+
+    function probeInitialNavigationLayout(entry: TocEntry): void {
+      const navigationToken = pendingInitialNavigationToken + 1;
+      pendingInitialNavigationToken = navigationToken;
+      let frameId = 0;
+      let probeCount = 0;
+      let cleaned = false;
+      let lastDocumentTop = getEntryDocumentTop(entry);
+
+      const cleanup = (): void => {
+        if (cleaned) return;
+        cleaned = true;
+
+        if (frameId) {
+          cancelAnimationFrame(frameId);
+          frameId = 0;
+        }
+
+        if (cancelPendingInitialNavigation === cleanup) {
+          cancelPendingInitialNavigation = null;
+        }
+      };
+
+      const finish = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        cleanup();
+        performLinkActivation(entry);
+      };
+
+      const sample = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        if (!document.contains(entry.heading)) {
+          cleanup();
+          return;
+        }
+
+        const nextDocumentTop = getEntryDocumentTop(entry);
+        if (
+          Math.abs(nextDocumentTop - lastDocumentTop) >
+          INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE
+        ) {
+          cleanup();
+          startInitialNavigationLayoutWait(
+            entry,
+            getLayoutShiftResourcesBeforeEntry(entry),
+          );
+          return;
+        }
+
+        lastDocumentTop = nextDocumentTop;
+        probeCount += 1;
+
+        if (probeCount >= INITIAL_CLICK_LAYOUT_PROBE_FRAMES) {
+          finish();
+          return;
+        }
+
+        frameId = requestAnimationFrame(sample);
+      };
+
+      cancelPendingInitialNavigation = cleanup;
+      frameId = requestAnimationFrame(sample);
+    }
+
+    function waitForInitialNavigationLayout(entry: TocEntry): void {
+      const resources = getLayoutShiftResourcesBeforeEntry(entry);
+      if (resources.length === 0) {
+        performLinkActivation(entry);
+        return;
+      }
+
+      const unsettledResources = resources.filter(
+        resourceNeedsInitialNavigationWait,
+      );
+      if (unsettledResources.length > 0) {
+        startInitialNavigationLayoutWait(entry, unsettledResources);
+        return;
+      }
+
+      probeInitialNavigationLayout(entry);
+    }
+
+    function performLinkActivation(entry: TocEntry): void {
+      clearPendingInitialNavigation();
+
       const headerOffset = getResolvedHeaderOffset();
       const destinationScrollTop = Math.max(
         0,
@@ -567,6 +896,18 @@ const CURRENT_SCRIPT =
       );
     }
 
+    function handleLinkActivation(entry: TocEntry): void {
+      if (shouldDelayInitialNavigation()) {
+        clearPendingInitialNavigation();
+        activateEntry(entry, { revealBehavior: "nearest" });
+        setPendingInitialNavigationEntry(entry);
+        waitForInitialNavigationLayout(entry);
+        return;
+      }
+
+      performLinkActivation(entry);
+    }
+
     function rebuildState(): boolean {
       const nextState = createState(root);
       if (!nextState) {
@@ -586,6 +927,14 @@ const CURRENT_SCRIPT =
         root,
         tooltip,
       });
+      if (pendingInitialNavigationEntryId) {
+        const pendingEntry = state.entries.find(
+          (entry) => entry.id === pendingInitialNavigationEntryId,
+        );
+        if (pendingEntry) {
+          setPendingInitialNavigationEntry(pendingEntry);
+        }
+      }
       return true;
     }
 
@@ -634,7 +983,11 @@ const CURRENT_SCRIPT =
         isInitialLayoutPending,
         lockedTargetId: navigationLock.getFrozenActiveId(),
       });
-      const activeEntry = setActive(state.entries, activeId, viewConfig);
+      const activeEntry = setActive(
+        state.entries,
+        pendingInitialNavigationEntryId || activeId,
+        viewConfig,
+      );
       if (!activeEntry) return;
 
       syncMobileToggleSummary(root, viewConfig, {
@@ -691,6 +1044,10 @@ const CURRENT_SCRIPT =
     window.addEventListener(
       "scroll",
       () => {
+        if (window.scrollY > 0) {
+          hasObservedScroll = true;
+          clearPendingInitialNavigation();
+        }
         navigationLock.touchSettle();
         scheduleSync();
       },

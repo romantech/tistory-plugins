@@ -361,12 +361,16 @@ describe("toc plugin", () => {
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     expect(root.hidden).toBe(false);
     expect(root.classList.contains("rp-toc--pending")).toBe(true);
+    expect(root.style.visibility).toBe("hidden");
+    expect(root.style.pointerEvents).toBe("none");
     expect(root.style.getPropertyValue("--rp-toc-top")).not.toBe("");
 
     window.dispatchEvent(new Event("load"));
     await flushAll();
 
     expect(root.classList.contains("rp-toc--pending")).toBe(false);
+    expect(root.style.visibility).toBe("");
+    expect(root.style.pointerEvents).toBe("");
   });
 
   it("preselects the hashed entry while keeping the toc pending until load", async () => {
@@ -459,6 +463,275 @@ describe("toc plugin", () => {
     expect(links[0]).toHaveAttribute("aria-current", "location");
     expect(links[1]).not.toHaveAttribute("aria-current");
     expect(document.activeElement).not.toBe(links[1]);
+  });
+
+  it("waits for incomplete images above the first target before scrolling", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/above.jpg" alt="위쪽 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      <img src="/below.jpg" alt="아래쪽 이미지" loading="lazy" />
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 760 });
+
+    let isAboveImageLoaded = false;
+    const isBelowImageLoaded = false;
+
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => isAboveImageLoaded,
+    });
+    Object.defineProperty(images[1], "complete", {
+      configurable: true,
+      get: () => isBelowImageLoaded,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    expect(root.classList.contains("is-navigation-pending")).toBe(true);
+    expect(links[1].classList.contains("is-active")).toBe(true);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(true);
+    expect(links[1]).toHaveAttribute("aria-busy", "true");
+    expect(images[0].loading).toBe("eager");
+    expect(images[1].loading).toBe("lazy");
+
+    isAboveImageLoaded = true;
+    images[0].dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(root.classList.contains("is-navigation-pending")).toBe(false);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
+    expect(links[1]).not.toHaveAttribute("aria-busy");
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "#둘째-섹션");
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 676,
+      behavior: "smooth",
+    });
+  });
+
+  it("does not add a long delay when resources above the target are already settled", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/ready.jpg" alt="준비된 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 760 });
+
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => true,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(80);
+    await flushAll();
+
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 676,
+      behavior: "smooth",
+    });
+  });
+
+  it("waits for a lazy iframe above the first target before scrolling", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <iframe src="about:blank" title="임베드" loading="lazy"></iframe>
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const frame = getRequiredElement(article, "iframe", HTMLIFrameElement);
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 760 });
+    Object.defineProperty(frame, "loading", {
+      configurable: true,
+      writable: true,
+      value: "lazy",
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    expect(frame.loading).toBe("eager");
+
+    frame.dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 676,
+      behavior: "smooth",
+    });
+  });
+
+  it("cancels delayed first navigation after the user scrolls manually", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/above.jpg" alt="위쪽 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 760 });
+
+    let isAboveImageLoaded = false;
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => isAboveImageLoaded,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+
+    window.scrollY = 120;
+    window.dispatchEvent(new Event("scroll"));
+    await flushAll();
+
+    expect(root.classList.contains("is-navigation-pending")).toBe(false);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
+    expect(links[1]).not.toHaveAttribute("aria-busy");
+
+    isAboveImageLoaded = true;
+    images[0].dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(replaceStateSpy).not.toHaveBeenCalledWith(null, "", "#둘째-섹션");
+    expect(scrollToMock).not.toHaveBeenCalled();
   });
 
   it("keeps the toc expanded briefly after pointer navigation", async () => {

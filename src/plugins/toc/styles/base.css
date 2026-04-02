@@ -119,6 +119,23 @@
   mask-repeat: no-repeat;
 }
 
+.rp-toc-link.is-pending-navigation {
+  cursor: progress;
+}
+
+.rp-toc-link.is-pending-navigation .rp-toc-label::after {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-inline-start: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  vertical-align: middle;
+  opacity: 0.72;
+  animation: rp-toc-pending-pulse 0.9s ease-in-out infinite;
+}
+
 .rp-toc-tooltip {
   position: fixed;
   z-index: 30;
@@ -157,6 +174,19 @@
   transform: translateY(0);
 }
 
+@keyframes rp-toc-pending-pulse {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.82);
+  }
+
+  50% {
+    opacity: 0.84;
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rp-toc,
   .rp-toc[data-layout="desktop"]::before,
@@ -167,6 +197,7 @@
   .rp-toc-link::after,
   .rp-toc-link::before,
   .rp-toc-label,
+  .rp-toc-link.is-pending-navigation .rp-toc-label::after,
   .rp-toc-toggle,
   .rp-toc[data-layout="mobile"] .rp-toc-toggle::before,
   .rp-toc[data-layout="mobile"] .rp-toc-toggle::after,

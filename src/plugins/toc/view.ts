@@ -308,6 +308,8 @@ export function setPendingVisibility(
   config: TocViewConfig,
 ): void {
   root.classList.toggle(config.pendingClass, pending);
+  root.style.visibility = pending ? "hidden" : "";
+  root.style.pointerEvents = pending ? "none" : "";
 }
 
 export function syncScrollFadeState(

@@ -97,7 +97,8 @@
 
 .rp-toc[data-layout="desktop"]:hover .rp-toc-list,
 .rp-toc[data-layout="desktop"]:focus-within .rp-toc-list,
-.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-list {
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-list,
+.rp-toc[data-layout="desktop"].is-navigation-pending .rp-toc-list {
   clip-path: inset(0);
 }
 
@@ -121,7 +122,8 @@
 
 .rp-toc[data-layout="desktop"]:hover .rp-toc-link,
 .rp-toc[data-layout="desktop"]:focus-within .rp-toc-link,
-.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-link {
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-link,
+.rp-toc[data-layout="desktop"].is-navigation-pending .rp-toc-link {
   pointer-events: auto;
 }
 
@@ -141,7 +143,8 @@
 
 .rp-toc[data-layout="desktop"]:hover .rp-toc-label,
 .rp-toc[data-layout="desktop"]:focus-within .rp-toc-label,
-.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-label {
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-label,
+.rp-toc[data-layout="desktop"].is-navigation-pending .rp-toc-label {
   opacity: 1;
   transform: translateX(0);
 }
