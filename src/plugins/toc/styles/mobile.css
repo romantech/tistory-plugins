@@ -1,5 +1,8 @@
 .rp-toc[data-layout="mobile"] {
   --rp-toc-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  --rp-toc-mobile-panel-gap: 10px;
+  --rp-toc-mobile-panel-viewport-block-chrome: 24px;
+  --rp-toc-mobile-panel-max-height: min(39vh, 292px);
   --rp-toc-mobile-ink: 255 255 255;
   --rp-toc-mobile-link-idle-alpha: 0.62;
   --rp-toc-mobile-link-active-alpha: 0.88;
@@ -184,7 +187,7 @@
 .rp-toc[data-layout="mobile"] .rp-toc-panel {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 10px);
+  bottom: calc(100% + var(--rp-toc-mobile-panel-gap));
   width: 100%;
   overflow: hidden;
   border: 0;
@@ -209,12 +212,20 @@
     visibility 0s linear 0.22s;
 }
 
+.rp-toc[data-layout="mobile"][data-mobile-panel-direction="down"]
+  .rp-toc-panel {
+  top: calc(100% + var(--rp-toc-mobile-panel-gap));
+  bottom: auto;
+  transform-origin: top right;
+  transform: translateY(-10px) scale(0.965);
+}
+
 .rp-toc[data-layout="mobile"] .rp-toc-scroll-viewport {
   margin: 8px 4px 8px 3px;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  max-height: min(39vh, 292px);
+  max-height: var(--rp-toc-mobile-panel-max-height);
   padding: 4px 6px 4px 4px;
   border-radius: calc(var(--rp-toc-mobile-panel-radius) - 6px);
   scrollbar-gutter: stable;
