@@ -16,7 +16,7 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 
 ## Git And PR
 
-- Commit messages: concise English with gitmoji.
+- Commit messages: Use Conventional Commits in English. Keep the subject to a single concise line, ideally under 50 characters. Add a body only when extra context is necessary.
 - PR titles: Conventional Commit style such as `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `chore: ...`.
 - Do not prefix PR titles with `[codex]`.
 - Before commit or PR work, verify scope with `git status --short` and `git diff --cached`. Do not include unrelated files or generated `dist/` output unless the user explicitly asks.
