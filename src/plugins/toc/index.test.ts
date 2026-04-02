@@ -509,6 +509,7 @@ describe("toc plugin", () => {
     await loadTocPlugin();
     await flushAll();
 
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(
       document,
       ".rp-toc-link",
@@ -523,6 +524,10 @@ describe("toc plugin", () => {
     );
 
     expect(scrollToMock).not.toHaveBeenCalled();
+    expect(root.classList.contains("is-navigation-pending")).toBe(true);
+    expect(links[1].classList.contains("is-active")).toBe(true);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(true);
+    expect(links[1]).toHaveAttribute("aria-busy", "true");
     expect(images[0].loading).toBe("eager");
     expect(images[1].loading).toBe("lazy");
 
@@ -530,6 +535,9 @@ describe("toc plugin", () => {
     images[0].dispatchEvent(new Event("load"));
     await flushAll();
 
+    expect(root.classList.contains("is-navigation-pending")).toBe(false);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
+    expect(links[1]).not.toHaveAttribute("aria-busy");
     expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "#둘째-섹션");
     expect(scrollToMock).toHaveBeenCalledWith({
       top: 676,
@@ -574,6 +582,7 @@ describe("toc plugin", () => {
     await loadTocPlugin();
     await flushAll();
 
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(
       document,
       ".rp-toc-link",
@@ -592,6 +601,10 @@ describe("toc plugin", () => {
     window.scrollY = 120;
     window.dispatchEvent(new Event("scroll"));
     await flushAll();
+
+    expect(root.classList.contains("is-navigation-pending")).toBe(false);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
+    expect(links[1]).not.toHaveAttribute("aria-busy");
 
     isAboveImageLoaded = true;
     images[0].dispatchEvent(new Event("load"));

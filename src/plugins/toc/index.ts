@@ -65,6 +65,8 @@ const CURRENT_SCRIPT =
   const TRUNCATED_CLASS = "is-truncated";
   const ACTIVE_CLASS = "is-active";
   const NAVIGATION_LOCK_CLASS = "is-navigation-locked";
+  const PENDING_NAVIGATION_CLASS = "is-pending-navigation";
+  const PENDING_NAVIGATION_ROOT_CLASS = "is-navigation-pending";
   const DEFAULT_PANEL_WIDTH = 252;
   const MIN_PANEL_WIDTH = 172;
   const MIN_DESKTOP_WIDTH = 1280;
@@ -91,7 +93,10 @@ const CURRENT_SCRIPT =
   const CLICK_NAVIGATION_LOCK_MS = 1400;
   const CLICK_TARGET_FREEZE_MS = 220;
   const CLICK_NAVIGATION_SETTLE_MS = 100;
-  const INITIAL_CLICK_IMAGE_WAIT_TIMEOUT_MS = 1800;
+  const INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS = 100;
+  const INITIAL_CLICK_LAYOUT_QUIET_WINDOW_MS = 220;
+  const INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE = 2;
+  const INITIAL_CLICK_LAYOUT_WAIT_TIMEOUT_MS = 2200;
   const MOBILE_DRAG_THRESHOLD = 6;
   const MOBILE_DRAG_GUTTER = 12;
 
@@ -275,6 +280,7 @@ const CURRENT_SCRIPT =
     let isMobileExpanded = false;
     let hasObservedScroll = window.scrollY > 0;
     let pendingInitialNavigationToken = 0;
+    let pendingInitialNavigationEntryId: string | undefined;
     let cancelPendingInitialNavigation: (() => void) | null = null;
     setPendingVisibility(root, isInitialLayoutPending, viewConfig);
 
@@ -549,45 +555,112 @@ const CURRENT_SCRIPT =
     function clearPendingInitialNavigation(): void {
       cancelPendingInitialNavigation?.();
       cancelPendingInitialNavigation = null;
+      pendingInitialNavigationEntryId = undefined;
+      root.classList.remove(PENDING_NAVIGATION_ROOT_CLASS);
+
+      for (const entry of state.entries) {
+        entry.link.classList.remove(PENDING_NAVIGATION_CLASS);
+        entry.link.removeAttribute("aria-busy");
+      }
+    }
+
+    function setPendingInitialNavigationEntry(entry: TocEntry): void {
+      pendingInitialNavigationEntryId = entry.id;
+      root.classList.add(PENDING_NAVIGATION_ROOT_CLASS);
+
+      for (const currentEntry of state.entries) {
+        const isPending = currentEntry.id === entry.id;
+        currentEntry.link.classList.toggle(PENDING_NAVIGATION_CLASS, isPending);
+
+        if (isPending) {
+          currentEntry.link.setAttribute("aria-busy", "true");
+        } else {
+          currentEntry.link.removeAttribute("aria-busy");
+        }
+      }
     }
 
     function shouldDelayInitialNavigation(): boolean {
       return !hasObservedScroll && window.scrollY <= 0;
     }
 
-    function getPendingImagesBeforeEntry(entry: TocEntry): HTMLImageElement[] {
-      return Array.from(state.article.querySelectorAll("img")).filter(
-        (image): image is HTMLImageElement => {
-          if (!(image instanceof HTMLImageElement)) {
-            return false;
-          }
-
-          if (!image.isConnected || image.complete) {
-            return false;
-          }
-
-          return Boolean(
-            image.compareDocumentPosition(entry.heading) &
-              Node.DOCUMENT_POSITION_FOLLOWING,
-          );
-        },
-      );
+    function getEntryDocumentTop(entry: TocEntry): number {
+      return window.scrollY + entry.heading.getBoundingClientRect().top;
     }
 
-    function waitForInitialNavigationImages(entry: TocEntry): void {
-      clearPendingInitialNavigation();
+    function getLayoutShiftResourcesBeforeEntry(
+      entry: TocEntry,
+    ): HTMLElement[] {
+      return Array.from(
+        state.article.querySelectorAll("img, iframe, video, embed, object"),
+      ).filter((element): element is HTMLElement => {
+        if (!(element instanceof HTMLElement) || !element.isConnected) {
+          return false;
+        }
 
+        return Boolean(
+          element.compareDocumentPosition(entry.heading) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+      });
+    }
+
+    function primeInitialNavigationResource(resource: HTMLElement): void {
+      if (
+        (resource instanceof HTMLImageElement ||
+          resource instanceof HTMLIFrameElement) &&
+        resource.loading === "lazy"
+      ) {
+        resource.loading = "eager";
+      }
+
+      if (
+        resource instanceof HTMLVideoElement &&
+        (!resource.preload || resource.preload === "none")
+      ) {
+        resource.preload = "metadata";
+      }
+
+      if (
+        resource instanceof HTMLImageElement &&
+        typeof resource.decode === "function"
+      ) {
+        void resource.decode().catch(() => undefined);
+      }
+    }
+
+    function bindInitialNavigationResourceSettle(
+      resource: HTMLElement,
+      onSettled: () => void,
+    ): () => void {
+      const settleEventName =
+        resource instanceof HTMLVideoElement ? "loadeddata" : "load";
+
+      resource.addEventListener(settleEventName, onSettled, { once: true });
+      resource.addEventListener("error", onSettled, { once: true });
+
+      return () => {
+        resource.removeEventListener(settleEventName, onSettled);
+        resource.removeEventListener("error", onSettled);
+      };
+    }
+
+    function waitForInitialNavigationLayout(entry: TocEntry): void {
       const navigationToken = pendingInitialNavigationToken + 1;
       pendingInitialNavigationToken = navigationToken;
-      const pendingImages = getPendingImagesBeforeEntry(entry);
-      if (pendingImages.length === 0) {
+      const startTime = performance.now();
+      let lastChangeAt = startTime;
+      let lastDocumentTop = getEntryDocumentTop(entry);
+      const resources = getLayoutShiftResourcesBeforeEntry(entry);
+      const cleanupCallbacks: Array<() => void> = [];
+      let timeoutId = 0;
+      let checkTimerId = 0;
+      let cleaned = false;
+
+      if (resources.length === 0) {
         performLinkActivation(entry);
         return;
       }
-
-      const cleanupCallbacks: Array<() => void> = [];
-      let timeoutId = 0;
-      let cleaned = false;
 
       const cleanup = (): void => {
         if (cleaned) return;
@@ -596,6 +669,11 @@ const CURRENT_SCRIPT =
         if (timeoutId) {
           window.clearTimeout(timeoutId);
           timeoutId = 0;
+        }
+
+        if (checkTimerId) {
+          window.clearTimeout(checkTimerId);
+          checkTimerId = 0;
         }
 
         for (const removeListener of cleanupCallbacks) {
@@ -623,40 +701,62 @@ const CURRENT_SCRIPT =
         });
       };
 
-      const handleImageSettled = (): void => {
-        if (pendingImages.every((image) => image.complete)) {
-          finish();
+      const markLayoutChanged = (): void => {
+        lastChangeAt = performance.now();
+      };
+
+      const check = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
         }
+
+        if (!document.contains(entry.heading)) {
+          cleanup();
+          return;
+        }
+
+        const now = performance.now();
+        const nextDocumentTop = getEntryDocumentTop(entry);
+        if (
+          Math.abs(nextDocumentTop - lastDocumentTop) >
+          INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE
+        ) {
+          lastDocumentTop = nextDocumentTop;
+          markLayoutChanged();
+        } else {
+          lastDocumentTop = nextDocumentTop;
+        }
+
+        if (now - lastChangeAt >= INITIAL_CLICK_LAYOUT_QUIET_WINDOW_MS) {
+          finish();
+          return;
+        }
+
+        checkTimerId = window.setTimeout(
+          check,
+          INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS,
+        );
       };
 
       cancelPendingInitialNavigation = cleanup;
 
-      for (const image of pendingImages) {
-        if (image.loading !== "eager") {
-          image.loading = "eager";
-        }
-
-        if (typeof image.decode === "function") {
-          void image.decode().catch(() => undefined);
-        }
-
-        const onSettled = (): void => {
-          handleImageSettled();
-        };
-
-        image.addEventListener("load", onSettled, { once: true });
-        image.addEventListener("error", onSettled, { once: true });
-        cleanupCallbacks.push(() => {
-          image.removeEventListener("load", onSettled);
-          image.removeEventListener("error", onSettled);
-        });
+      for (const resource of resources) {
+        primeInitialNavigationResource(resource);
+        cleanupCallbacks.push(
+          bindInitialNavigationResourceSettle(resource, markLayoutChanged),
+        );
       }
 
       timeoutId = window.setTimeout(
         finish,
-        INITIAL_CLICK_IMAGE_WAIT_TIMEOUT_MS,
+        INITIAL_CLICK_LAYOUT_WAIT_TIMEOUT_MS,
       );
-      handleImageSettled();
+
+      checkTimerId = window.setTimeout(
+        check,
+        INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS,
+      );
     }
 
     function performLinkActivation(entry: TocEntry): void {
@@ -688,7 +788,10 @@ const CURRENT_SCRIPT =
 
     function handleLinkActivation(entry: TocEntry): void {
       if (shouldDelayInitialNavigation()) {
-        waitForInitialNavigationImages(entry);
+        clearPendingInitialNavigation();
+        activateEntry(entry, { revealBehavior: "nearest" });
+        setPendingInitialNavigationEntry(entry);
+        waitForInitialNavigationLayout(entry);
         return;
       }
 
@@ -714,6 +817,14 @@ const CURRENT_SCRIPT =
         root,
         tooltip,
       });
+      if (pendingInitialNavigationEntryId) {
+        const pendingEntry = state.entries.find(
+          (entry) => entry.id === pendingInitialNavigationEntryId,
+        );
+        if (pendingEntry) {
+          setPendingInitialNavigationEntry(pendingEntry);
+        }
+      }
       return true;
     }
 
@@ -762,7 +873,11 @@ const CURRENT_SCRIPT =
         isInitialLayoutPending,
         lockedTargetId: navigationLock.getFrozenActiveId(),
       });
-      const activeEntry = setActive(state.entries, activeId, viewConfig);
+      const activeEntry = setActive(
+        state.entries,
+        pendingInitialNavigationEntryId || activeId,
+        viewConfig,
+      );
       if (!activeEntry) return;
 
       syncMobileToggleSummary(root, viewConfig, {
