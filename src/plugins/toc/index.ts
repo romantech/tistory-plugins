@@ -94,6 +94,7 @@ const CURRENT_SCRIPT =
   const CLICK_TARGET_FREEZE_MS = 220;
   const CLICK_NAVIGATION_SETTLE_MS = 100;
   const INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS = 100;
+  const INITIAL_CLICK_LAYOUT_PROBE_FRAMES = 2;
   const INITIAL_CLICK_LAYOUT_QUIET_WINDOW_MS = 220;
   const INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE = 2;
   const INITIAL_CLICK_LAYOUT_WAIT_TIMEOUT_MS = 2200;
@@ -645,13 +646,33 @@ const CURRENT_SCRIPT =
       };
     }
 
-    function waitForInitialNavigationLayout(entry: TocEntry): void {
+    function resourceNeedsInitialNavigationWait(
+      resource: HTMLElement,
+    ): boolean {
+      if (resource instanceof HTMLImageElement) {
+        return !resource.complete;
+      }
+
+      if (resource instanceof HTMLIFrameElement) {
+        return resource.loading === "lazy";
+      }
+
+      if (resource instanceof HTMLVideoElement) {
+        return resource.readyState < HTMLMediaElement.HAVE_METADATA;
+      }
+
+      return false;
+    }
+
+    function startInitialNavigationLayoutWait(
+      entry: TocEntry,
+      resources: HTMLElement[],
+    ): void {
       const navigationToken = pendingInitialNavigationToken + 1;
       pendingInitialNavigationToken = navigationToken;
       const startTime = performance.now();
       let lastChangeAt = startTime;
       let lastDocumentTop = getEntryDocumentTop(entry);
-      const resources = getLayoutShiftResourcesBeforeEntry(entry);
       const cleanupCallbacks: Array<() => void> = [];
       let timeoutId = 0;
       let checkTimerId = 0;
@@ -757,6 +778,95 @@ const CURRENT_SCRIPT =
         check,
         INITIAL_CLICK_LAYOUT_CHECK_DELAY_MS,
       );
+    }
+
+    function probeInitialNavigationLayout(entry: TocEntry): void {
+      const navigationToken = pendingInitialNavigationToken + 1;
+      pendingInitialNavigationToken = navigationToken;
+      let frameId = 0;
+      let probeCount = 0;
+      let cleaned = false;
+      let lastDocumentTop = getEntryDocumentTop(entry);
+
+      const cleanup = (): void => {
+        if (cleaned) return;
+        cleaned = true;
+
+        if (frameId) {
+          cancelAnimationFrame(frameId);
+          frameId = 0;
+        }
+
+        if (cancelPendingInitialNavigation === cleanup) {
+          cancelPendingInitialNavigation = null;
+        }
+      };
+
+      const finish = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        cleanup();
+        performLinkActivation(entry);
+      };
+
+      const sample = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        if (!document.contains(entry.heading)) {
+          cleanup();
+          return;
+        }
+
+        const nextDocumentTop = getEntryDocumentTop(entry);
+        if (
+          Math.abs(nextDocumentTop - lastDocumentTop) >
+          INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE
+        ) {
+          cleanup();
+          startInitialNavigationLayoutWait(
+            entry,
+            getLayoutShiftResourcesBeforeEntry(entry),
+          );
+          return;
+        }
+
+        lastDocumentTop = nextDocumentTop;
+        probeCount += 1;
+
+        if (probeCount >= INITIAL_CLICK_LAYOUT_PROBE_FRAMES) {
+          finish();
+          return;
+        }
+
+        frameId = requestAnimationFrame(sample);
+      };
+
+      cancelPendingInitialNavigation = cleanup;
+      frameId = requestAnimationFrame(sample);
+    }
+
+    function waitForInitialNavigationLayout(entry: TocEntry): void {
+      const resources = getLayoutShiftResourcesBeforeEntry(entry);
+      if (resources.length === 0) {
+        performLinkActivation(entry);
+        return;
+      }
+
+      const unsettledResources = resources.filter(
+        resourceNeedsInitialNavigationWait,
+      );
+      if (unsettledResources.length > 0) {
+        startInitialNavigationLayoutWait(entry, unsettledResources);
+        return;
+      }
+
+      probeInitialNavigationLayout(entry);
     }
 
     function performLinkActivation(entry: TocEntry): void {

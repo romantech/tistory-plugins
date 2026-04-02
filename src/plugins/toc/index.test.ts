@@ -545,6 +545,126 @@ describe("toc plugin", () => {
     });
   });
 
+  it("does not add a long delay when resources above the target are already settled", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/ready.jpg" alt="준비된 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 760 });
+
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => true,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(80);
+    await flushAll();
+
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 676,
+      behavior: "smooth",
+    });
+  });
+
+  it("waits for a lazy iframe above the first target before scrolling", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <iframe src="about:blank" title="임베드" loading="lazy"></iframe>
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const frame = getRequiredElement(article, "iframe", HTMLIFrameElement);
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 760 });
+    Object.defineProperty(frame, "loading", {
+      configurable: true,
+      writable: true,
+      value: "lazy",
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    expect(frame.loading).toBe("eager");
+
+    frame.dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 676,
+      behavior: "smooth",
+    });
+  });
+
   it("cancels delayed first navigation after the user scrolls manually", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
