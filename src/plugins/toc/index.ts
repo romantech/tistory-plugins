@@ -91,6 +91,7 @@ const CURRENT_SCRIPT =
   const CLICK_NAVIGATION_LOCK_MS = 1400;
   const CLICK_TARGET_FREEZE_MS = 220;
   const CLICK_NAVIGATION_SETTLE_MS = 100;
+  const INITIAL_CLICK_IMAGE_WAIT_TIMEOUT_MS = 1800;
   const MOBILE_DRAG_THRESHOLD = 6;
   const MOBILE_DRAG_GUTTER = 12;
 
@@ -272,6 +273,9 @@ const CURRENT_SCRIPT =
 
     let state: TocState = initialState;
     let isMobileExpanded = false;
+    let hasObservedScroll = window.scrollY > 0;
+    let pendingInitialNavigationToken = 0;
+    let cancelPendingInitialNavigation: (() => void) | null = null;
     setPendingVisibility(root, isInitialLayoutPending, viewConfig);
 
     const mobileDragState = {
@@ -542,7 +546,122 @@ const CURRENT_SCRIPT =
       });
     }
 
-    function handleLinkActivation(entry: TocEntry): void {
+    function clearPendingInitialNavigation(): void {
+      cancelPendingInitialNavigation?.();
+      cancelPendingInitialNavigation = null;
+    }
+
+    function shouldDelayInitialNavigation(): boolean {
+      return !hasObservedScroll && window.scrollY <= 0;
+    }
+
+    function getPendingImagesBeforeEntry(entry: TocEntry): HTMLImageElement[] {
+      return Array.from(state.article.querySelectorAll("img")).filter(
+        (image): image is HTMLImageElement => {
+          if (!(image instanceof HTMLImageElement)) {
+            return false;
+          }
+
+          if (!image.isConnected || image.complete) {
+            return false;
+          }
+
+          return Boolean(
+            image.compareDocumentPosition(entry.heading) &
+              Node.DOCUMENT_POSITION_FOLLOWING,
+          );
+        },
+      );
+    }
+
+    function waitForInitialNavigationImages(entry: TocEntry): void {
+      clearPendingInitialNavigation();
+
+      const navigationToken = pendingInitialNavigationToken + 1;
+      pendingInitialNavigationToken = navigationToken;
+      const pendingImages = getPendingImagesBeforeEntry(entry);
+      if (pendingImages.length === 0) {
+        performLinkActivation(entry);
+        return;
+      }
+
+      const cleanupCallbacks: Array<() => void> = [];
+      let timeoutId = 0;
+      let cleaned = false;
+
+      const cleanup = (): void => {
+        if (cleaned) return;
+        cleaned = true;
+
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+          timeoutId = 0;
+        }
+
+        for (const removeListener of cleanupCallbacks) {
+          removeListener();
+        }
+
+        cleanupCallbacks.length = 0;
+        if (cancelPendingInitialNavigation === cleanup) {
+          cancelPendingInitialNavigation = null;
+        }
+      };
+
+      const finish = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        cleanup();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (pendingInitialNavigationToken !== navigationToken) return;
+            performLinkActivation(entry);
+          });
+        });
+      };
+
+      const handleImageSettled = (): void => {
+        if (pendingImages.every((image) => image.complete)) {
+          finish();
+        }
+      };
+
+      cancelPendingInitialNavigation = cleanup;
+
+      for (const image of pendingImages) {
+        if (image.loading !== "eager") {
+          image.loading = "eager";
+        }
+
+        if (typeof image.decode === "function") {
+          void image.decode().catch(() => undefined);
+        }
+
+        const onSettled = (): void => {
+          handleImageSettled();
+        };
+
+        image.addEventListener("load", onSettled, { once: true });
+        image.addEventListener("error", onSettled, { once: true });
+        cleanupCallbacks.push(() => {
+          image.removeEventListener("load", onSettled);
+          image.removeEventListener("error", onSettled);
+        });
+      }
+
+      timeoutId = window.setTimeout(
+        finish,
+        INITIAL_CLICK_IMAGE_WAIT_TIMEOUT_MS,
+      );
+      handleImageSettled();
+    }
+
+    function performLinkActivation(entry: TocEntry): void {
+      clearPendingInitialNavigation();
+
       const headerOffset = getResolvedHeaderOffset();
       const destinationScrollTop = Math.max(
         0,
@@ -565,6 +684,15 @@ const CURRENT_SCRIPT =
         headerOffset,
         prefersReducedMotion() ? "auto" : "smooth",
       );
+    }
+
+    function handleLinkActivation(entry: TocEntry): void {
+      if (shouldDelayInitialNavigation()) {
+        waitForInitialNavigationImages(entry);
+        return;
+      }
+
+      performLinkActivation(entry);
     }
 
     function rebuildState(): boolean {
@@ -691,6 +819,10 @@ const CURRENT_SCRIPT =
     window.addEventListener(
       "scroll",
       () => {
+        if (window.scrollY > 0) {
+          hasObservedScroll = true;
+          clearPendingInitialNavigation();
+        }
         navigationLock.touchSettle();
         scheduleSync();
       },
