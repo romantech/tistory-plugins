@@ -1,0 +1,275 @@
+.rp-toc[data-layout="desktop"] {
+  position: fixed;
+  top: var(--rp-toc-top);
+  left: var(--rp-toc-left);
+  z-index: 20;
+  width: calc(var(--rp-toc-width) + var(--rp-toc-scrollbar-lane));
+  max-height: min(50vh, calc(100vh - var(--rp-toc-safe-top) - 56px));
+  overflow-y: auto;
+  overflow-x: visible;
+  overscroll-behavior: contain;
+  padding: 0;
+  border: 0;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-panel {
+  width: var(--rp-toc-width);
+}
+
+.rp-toc[data-layout="desktop"]::-webkit-scrollbar {
+  width: 3px;
+}
+
+.rp-toc[data-layout="desktop"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rp-toc[data-layout="desktop"]::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+.rp-toc[data-layout="desktop"]:hover,
+.rp-toc[data-layout="desktop"]:focus-within {
+  scrollbar-color: rgb(var(--rp-toc-ink) / var(--rp-toc-scrollbar-alpha))
+    transparent;
+}
+
+.rp-toc[data-layout="desktop"]:hover::-webkit-scrollbar-thumb,
+.rp-toc[data-layout="desktop"]:focus-within::-webkit-scrollbar-thumb {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-scrollbar-alpha));
+}
+
+.rp-toc[data-layout="desktop"]::before,
+.rp-toc[data-layout="desktop"]::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  display: block;
+  width: var(--rp-toc-width);
+  height: var(--rp-toc-scroll-fade-size);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 1;
+}
+
+.rp-toc[data-layout="desktop"]::before {
+  top: 0;
+  margin-bottom: calc(var(--rp-toc-scroll-fade-size) * -1);
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--rp-toc-surface) / var(--rp-toc-fade-strong-alpha)) 0,
+    rgb(var(--rp-toc-surface) / var(--rp-toc-fade-soft-alpha)) 36%,
+    transparent 100%
+  );
+}
+
+.rp-toc[data-layout="desktop"]::after {
+  bottom: 0;
+  margin-top: calc(var(--rp-toc-scroll-fade-size) * -1);
+  background: linear-gradient(
+    to top,
+    rgb(var(--rp-toc-surface) / var(--rp-toc-fade-strong-alpha)) 0,
+    rgb(var(--rp-toc-surface) / var(--rp-toc-fade-soft-alpha)) 36%,
+    transparent 100%
+  );
+}
+
+.rp-toc[data-layout="desktop"][data-scroll-fade="top"]:hover::before,
+.rp-toc[data-layout="desktop"][data-scroll-fade="top"]:focus-within::before,
+.rp-toc[data-layout="desktop"][data-scroll-fade="both"]:hover::before,
+.rp-toc[data-layout="desktop"][data-scroll-fade="both"]:focus-within::before,
+.rp-toc[data-layout="desktop"][data-scroll-fade="bottom"]:hover::after,
+.rp-toc[data-layout="desktop"][data-scroll-fade="bottom"]:focus-within::after,
+.rp-toc[data-layout="desktop"][data-scroll-fade="both"]:hover::after,
+.rp-toc[data-layout="desktop"][data-scroll-fade="both"]:focus-within::after {
+  opacity: 1;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-list {
+  width: var(--rp-toc-width);
+  clip-path: inset(0 0 0 calc(100% - var(--rp-toc-collapsed-width)));
+  transition: clip-path 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rp-toc[data-layout="desktop"]:hover .rp-toc-list,
+.rp-toc[data-layout="desktop"]:focus-within .rp-toc-list,
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-list {
+  clip-path: inset(0);
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link,
+.rp-toc[data-layout="desktop"] .rp-toc-link:visited,
+.rp-toc[data-layout="desktop"] .rp-toc-link:hover,
+.rp-toc[data-layout="desktop"] .rp-toc-link:active,
+.rp-toc[data-layout="desktop"] .rp-toc-link:focus,
+.rp-toc[data-layout="desktop"] .rp-toc-link:focus-visible {
+  --rp-toc-indent: 0px;
+  min-height: 16px;
+  padding: var(--rp-toc-link-block)
+    calc(var(--rp-toc-rail-space) + var(--rp-toc-indent))
+    var(--rp-toc-link-block) var(--rp-toc-link-start);
+  /* biome-ignore lint/complexity/noImportantStyles: 스킨의 visited 링크 색보다 TOC 상태 색이 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-idle-alpha)) !important;
+  pointer-events: none;
+  white-space: nowrap;
+  border-radius: 999px;
+}
+
+.rp-toc[data-layout="desktop"]:hover .rp-toc-link,
+.rp-toc[data-layout="desktop"]:focus-within .rp-toc-link,
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-link {
+  pointer-events: auto;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-label {
+  width: max-content;
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(8px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.18s ease;
+}
+
+.rp-toc[data-layout="desktop"]:hover .rp-toc-label,
+.rp-toc[data-layout="desktop"]:focus-within .rp-toc-label,
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-label {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: calc(
+    var(--rp-toc-bar-width, 28px) +
+    var(--rp-toc-bar-end) +
+    var(--rp-toc-bar-end)
+  );
+  border-radius: inherit;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-surface-alpha));
+  opacity: 0;
+  transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: var(--rp-toc-bar-end);
+  width: var(--rp-toc-bar-width, 28px);
+  height: var(--rp-toc-bar-height);
+  border-radius: 999px;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-idle-alpha));
+  transform: translateY(-50%);
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link:hover {
+  /* biome-ignore lint/complexity/noImportantStyles: hover 상태가 전역 링크 색보다 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-hover-alpha)) !important;
+  background: transparent;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link:hover::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-hover-alpha));
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link:focus-visible {
+  outline: none;
+  /* biome-ignore lint/complexity/noImportantStyles: focus 상태가 스킨 링크 스타일보다 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha)) !important;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-focus-surface-alpha));
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-alpha)),
+    0 0 0 4px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-soft-alpha));
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link:focus-visible::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link[data-level] {
+  /* biome-ignore lint/complexity/noImportantStyles: 레벨별 우측 rail 여백을 스킨 링크 규칙보다 우선한다 */
+  padding-right: var(--rp-toc-rail-space) !important;
+  font-size: var(--rp-toc-font-size);
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link[data-level="2"] {
+  --rp-toc-bar-width: 28px;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link[data-level="3"] {
+  --rp-toc-bar-width: 20px;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link[data-level="4"] {
+  --rp-toc-bar-width: 14px;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link[data-level="5"] {
+  --rp-toc-bar-width: 8px;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link[data-level="6"] {
+  --rp-toc-bar-width: 6px;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active,
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active:visited,
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active:hover,
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active:active,
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active:focus,
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active:focus-visible {
+  /* biome-ignore lint/complexity/noImportantStyles: active 상태가 전역 링크 색보다 우선해야 함 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha)) !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active::after {
+  opacity: 1;
+}
+
+.rp-toc[data-layout="desktop"]:hover .rp-toc-link.is-active,
+.rp-toc[data-layout="desktop"]:focus-within .rp-toc-link.is-active,
+.rp-toc[data-layout="desktop"].is-navigation-locked .rp-toc-link.is-active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="desktop"]:hover .rp-toc-link.is-active::after,
+.rp-toc[data-layout="desktop"]:focus-within .rp-toc-link.is-active::after,
+.rp-toc[data-layout="desktop"].is-navigation-locked
+  .rp-toc-link.is-active::after {
+  opacity: 0;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active .rp-toc-label {
+  font-weight: 600;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="desktop"] .rp-toc-link.is-active:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-alpha)),
+    0 0 0 4px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-soft-alpha));
+}

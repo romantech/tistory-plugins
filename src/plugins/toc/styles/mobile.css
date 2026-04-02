@@ -1,0 +1,512 @@
+.rp-toc[data-layout="mobile"] {
+  --rp-toc-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
+  --rp-toc-mobile-panel-radius: 20px;
+  --rp-toc-mobile-link-radius: 16px;
+  --rp-toc-mobile-glass-top: rgb(255 255 255 / 0.038);
+  --rp-toc-mobile-glass-border: rgb(255 255 255 / 0.058);
+  --rp-toc-mobile-shadow:
+    0 24px 50px rgb(0 0 0 / 0.28), 0 10px 20px rgb(0 0 0 / 0.15);
+  --rp-toc-mobile-panel-bg:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.036) 0%,
+      rgb(255 255 255 / 0.008) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(72 96 170 / 0.036) 0%,
+      rgb(102 67 118 / 0.026) 58%,
+      rgb(255 255 255 / 0.01) 100%
+    ),
+    rgb(14 14 14 / 0.84);
+  --rp-toc-mobile-toggle-bg:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.042) 0%,
+      rgb(255 255 255 / 0.01) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(72 96 170 / 0.032) 0%,
+      rgb(102 67 118 / 0.024) 100%
+    ),
+    rgb(14 14 14 / 0.88);
+  --rp-toc-mobile-toggle-bg-hover:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.056) 0%,
+      rgb(255 255 255 / 0.016) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(72 96 170 / 0.038) 0%,
+      rgb(102 67 118 / 0.028) 100%
+    ),
+    rgb(20 20 20 / 0.9);
+  --rp-toc-mobile-toggle-bg-expanded:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.048) 0%,
+      rgb(255 255 255 / 0.012) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(86 108 188 / 0.04) 0%,
+      rgb(112 74 128 / 0.028) 100%
+    ),
+    rgb(14 14 14 / 0.92);
+  --rp-toc-mobile-link-hover-bg:
+    linear-gradient(
+      135deg,
+      rgb(81 104 184 / 0.05) 0%,
+      rgb(108 70 121 / 0.04) 100%
+    ),
+    rgb(255 255 255 / 0.018);
+  --rp-toc-mobile-link-hover-border: rgb(176 190 241 / 0.055);
+  --rp-toc-mobile-link-active-bg:
+    linear-gradient(
+      135deg,
+      rgb(81 104 184 / 0.04) 0%,
+      rgb(108 70 121 / 0.03) 100%
+    ),
+    rgb(255 255 255 / 0.012);
+  --rp-toc-mobile-link-active-border: rgb(176 190 241 / 0.05);
+  position: fixed;
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  bottom: var(--rp-toc-safe-bottom);
+  z-index: 30;
+  width: min(280px, calc(100vw - 28px));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+  transform: translate(
+    var(--rp-toc-mobile-offset-x, 0px),
+    var(--rp-toc-mobile-offset-y, 0px)
+  );
+  will-change: transform;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-toggle,
+.rp-toc[data-layout="mobile"] .rp-toc-panel {
+  pointer-events: auto;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--rp-toc-mobile-toggle-bg);
+  box-shadow:
+    0 16px 28px rgb(0 0 0 / 0.2),
+    0 6px 14px rgb(0 0 0 / 0.12),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.03);
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha));
+  -webkit-backdrop-filter: blur(34px) saturate(1.24);
+  backdrop-filter: blur(34px) saturate(1.24);
+  cursor: pointer;
+  touch-action: none;
+  transition:
+    background 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-toggle::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
+  transform: translateY(-3px);
+  transition: transform 0.18s ease;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-toggle::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
+  transform: translateY(3px);
+  transition: transform 0.18s ease;
+}
+
+.rp-toc[data-layout="mobile"][data-mobile-expanded="true"] .rp-toc-toggle {
+  background: var(--rp-toc-mobile-toggle-bg-expanded);
+  box-shadow:
+    0 18px 32px rgb(0 0 0 / 0.22),
+    0 8px 18px rgb(0 0 0 / 0.14),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.036);
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-toggle:hover {
+  background: var(--rp-toc-mobile-toggle-bg-hover);
+}
+
+.rp-toc[data-layout="mobile"][data-mobile-dragging="true"] .rp-toc-toggle {
+  transform: none;
+}
+
+.rp-toc[data-layout="mobile"][data-mobile-expanded="true"]
+  .rp-toc-toggle::before {
+  transform: rotate(45deg);
+}
+
+.rp-toc[data-layout="mobile"][data-mobile-expanded="true"]
+  .rp-toc-toggle::after {
+  transform: rotate(-45deg);
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-toggle-label,
+.rp-toc[data-layout="mobile"] .rp-toc-toggle-summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--rp-toc-mobile-panel-radius);
+  background: var(--rp-toc-mobile-panel-bg);
+  box-shadow:
+    var(--rp-toc-mobile-shadow),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.03);
+  -webkit-backdrop-filter: blur(44px) saturate(1.26);
+  backdrop-filter: blur(44px) saturate(1.26);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.24) transparent;
+  transform-origin: bottom right;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(10px) scale(0.965);
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.22s;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-scroll-viewport {
+  margin: 8px 4px 8px 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: min(39vh, 292px);
+  padding: 4px 6px 4px 4px;
+  border-radius: calc(var(--rp-toc-mobile-panel-radius) - 6px);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.24) transparent;
+}
+
+.rp-toc[data-layout="mobile"][data-mobile-expanded="true"] .rp-toc-panel {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-scroll-viewport::-webkit-scrollbar {
+  width: 4px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-scroll-viewport::-webkit-scrollbar-track {
+  margin: 12px 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.04);
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-scroll-viewport::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.18) 0%,
+      rgb(255 255 255 / 0.1) 100%
+    ),
+    rgb(255 255 255 / 0.08);
+  background-clip: padding-box;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-list {
+  width: auto;
+  clip-path: none;
+  gap: 2px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-item {
+  margin-bottom: 0;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link {
+  --rp-toc-mobile-indent: 0px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link[data-level="2"] {
+  --rp-toc-mobile-indent: 0px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link[data-level="3"] {
+  --rp-toc-mobile-indent: 8px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link[data-level="4"] {
+  --rp-toc-mobile-indent: 15px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link[data-level="5"] {
+  --rp-toc-mobile-indent: 22px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link[data-level="6"] {
+  --rp-toc-mobile-indent: 28px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link,
+.rp-toc[data-layout="mobile"] .rp-toc-link:visited,
+.rp-toc[data-layout="mobile"] .rp-toc-link:active,
+.rp-toc[data-layout="mobile"] .rp-toc-link:focus,
+.rp-toc[data-layout="mobile"] .rp-toc-link:focus-visible,
+.rp-toc[data-layout="mobile"] .rp-toc-link:hover {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 11px 3px calc(17px + var(--rp-toc-mobile-indent));
+  pointer-events: auto;
+  white-space: nowrap;
+  border-radius: var(--rp-toc-mobile-link-radius);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  /* biome-ignore lint/complexity/noImportantStyles: 모바일도 visited 링크 색보다 TOC 상태 색이 우선해야 한다 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-idle-alpha)) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: calc(8px + var(--rp-toc-mobile-indent));
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-idle-alpha));
+  box-shadow: none;
+  transform: translateY(-50%);
+  transition:
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link::after {
+  display: none;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link[data-level] {
+  padding-right: 11px;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-label {
+  flex: 1 1 auto;
+  width: 100%;
+  margin-left: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  display: block;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  opacity: 1;
+  transform: none;
+  transition:
+    color 0.18s ease,
+    font-weight 0.18s ease;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link.is-truncated .rp-toc-label {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 0,
+    rgb(0 0 0 / 1) calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    rgb(0 0 0 / 1) 0,
+    rgb(0 0 0 / 1) calc(100% - 18px),
+    transparent 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link:hover .rp-toc-label,
+.rp-toc[data-layout="mobile"] .rp-toc-link:focus-visible .rp-toc-label {
+  font-weight: inherit;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link:hover,
+.rp-toc[data-layout="mobile"] .rp-toc-link:focus-visible {
+  background: transparent;
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link:hover {
+  /* biome-ignore lint/complexity/noImportantStyles: 모바일도 hover 상태가 전역 링크 색보다 우선해야 한다 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-hover-alpha)) !important;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link:hover::before,
+.rp-toc[data-layout="mobile"] .rp-toc-link:focus-visible::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-hover-alpha));
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link:hover {
+  border-color: transparent;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link:focus-visible {
+  outline: none;
+  border-color: transparent;
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-focus-surface-alpha));
+  box-shadow:
+    inset 0 0 0 1px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-alpha)),
+    0 0 0 4px rgb(var(--rp-toc-ink) / var(--rp-toc-focus-ring-soft-alpha));
+  /* biome-ignore lint/complexity/noImportantStyles: 모바일도 focus 상태가 전역 링크 색보다 우선해야 한다 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha)) !important;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link.is-active {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  /* biome-ignore lint/complexity/noImportantStyles: 모바일도 active 상태가 전역 링크 색보다 우선해야 한다 */
+  color: rgb(var(--rp-toc-ink) / var(--rp-toc-link-active-alpha)) !important;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link.is-active .rp-toc-label {
+  font-weight: 600;
+}
+
+.rp-toc[data-layout="mobile"] .rp-toc-link.is-active::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="mobile"][data-surface-tone="light"] {
+  --rp-toc-mobile-glass-top: rgb(255 255 255 / 0.28);
+  --rp-toc-mobile-glass-border: rgb(24 24 27 / 0.09);
+  --rp-toc-mobile-shadow:
+    0 20px 38px rgb(15 23 42 / 0.12), 0 8px 16px rgb(15 23 42 / 0.08);
+  --rp-toc-mobile-panel-bg:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.68) 0%,
+      rgb(246 247 251 / 0.44) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(99 117 189 / 0.075) 0%,
+      rgb(157 96 151 / 0.058) 100%
+    ),
+    rgb(255 255 255 / 0.2);
+  --rp-toc-mobile-toggle-bg:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.76) 0%,
+      rgb(248 249 252 / 0.56) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(99 117 189 / 0.075) 0%,
+      rgb(157 96 151 / 0.058) 100%
+    ),
+    rgb(255 255 255 / 0.28);
+  --rp-toc-mobile-toggle-bg-expanded:
+    linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.8) 0%,
+      rgb(248 249 252 / 0.6) 100%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(99 117 189 / 0.09) 0%,
+      rgb(157 96 151 / 0.068) 100%
+    ),
+    rgb(255 255 255 / 0.34);
+  --rp-toc-mobile-link-hover-bg:
+    linear-gradient(
+      135deg,
+      rgb(99 117 189 / 0.06) 0%,
+      rgb(157 96 151 / 0.045) 100%
+    ),
+    rgb(255 255 255 / 0.42);
+  --rp-toc-mobile-link-hover-border: rgb(99 117 189 / 0.085);
+  --rp-toc-mobile-link-active-bg:
+    linear-gradient(
+      135deg,
+      rgb(99 117 189 / 0.05) 0%,
+      rgb(157 96 151 / 0.035) 100%
+    ),
+    rgb(255 255 255 / 0.34);
+  --rp-toc-mobile-link-active-border: rgb(99 117 189 / 0.08);
+}
+
+.rp-toc[data-layout="mobile"][data-surface-tone="light"] .rp-toc-toggle,
+.rp-toc[data-layout="mobile"][data-surface-tone="light"] .rp-toc-panel {
+  color: rgb(24 24 27 / 0.92);
+}
+
+.rp-toc[data-layout="mobile"][data-surface-tone="light"] .rp-toc-label {
+  color: inherit;
+}
+
+.rp-toc[data-layout="mobile"][data-surface-tone="light"] .rp-toc-link::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-idle-alpha));
+  box-shadow: none;
+}
+
+.rp-toc[data-layout="mobile"][data-surface-tone="light"]
+  .rp-toc-link.is-active
+  .rp-toc-label {
+  color: inherit;
+}
+
+.rp-toc[data-layout="mobile"][data-surface-tone="light"]
+  .rp-toc-link.is-active::before {
+  background: rgb(var(--rp-toc-ink) / var(--rp-toc-bar-active-alpha));
+  box-shadow: none;
+}

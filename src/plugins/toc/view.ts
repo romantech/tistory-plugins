@@ -15,11 +15,16 @@ export type TocViewConfig = {
   labelClass: string;
   linkClass: string;
   listClass: string;
+  panelClass: string;
   pendingClass: string;
   rootClass: string;
+  scrollViewportClass: string;
   scrollFadeEpsilon: number;
   tooltipClass: string;
   tooltipVisibleClass: string;
+  toggleButtonClass: string;
+  toggleLabelClass: string;
+  toggleSummaryClass: string;
   truncatedClass: string;
 };
 
@@ -43,21 +48,87 @@ export function createRoot(config: TocViewConfig): CreatedElement<HTMLElement> {
   const existingRoot = document.querySelector<HTMLElement>(
     `.${config.rootClass}`,
   );
-  if (existingRoot) {
-    return { element: existingRoot, created: false };
-  }
+  const root = existingRoot ?? document.createElement("nav");
+  const created = !existingRoot;
 
-  const root = document.createElement("nav");
   root.className = config.rootClass;
   root.hidden = true;
   root.setAttribute("aria-label", "본문 목차");
 
-  const list = document.createElement("ol");
-  list.className = config.listClass;
-  root.append(list);
+  let panel = root.querySelector<HTMLElement>(`.${config.panelClass}`);
+  const existingList = root.querySelector<HTMLOListElement>(
+    `.${config.listClass}`,
+  );
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = config.panelClass;
+    panel.hidden = true;
+    root.append(panel);
+  }
 
-  document.body.append(root);
-  return { element: root, created: true };
+  let scrollViewport = panel.querySelector<HTMLElement>(
+    `.${config.scrollViewportClass}`,
+  );
+  if (!scrollViewport) {
+    scrollViewport = document.createElement("div");
+    scrollViewport.className = config.scrollViewportClass;
+    if (existingList) {
+      scrollViewport.append(existingList);
+    }
+    panel.append(scrollViewport);
+  }
+
+  let list = scrollViewport.querySelector<HTMLOListElement>(
+    `.${config.listClass}`,
+  );
+  if (!list) {
+    list = existingList ?? document.createElement("ol");
+    list.className = config.listClass;
+    scrollViewport.append(list);
+  }
+
+  let toggleButton = root.querySelector<HTMLButtonElement>(
+    `.${config.toggleButtonClass}`,
+  );
+  if (!toggleButton) {
+    toggleButton = document.createElement("button");
+    toggleButton.className = config.toggleButtonClass;
+    toggleButton.type = "button";
+    root.append(toggleButton);
+  }
+
+  toggleButton.hidden = true;
+
+  let toggleLabel = toggleButton.querySelector<HTMLSpanElement>(
+    `.${config.toggleLabelClass}`,
+  );
+  if (!toggleLabel) {
+    toggleLabel = document.createElement("span");
+    toggleLabel.className = config.toggleLabelClass;
+    toggleLabel.textContent = "목차";
+    toggleButton.append(toggleLabel);
+  }
+
+  let toggleSummary = toggleButton.querySelector<HTMLSpanElement>(
+    `.${config.toggleSummaryClass}`,
+  );
+  if (!toggleSummary) {
+    toggleSummary = document.createElement("span");
+    toggleSummary.className = config.toggleSummaryClass;
+    toggleButton.append(toggleSummary);
+  }
+
+  const panelId = panel.id || `${config.rootClass}-panel`;
+  panel.id = panelId;
+  toggleButton.setAttribute("aria-controls", panelId);
+  toggleButton.setAttribute("aria-expanded", "false");
+  toggleButton.setAttribute("aria-label", "목차 펼치기");
+
+  if (created) {
+    document.body.append(root);
+  }
+
+  return { element: root, created };
 }
 
 export function createTooltip(
@@ -103,6 +174,71 @@ function getList(root: HTMLElement, config: TocViewConfig): HTMLOListElement {
   }
 
   return list;
+}
+
+function getPanel(root: HTMLElement, config: TocViewConfig): HTMLElement {
+  const panel = root.querySelector(`.${config.panelClass}`);
+  if (!(panel instanceof HTMLElement)) {
+    throw new Error("TOC panel not found");
+  }
+
+  return panel;
+}
+
+function getToggleButton(
+  root: HTMLElement,
+  config: TocViewConfig,
+): HTMLButtonElement {
+  const toggleButton = root.querySelector(`.${config.toggleButtonClass}`);
+  if (!(toggleButton instanceof HTMLButtonElement)) {
+    throw new Error("TOC toggle button not found");
+  }
+
+  return toggleButton;
+}
+
+function getToggleSummary(
+  root: HTMLElement,
+  config: TocViewConfig,
+): HTMLSpanElement {
+  const toggleSummary = root.querySelector(`.${config.toggleSummaryClass}`);
+  if (!(toggleSummary instanceof HTMLSpanElement)) {
+    throw new Error("TOC toggle summary not found");
+  }
+
+  return toggleSummary;
+}
+
+function getScrollViewport(
+  root: HTMLElement,
+  config: TocViewConfig,
+): HTMLElement {
+  if (root.dataset.layout !== "mobile") {
+    return root;
+  }
+
+  const scrollViewport = root.querySelector(`.${config.scrollViewportClass}`);
+  if (!(scrollViewport instanceof HTMLElement)) {
+    throw new Error("TOC scroll viewport not found");
+  }
+
+  return scrollViewport;
+}
+
+export function bindScrollViewport(
+  root: HTMLElement,
+  config: TocViewConfig,
+  handleScroll: () => void,
+): void {
+  if (root.dataset.scrollViewportBound === "true") {
+    return;
+  }
+
+  root.dataset.scrollViewportBound = "true";
+  root.addEventListener("scroll", handleScroll, { passive: true });
+  getScrollViewport(root, config).addEventListener("scroll", handleScroll, {
+    passive: true,
+  });
 }
 
 export function buildEntries({
@@ -183,8 +319,18 @@ export function syncScrollFadeState(
     return;
   }
 
-  const viewportHeight = root.clientHeight;
-  const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
+  if (root.dataset.layout === "mobile") {
+    delete root.dataset.scrollFade;
+    return;
+  }
+
+  const scrollViewport = getScrollViewport(root, config);
+
+  const viewportHeight = scrollViewport.clientHeight;
+  const maxScrollTop = Math.max(
+    0,
+    scrollViewport.scrollHeight - viewportHeight,
+  );
   if (
     viewportHeight <= 0 ||
     maxScrollTop <= config.scrollFadeEpsilon ||
@@ -194,9 +340,9 @@ export function syncScrollFadeState(
     return;
   }
 
-  const hasTopFade = root.scrollTop > config.scrollFadeEpsilon;
+  const hasTopFade = scrollViewport.scrollTop > config.scrollFadeEpsilon;
   const hasBottomFade =
-    root.scrollTop < maxScrollTop - config.scrollFadeEpsilon;
+    scrollViewport.scrollTop < maxScrollTop - config.scrollFadeEpsilon;
 
   if (hasTopFade && hasBottomFade) {
     root.dataset.scrollFade = "both";
@@ -314,6 +460,11 @@ export function bindTooltipInteractions({
   };
 
   const showTooltip = (entry: TocEntry): void => {
+    if (root.dataset.layout === "mobile") {
+      hideTooltip(tooltip, config);
+      return;
+    }
+
     if (!entry.link.classList.contains(config.truncatedClass)) {
       hideTooltip(tooltip, config);
       return;
@@ -383,15 +534,19 @@ export function revealActiveEntry(
     force?: boolean;
   } = {},
 ): void {
-  const viewportHeight = root.clientHeight;
-  const maxScrollTop = Math.max(0, root.scrollHeight - viewportHeight);
+  const scrollViewport = getScrollViewport(root, config);
+  const viewportHeight = scrollViewport.clientHeight;
+  const maxScrollTop = Math.max(
+    0,
+    scrollViewport.scrollHeight - viewportHeight,
+  );
   if (viewportHeight <= 0 || maxScrollTop <= 0) return;
 
   const { behavior = "center", force = false } = options;
   const entryTop = entry.link.offsetTop;
   const entryHeight = Math.max(entry.link.offsetHeight, 20);
   const entryBottom = entryTop + entryHeight;
-  const currentScrollTop = root.scrollTop;
+  const currentScrollTop = scrollViewport.scrollTop;
   const revealPadding = 24;
   const visibleTop = currentScrollTop + revealPadding;
   const visibleBottom = currentScrollTop + viewportHeight - revealPadding;
@@ -418,7 +573,7 @@ export function revealActiveEntry(
   nextScrollTop = Math.min(maxScrollTop, Math.max(0, nextScrollTop));
 
   if (Math.abs(nextScrollTop - currentScrollTop) <= 1) return;
-  root.scrollTop = nextScrollTop;
+  scrollViewport.scrollTop = nextScrollTop;
   syncScrollFadeState(root, config);
 }
 
@@ -427,17 +582,95 @@ export function applyRootLayout(
   layout: RootLayout,
   config: TocViewConfig,
 ): void {
+  const panel = getPanel(root, config);
+  const toggleButton = getToggleButton(root, config);
+
   if (layout.hidden) {
+    setMobileExpanded(root, false, config);
     root.hidden = true;
     syncScrollFadeState(root, config);
     return;
   }
 
   root.hidden = false;
-  root.style.setProperty("--rp-toc-left", `${layout.left}px`);
-  root.style.setProperty("--rp-toc-top", `${layout.top}px`);
-  root.style.setProperty("--rp-toc-width", `${layout.width}px`);
-  root.style.setProperty("--rp-toc-safe-top", `${layout.safeTop}px`);
+  root.dataset.layout = layout.mode;
+
+  if (layout.mode === "desktop") {
+    root.dataset.mobileExpanded = "false";
+    root.dataset.mobileDragging = "false";
+    toggleButton.hidden = true;
+    panel.hidden = false;
+    panel.setAttribute("aria-hidden", "false");
+    panel.removeAttribute("inert");
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.setAttribute("aria-label", "목차 펼치기");
+    root.style.setProperty("--rp-toc-left", `${layout.left}px`);
+    root.style.setProperty("--rp-toc-top", `${layout.top}px`);
+    root.style.setProperty("--rp-toc-width", `${layout.width}px`);
+    root.style.setProperty("--rp-toc-safe-top", `${layout.safeTop}px`);
+    return;
+  }
+
+  toggleButton.hidden = false;
+  setMobileExpanded(root, root.dataset.mobileExpanded === "true", config);
+  root.style.removeProperty("--rp-toc-left");
+  root.style.removeProperty("--rp-toc-top");
+  root.style.removeProperty("--rp-toc-width");
+  root.style.removeProperty("--rp-toc-safe-top");
+}
+
+export function setMobileExpanded(
+  root: HTMLElement,
+  expanded: boolean,
+  config: TocViewConfig,
+): void {
+  const panel = getPanel(root, config);
+  const toggleButton = getToggleButton(root, config);
+
+  root.dataset.mobileExpanded = expanded ? "true" : "false";
+  panel.hidden = false;
+  panel.setAttribute("aria-hidden", expanded ? "false" : "true");
+  panel.toggleAttribute("inert", !expanded);
+  toggleButton.setAttribute("aria-expanded", expanded ? "true" : "false");
+  toggleButton.setAttribute(
+    "aria-label",
+    expanded ? "목차 접기" : "목차 펼치기",
+  );
+}
+
+export function syncMobileToggleSummary(
+  root: HTMLElement,
+  config: TocViewConfig,
+  options: {
+    activeText: string;
+    entryCount: number;
+  },
+): void {
+  const toggleSummary = getToggleSummary(root, config);
+  const summary = options.activeText.trim() || `섹션 ${options.entryCount}개`;
+  toggleSummary.textContent = summary;
+  toggleSummary.title = summary;
+
+  const toggleButton = getToggleButton(root, config);
+  toggleButton.setAttribute(
+    "aria-label",
+    `${root.dataset.mobileExpanded === "true" ? "목차 접기" : "목차 펼치기"}: ${summary}`,
+  );
+}
+
+export function bindMobileToggle(
+  root: HTMLElement,
+  config: TocViewConfig,
+  handleToggle: () => void,
+): void {
+  const toggleButton = getToggleButton(root, config);
+
+  if (toggleButton.dataset.bound === "true") {
+    return;
+  }
+
+  toggleButton.dataset.bound = "true";
+  toggleButton.addEventListener("click", handleToggle);
 }
 
 export function bindLinkInteractions(

@@ -12,7 +12,7 @@
 | [`copy-code`](src/plugins/copy-code)           | JS | 코드블록 우측 상단에 복사 버튼을 추가합니다.                | [README](src/plugins/copy-code/README.md)      |
 | [`focus-guard`](src/plugins/focus-guard)       | JS | 사이드바 토글 과정의 `aria-hidden` 포커스 경고를 완화합니다. | [README](src/plugins/focus-guard/README.md)    |
 | [`heading-anchor`](src/plugins/heading-anchor) | JS | 제목에 앵커 링크를 추가하고 해시 이동 위치를 보정합니다.         | [README](src/plugins/heading-anchor/README.md) |
-| [`toc`](src/plugins/toc)                       | JS | 데스크톱 본문 우측에 레일 스타일 목차를 표시합니다.            | [README](src/plugins/toc/README.md)            |
+| [`toc`](src/plugins/toc)                       | JS | 데스크톱 레일과 모바일 하단 토글형 목차를 표시합니다.          | [README](src/plugins/toc/README.md)            |
 
 - 본문 감지 셀렉터, 처리 대상, 주의사항은 플러그인마다 다르므로 적용 전 README 내용을 확인해주세요.
 - `copy-code`, `heading-anchor`, `toc`는 실행 시 같은 경로의 `index.min.css`를 자동으로 로드합니다.
@@ -94,7 +94,7 @@ CSS: https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugi
 - `headingAnchor`: 처리할 제목 레벨과 해시 이동 오프셋.
 - `inlineCode`: 인라인 코드 변환 대상/제외 셀렉터.
 - `katex`: 수식 구분자, 무시 클래스/태그.
-- `toc`: 데스크톱 목차에 포함할 제목 레벨과 스크롤 오프셋.
+- `toc`: 레일/모바일 목차에 포함할 제목 레벨과 스크롤 오프셋.
 
 ## 저장소 구조
 
