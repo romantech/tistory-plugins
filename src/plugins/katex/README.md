@@ -1,5 +1,7 @@
 # katex
 
+![katex demo](/docs/images/katex.png)
+
 티스토리 본문의 `$...$`, `$$...$$` 수식을 KaTeX로 렌더링하는 플러그인입니다.
 
 ## 주요 기능

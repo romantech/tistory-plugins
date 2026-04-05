@@ -1,5 +1,7 @@
 # copy-code
 
+![copy-code demo](/docs/images/copy-code.gif)
+
 티스토리 본문 코드블록에 복사 버튼을 추가합니다.
 
 ## 주요 기능
