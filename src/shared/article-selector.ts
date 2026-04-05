@@ -1,28 +1,38 @@
 import { getArticleSelectorOverrides } from "@/shared/plugin-config";
+import { getSelectorVariants } from "@/shared/string-case";
 
 type ArticleSelector = {
   selector: string;
   preferred: boolean;
 };
 
-export const TISTORY_ARTICLE_SELECTORS: readonly ArticleSelector[] = [
-  { selector: ".contents_style", preferred: true },
+/** kebab-case 기준 selector 목록 */
+const BASE_TISTORY_ARTICLE_SELECTORS_KEBAB = [
+  { selector: ".contents-style", preferred: true },
   { selector: ".entry-content", preferred: true },
-  { selector: ".area_view", preferred: true },
+  { selector: ".area-view", preferred: true },
   { selector: ".post-content", preferred: true },
-  { selector: ".article_view", preferred: true },
   { selector: ".article-view", preferred: true },
   { selector: "#article", preferred: true },
-  { selector: ".article_cont", preferred: true },
-  { selector: ".tt_article_useless_p_margin", preferred: false },
-  { selector: ".inner_content", preferred: false },
-] as const;
+  { selector: ".article-cont", preferred: true },
+  { selector: ".tt-article-useless-p-margin", preferred: false },
+  { selector: ".inner-content", preferred: false },
+] as const satisfies readonly ArticleSelector[];
+
+const articleSelectorEntries = BASE_TISTORY_ARTICLE_SELECTORS_KEBAB.flatMap(
+  ({ selector, preferred }) =>
+    getSelectorVariants(selector, ["snake"]).map(
+      (variant) => [variant, { selector: variant, preferred }] as const,
+    ),
+);
+
+export const TISTORY_ARTICLE_SELECTORS: readonly ArticleSelector[] = [
+  ...new Map(articleSelectorEntries).values(),
+];
 
 function getArticleSelectors(): readonly ArticleSelector[] {
   const overrides = getArticleSelectorOverrides();
-  if (overrides.length === 0) {
-    return TISTORY_ARTICLE_SELECTORS;
-  }
+  if (overrides.length === 0) return TISTORY_ARTICLE_SELECTORS;
 
   return [
     ...overrides.map((selector) => ({
@@ -41,8 +51,8 @@ function hasEnoughText(element: Element, min = 80): boolean {
 }
 
 function hasContentSignals(element: Element): boolean {
-  return !!element.querySelector(
-    "p, img, pre, code, blockquote, table, ul, ol",
+  return Boolean(
+    element.querySelector("p, img, pre, code, blockquote, table, ul, ol"),
   );
 }
 
@@ -55,11 +65,9 @@ export function getTistoryArticle(
 ): HTMLElement | null {
   for (const { selector, preferred } of getArticleSelectors()) {
     const element = root.querySelector(selector);
-    if (!element) continue;
-    if (!(element instanceof HTMLElement)) continue;
 
-    if (preferred) return element;
-    if (isFallbackArticle(element)) return element;
+    if (!(element instanceof HTMLElement)) continue;
+    if (preferred || isFallbackArticle(element)) return element;
   }
 
   return null;

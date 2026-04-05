@@ -58,7 +58,7 @@ CSS: https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugi
 ```html
 <script>
   window.RPPlugins = {
-    articleSelectors: [".article-view", ".contents_style"],
+    articleSelectors: [".my-article", "#main-content"],
     copyCode: {
       buttonText: "복사",
       successText: "완료",

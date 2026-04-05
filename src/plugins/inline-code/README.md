@@ -11,28 +11,27 @@
 
 ## 본문 컨테이너 감지
 
-아래 셀렉터 중 가장 먼저 찾은 본문 영역에서 동작합니다.
+아래 셀렉터를 순서대로 확인합니다. 각 셀렉터는 kebab-case 기준으로 정의되어 있으며, snake_case 변형도 함께 탐색합니다.
 
-- `.contents_style`
+- `.contents-style` (`.contents_style` 포함)
 - `.entry-content`
-- `.area_view`
+- `.area-view` (`.area_view` 포함)
 - `.post-content`
-- `.article_view`
-- `.article-view`
+- `.article-view` (`.article_view` 포함)
 - `#article`
-- `.article_cont`
+- `.article-cont` (`.article_cont` 포함)
 
 아래 셀렉터는 fallback 후보로 사용하며, 글 길이와 콘텐츠 신호가 충분할 때만 채택합니다.
 
-- `.tt_article_useless_p_margin`
-- `.inner_content`
+- `.tt-article-useless-p-margin` (`.tt_article_useless_p_margin` 포함)
+- `.inner-content` (`.inner_content` 포함)
 
 스킨 구조가 다르면 `window.RPPlugins.articleSelectors`로 우선 탐색할 본문 셀렉터를 지정할 수 있습니다. 지정한 셀렉터를 먼저 확인한 뒤, 기본 후보를 이어서 탐색합니다.
 
 ```html
 <script>
   window.RPPlugins = {
-    articleSelectors: [".article-view", ".contents_style"],
+    articleSelectors: [".my-article", "#main-content"],
   };
 </script>
 ```
