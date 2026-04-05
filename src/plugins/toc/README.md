@@ -1,5 +1,7 @@
 # toc
 
+![toc-desktop-hover](/docs/images/toc-desktop-hover.png)
+
 본문 제목(heading)을 기준으로 목차를 생성하는 플러그인입니다. 데스크톱에서는 레일형 목차를, 좁은 화면에서는 패널형 목차를 표시하며 현재 보고 있는 섹션을 강조합니다.
 
 ## 주요 기능
@@ -90,3 +92,14 @@
 - 본문 우측 여백이 거의 없는 스킨에서는 표시되지 않을 수 있습니다.
 - 본문 뒤에 `.another-category` 영역이 있으면 그 구간까지 본문 영역으로 간주하여 목차를 유지합니다.
 - `heading-anchor`와 함께 사용해도 같은 제목 ID 규칙을 공유하므로 충돌하지 않습니다.
+
+## 스크린샷
+
+### 데스크톱
+![toc-desktop](/docs/images/toc-desktop.png)
+
+### 데스크톱 - 좁은 화면(1280px 미만)
+![toc-desktop-small](/docs/images/toc-desktop-small.png)
+
+### 모바일
+![toc-mobile](/docs/images/toc-mobile.png)

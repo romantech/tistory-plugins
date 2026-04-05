@@ -1,5 +1,7 @@
 # tistory-plugins
 
+![toc-desktop-hover demo](/docs/images/toc-desktop-hover.png)
+
 외부 스크립트만 추가하면 간편하게 적용할 수 있는 티스토리 블로그용 플러그인 모음입니다. 모든 플러그인은 jsDelivr CDN을 통해 제공되므로 별도 파일 업로드 없이 즉시
 사용할 수 있습니다. 스킨 HTML 구조를 직접 바꾸지 않고, 런타임에서 필요한 요소를 찾아 동작을 추가합니다.
 

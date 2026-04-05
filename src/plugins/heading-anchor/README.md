@@ -1,5 +1,7 @@
 # heading-anchor
 
+![heading-anchor demo](/docs/images/heading-anchor.gif)
+
 티스토리 본문 제목에 앵커 링크를 추가하고, 해시 이동 시 고정 헤더 높이를 고려해 스크롤 위치를 보정하는 플러그인입니다.
 
 ## 주요 기능
