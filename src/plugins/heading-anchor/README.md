@@ -16,18 +16,18 @@
 
 아래 셀렉터를 순서대로 확인합니다. 각 셀렉터는 kebab-case 기준으로 정의되어 있으며, snake_case 변형도 함께 탐색합니다.
 
-- `.contents-style` (`.contents_style` 포함)
+- `.contents-style`
 - `.entry-content`
-- `.area-view` (`.area_view` 포함)
+- `.area-view`
 - `.post-content`
-- `.article-view` (`.article_view` 포함)
+- `.article-view`
 - `#article`
-- `.article-cont` (`.article_cont` 포함)
+- `.article-cont`
 
 아래 셀렉터는 fallback 후보로 사용하며, 글 길이와 콘텐츠 신호가 충분할 때만 채택합니다.
 
-- `.tt-article-useless-p-margin` (`.tt_article_useless_p_margin` 포함)
-- `.inner-content` (`.inner_content` 포함)
+- `.tt-article-useless-p-margin`
+- `.inner-content`
 
 스킨 구조가 다르면 `window.RPPlugins.articleSelectors`로 우선 탐색할 본문 셀렉터를 지정할 수 있습니다. 지정한 셀렉터를 먼저 확인한 뒤, 기본 후보를 이어서 탐색합니다.
 
