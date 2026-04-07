@@ -18,7 +18,6 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 
 - Commit messages: Use Conventional Commits in English. Keep the subject to a single concise line, ideally under 50 characters. Add a body only when extra context is necessary.
 - PR titles: Conventional Commit style such as `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `chore: ...`.
-- Do not prefix PR titles with `[codex]`.
 - Before commit or PR work, verify scope with `git status --short` and `git diff --cached`. Do not include unrelated files or generated `dist/` output unless the user explicitly asks.
 
 ## Source Of Truth
@@ -58,7 +57,7 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 - If a plugin introduces new global state, update reset logic in `test/setup.ts`.
 - The test environment uses `happy-dom`; do not assume a real browser network or layout engine.
 - For non-trivial plugin changes, run `pnpm check`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
-- For viewport-, drag-, resize-, or overlay-related UI changes, add automated tests but also verify manually with `pnpm preview` on a real mobile-sized viewport when feasible.
+- For viewport-, drag-, resize-, or overlay-related UI changes, add automated tests but also verify manually with `pnpm preview` on a real mobile-sized viewport when possible.
 - For behavioral UI changes, do a review pass before commit. Prioritize regressions, edge cases, and missing tests over style commentary.
 - For live visual verification, prefer `pnpm preview` over manual DevTools injection.
 - `pnpm preview` runs in watch mode by default, remembers the last preview URL, and keeps overrides active while you continue navigating in the opened Playwright Chromium window.
