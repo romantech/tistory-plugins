@@ -4,8 +4,8 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 
 ## Repo
 
-- This repo contains small Tistory blog plugins distributed through jsDelivr.
-- Plugins should work without changing the skin HTML beyond adding `<script>` and optional `<link>` tags.
+- Small Tistory blog plugins distributed through jsDelivr.
+- Plugins should work without skin HTML changes beyond adding `<script>` and optional `<link>` tags.
 - User-facing usage, installation, and CDN examples belong in `README.md` and each plugin README, not here.
 
 ## Stack
@@ -18,29 +18,21 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 
 - Commit messages: Use Conventional Commits in English. Keep the subject to a single concise line, ideally under 50 characters. Add a body only when extra context is necessary.
 - PR titles: Conventional Commit style such as `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `chore: ...`.
-- Before commit or PR work, verify scope with `git status --short` and `git diff --cached`. Do not include unrelated files or generated `dist/` output unless the user explicitly asks.
+- Before commit or PR work, verify scope with `git status --short` and `git diff --cached`. Do not include unrelated files.
 
 ## Source Of Truth
 
 - Edit source under `src/`.
-- Treat `dist/` as generated output. Do not hand-edit it unless the user explicitly asks.
-- For source-only work, do not stage or commit `dist/` by default. Same-repo PRs targeting `main` update version and `dist/` automatically. Include `dist/` only for explicit build/release sync work.
+- Treat `dist/` as generated output. Do not hand-edit it, and do not stage or commit it for source-only work unless the user explicitly asks.
 - If the worktree is already dirty, leave unrelated modified files alone. Do not clean up, restage, or fold them into the current task unless the user asks.
-- Build entries follow `src/plugins/**/index.ts`.
-- Shared test helpers live under `test/`, but plugin behavior tests are usually `src/plugins/<plugin-name>/index.test.ts`.
+- Build entries follow `src/plugins/**/index.ts`; plugin behavior tests are usually `src/plugins/<plugin-name>/index.test.ts`; shared test helpers live under `test/`.
 - Path aliases:
   - `@/*` -> `src/*`
   - `@test/*` -> `test/*`
 
 ## Plugin Rules
 
-- Each plugin lives in `src/plugins/<plugin-name>/`.
-- Keep changes self-contained when possible.
-- A new or changed plugin will usually touch:
-  - `index.ts`
-  - optional CSS imported from the entry file
-  - `README.md`
-  - `index.test.ts`
+- Each plugin lives in `src/plugins/<plugin-name>/`; keep changes self-contained and expect to touch `index.ts`, optional entry CSS, `README.md`, and `index.test.ts`.
 - Initialize plugins with `runOnDocumentReady()` from `src/shared/dom-ready.ts`. Avoid eager DOM mutation at module load time.
 - Plugins should no-op cleanly when the article container or target elements are missing.
 - Avoid duplicate DOM injection. Reuse the existing `data-*` marker pattern when needed.
@@ -52,17 +44,15 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 ## Tests And Validation
 
 - Add or update tests for behavior changes.
-- During iteration, prefer plugin-scoped validation first, such as `pnpm test src/plugins/<plugin-name>/index.test.ts` and targeted formatter or lint checks. Run full repo checks for non-trivial final validation.
-- Reuse `test/load-plugin.ts` and `test/setup.ts` before adding new test helpers.
-- If a plugin introduces new global state, update reset logic in `test/setup.ts`.
+- During iteration, prefer plugin-scoped validation first, such as `pnpm test src/plugins/<plugin-name>/index.test.ts`. Run full repo checks for non-trivial final validation.
+- Reuse `test/load-plugin.ts` and `test/setup.ts` before adding new test helpers. If a plugin introduces new global state, update reset logic in `test/setup.ts`.
 - The test environment uses `happy-dom`; do not assume a real browser network or layout engine.
 - For non-trivial plugin changes, run `pnpm check`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
 - For viewport-, drag-, resize-, or overlay-related UI changes, add automated tests but also verify manually with `pnpm preview` on a real mobile-sized viewport when possible.
 - For behavioral UI changes, do a review pass before commit. Prioritize regressions, edge cases, and missing tests over style commentary.
-- For live visual verification, prefer `pnpm preview` over manual DevTools injection.
-- `pnpm preview` runs in watch mode by default, remembers the last preview URL, and keeps overrides active while you continue navigating in the opened Playwright Chromium window.
-- `pnpm preview --plugin toc` limits build and override scope to a specific plugin. Without `--plugin`, the initial run builds all plugins.
-- Watch rebuild scope: `src/plugins/<name>/**` rebuilds that plugin only, while `src/shared/**` triggers a full rebuild.
+- For live UI verification, prefer `pnpm preview` over manual DevTools injection; agents may run it directly, and if Playwright Chromium launch is sandbox-blocked, rerun with escalated permissions instead of skipping verification.
+- `pnpm preview` runs in watch mode, reuses the last preview URL, and keeps overrides active while navigating in the opened Playwright Chromium window.
+- Use `pnpm preview --plugin <name>` to limit build and override scope to one plugin; changes under `src/shared/**` still trigger a full rebuild.
 
 ## Docs
 
