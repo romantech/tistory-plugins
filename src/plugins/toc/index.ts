@@ -98,6 +98,8 @@ const CURRENT_SCRIPT =
   const INITIAL_CLICK_LAYOUT_QUIET_WINDOW_MS = 220;
   const INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE = 2;
   const INITIAL_CLICK_LAYOUT_WAIT_TIMEOUT_MS = 2200;
+  const LINK_ACTIVATION_PREWARM_DELAY_MS = 120;
+  const CLICK_CORRECTION_POSITION_TOLERANCE = 6;
   const MOBILE_DRAG_THRESHOLD = 6;
   const MOBILE_DRAG_GUTTER = 12;
 
@@ -279,7 +281,6 @@ const CURRENT_SCRIPT =
 
     let state: TocState = initialState;
     let isMobileExpanded = false;
-    let hasObservedScroll = window.scrollY > 0;
     let pendingInitialNavigationToken = 0;
     let pendingInitialNavigationEntryId: string | undefined;
     let cancelPendingInitialNavigation: (() => void) | null = null;
@@ -557,8 +558,15 @@ const CURRENT_SCRIPT =
       }
     }
 
-    function shouldDelayInitialNavigation(): boolean {
-      return !hasObservedScroll && window.scrollY <= 0;
+    function isEntryPositionAccurate(
+      entry: TocEntry,
+      tolerance = CLICK_CORRECTION_POSITION_TOLERANCE,
+    ): boolean {
+      return (
+        Math.abs(
+          entry.heading.getBoundingClientRect().top - getResolvedHeaderOffset(),
+        ) <= tolerance
+      );
     }
 
     function getEntryDocumentTop(entry: TocEntry): number {
@@ -606,6 +614,22 @@ const CURRENT_SCRIPT =
       }
     }
 
+    function getUnsettledLayoutShiftResourcesBeforeEntry(
+      entry: TocEntry,
+    ): HTMLElement[] {
+      return getLayoutShiftResourcesBeforeEntry(entry).filter(
+        resourceNeedsInitialNavigationWait,
+      );
+    }
+
+    function primeLinkActivation(entry: TocEntry): void {
+      for (const resource of getUnsettledLayoutShiftResourcesBeforeEntry(
+        entry,
+      )) {
+        primeInitialNavigationResource(resource);
+      }
+    }
+
     function bindInitialNavigationResourceSettle(
       resource: HTMLElement,
       onSettled: () => void,
@@ -643,19 +667,20 @@ const CURRENT_SCRIPT =
     function startInitialNavigationLayoutWait(
       entry: TocEntry,
       resources: HTMLElement[],
+      options: { hasObservedLayoutShift?: boolean } = {},
     ): void {
       const navigationToken = pendingInitialNavigationToken + 1;
       pendingInitialNavigationToken = navigationToken;
       const startTime = performance.now();
       let lastChangeAt = startTime;
       let lastDocumentTop = getEntryDocumentTop(entry);
+      let hasObservedLayoutShift = options.hasObservedLayoutShift ?? false;
       const cleanupCallbacks: Array<() => void> = [];
       let timeoutId = 0;
       let checkTimerId = 0;
       let cleaned = false;
 
       if (resources.length === 0) {
-        performLinkActivation(entry);
         return;
       }
 
@@ -690,15 +715,17 @@ const CURRENT_SCRIPT =
         }
 
         cleanup();
+        if (!hasObservedLayoutShift) return;
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if (pendingInitialNavigationToken !== navigationToken) return;
-            performLinkActivation(entry);
+            correctLinkActivation(entry);
           });
         });
       };
 
       const markLayoutChanged = (): void => {
+        hasObservedLayoutShift = true;
         lastChangeAt = performance.now();
       };
 
@@ -785,7 +812,6 @@ const CURRENT_SCRIPT =
         }
 
         cleanup();
-        performLinkActivation(entry);
       };
 
       const sample = (): void => {
@@ -808,6 +834,7 @@ const CURRENT_SCRIPT =
           startInitialNavigationLayoutWait(
             entry,
             getLayoutShiftResourcesBeforeEntry(entry),
+            { hasObservedLayoutShift: true },
           );
           return;
         }
@@ -829,10 +856,7 @@ const CURRENT_SCRIPT =
 
     function waitForInitialNavigationLayout(entry: TocEntry): void {
       const resources = getLayoutShiftResourcesBeforeEntry(entry);
-      if (resources.length === 0) {
-        performLinkActivation(entry);
-        return;
-      }
+      if (resources.length === 0) return;
 
       const unsettledResources = resources.filter(
         resourceNeedsInitialNavigationWait,
@@ -845,8 +869,26 @@ const CURRENT_SCRIPT =
       probeInitialNavigationLayout(entry);
     }
 
-    function performLinkActivation(entry: TocEntry): void {
+    function performLinkActivation(
+      entry: TocEntry,
+      options: {
+        behavior?: ScrollBehavior;
+        closeMobile?: boolean;
+        skipIfAccurate?: boolean;
+        updateHistory?: boolean;
+      } = {},
+    ): void {
       clearPendingInitialNavigation();
+      const {
+        behavior = prefersReducedMotion() ? "auto" : "smooth",
+        closeMobile = true,
+        skipIfAccurate = false,
+        updateHistory = true,
+      } = options;
+
+      if (skipIfAccurate && isEntryPositionAccurate(entry)) {
+        return;
+      }
 
       const headerOffset = getResolvedHeaderOffset();
       const destinationScrollTop = Math.max(
@@ -856,32 +898,104 @@ const CURRENT_SCRIPT =
           headerOffset,
       );
 
-      try {
-        history.replaceState(null, "", `#${entry.id}`);
-      } catch {
-        // 해시 갱신이 실패해도 스크롤은 계속한다.
+      if (updateHistory) {
+        try {
+          history.replaceState(null, "", `#${entry.id}`);
+        } catch {
+          // 해시 갱신이 실패해도 스크롤은 계속한다.
+        }
       }
 
       navigationLock.lock(entry.id, destinationScrollTop);
       revealActiveEntry(root, entry, viewConfig, { behavior: "nearest" });
-      closeMobileExpansion();
+      if (closeMobile) {
+        closeMobileExpansion();
+      }
+      scrollElementIntoViewWithOffset(entry.heading, headerOffset, behavior);
+    }
+
+    function correctLinkActivation(entry: TocEntry): void {
+      if (!document.contains(entry.heading) || isEntryPositionAccurate(entry)) {
+        return;
+      }
+
       scrollElementIntoViewWithOffset(
         entry.heading,
-        headerOffset,
+        getResolvedHeaderOffset(),
         prefersReducedMotion() ? "auto" : "smooth",
       );
     }
 
-    function handleLinkActivation(entry: TocEntry): void {
-      if (shouldDelayInitialNavigation()) {
-        clearPendingInitialNavigation();
-        activateEntry(entry, { revealBehavior: "nearest" });
-        setPendingInitialNavigationEntry(entry);
+    function startLinkActivationWarmup(
+      entry: TocEntry,
+      resources: HTMLElement[],
+    ): void {
+      const navigationToken = pendingInitialNavigationToken + 1;
+      pendingInitialNavigationToken = navigationToken;
+      const cleanupCallbacks: Array<() => void> = [];
+      let timeoutId = 0;
+      let cleaned = false;
+      let settledCount = 0;
+
+      const cleanup = (): void => {
+        if (cleaned) return;
+        cleaned = true;
+
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+          timeoutId = 0;
+        }
+
+        for (const removeListener of cleanupCallbacks) {
+          removeListener();
+        }
+
+        cleanupCallbacks.length = 0;
+        if (cancelPendingInitialNavigation === cleanup) {
+          cancelPendingInitialNavigation = null;
+        }
+      };
+
+      const activate = (): void => {
+        if (pendingInitialNavigationToken !== navigationToken) {
+          cleanup();
+          return;
+        }
+
+        cleanup();
+        performLinkActivation(entry);
         waitForInitialNavigationLayout(entry);
+      };
+
+      cancelPendingInitialNavigation = cleanup;
+
+      for (const resource of resources) {
+        primeInitialNavigationResource(resource);
+        cleanupCallbacks.push(
+          bindInitialNavigationResourceSettle(resource, () => {
+            settledCount += 1;
+            if (settledCount >= resources.length) {
+              activate();
+            }
+          }),
+        );
+      }
+
+      timeoutId = window.setTimeout(activate, LINK_ACTIVATION_PREWARM_DELAY_MS);
+    }
+
+    function handleLinkActivation(entry: TocEntry): void {
+      clearPendingInitialNavigation();
+
+      const unsettledResources =
+        getUnsettledLayoutShiftResourcesBeforeEntry(entry);
+      if (unsettledResources.length > 0) {
+        startLinkActivationWarmup(entry, unsettledResources);
         return;
       }
 
       performLinkActivation(entry);
+      waitForInitialNavigationLayout(entry);
     }
 
     function rebuildState(): boolean {
@@ -896,7 +1010,11 @@ const CURRENT_SCRIPT =
 
       state = nextState;
       hideTooltip(tooltip, viewConfig);
-      bindLinkInteractions(state.entries, handleLinkActivation);
+      bindLinkInteractions(
+        state.entries,
+        handleLinkActivation,
+        primeLinkActivation,
+      );
       bindTooltipInteractions({
         config: viewConfig,
         entries: state.entries,
@@ -993,7 +1111,11 @@ const CURRENT_SCRIPT =
       scheduleSync();
     }
 
-    bindLinkInteractions(state.entries, handleLinkActivation);
+    bindLinkInteractions(
+      state.entries,
+      handleLinkActivation,
+      primeLinkActivation,
+    );
     bindTooltipInteractions({
       config: viewConfig,
       entries: state.entries,
@@ -1020,10 +1142,6 @@ const CURRENT_SCRIPT =
     window.addEventListener(
       "scroll",
       () => {
-        if (window.scrollY > 0) {
-          hasObservedScroll = true;
-          clearPendingInitialNavigation();
-        }
         navigationLock.touchSettle();
         scheduleSync();
       },

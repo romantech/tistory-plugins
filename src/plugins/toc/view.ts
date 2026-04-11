@@ -765,8 +765,12 @@ export function bindMobileToggle(
 export function bindLinkInteractions(
   entries: TocEntry[],
   handleLinkActivation: (entry: TocEntry) => void,
+  primeLinkActivation?: (entry: TocEntry) => void,
 ): void {
   for (const entry of entries) {
+    if (entry.link.dataset.bound === "true") continue;
+
+    entry.link.dataset.bound = "true";
     entry.link.addEventListener("click", (event) => {
       event.preventDefault();
       const isPointerActivation = event.detail > 0;
@@ -775,6 +779,18 @@ export function bindLinkInteractions(
       if (isPointerActivation) {
         entry.link.blur();
       }
+    });
+
+    if (!primeLinkActivation) continue;
+
+    entry.link.addEventListener("pointerenter", () => {
+      primeLinkActivation(entry);
+    });
+    entry.link.addEventListener("focus", () => {
+      primeLinkActivation(entry);
+    });
+    entry.link.addEventListener("pointerdown", () => {
+      primeLinkActivation(entry);
     });
   }
 }

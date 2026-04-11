@@ -476,7 +476,7 @@ describe("toc plugin", () => {
     expect(document.activeElement).not.toBe(links[1]);
   });
 
-  it("waits for incomplete images above the first target before scrolling", async () => {
+  it("starts a single smooth scroll after a short warmup for incomplete images above the first target", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 0,
@@ -503,7 +503,21 @@ describe("toc plugin", () => {
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
     const images = getRequiredElements<HTMLImageElement>(article, "img");
     mockRect(headings[0], { top: 220 });
-    mockRect(headings[1], { top: 760 });
+    const secondHeadingTop = 760;
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
 
     let isAboveImageLoaded = false;
     const isBelowImageLoaded = false;
@@ -520,7 +534,6 @@ describe("toc plugin", () => {
     await loadTocPlugin();
     await flushAll();
 
-    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(
       document,
       ".rp-toc-link",
@@ -535,28 +548,26 @@ describe("toc plugin", () => {
     );
 
     expect(scrollToMock).not.toHaveBeenCalled();
-    expect(root.classList.contains("is-navigation-pending")).toBe(true);
-    expect(links[1].classList.contains("is-active")).toBe(true);
-    expect(links[1].classList.contains("is-pending-navigation")).toBe(true);
-    expect(links[1]).toHaveAttribute("aria-busy", "true");
     expect(images[0].loading).toBe("eager");
     expect(images[1].loading).toBe("lazy");
+
+    vi.advanceTimersByTime(80);
+    await flushMicrotasks();
+
+    expect(scrollToMock).not.toHaveBeenCalled();
 
     isAboveImageLoaded = true;
     images[0].dispatchEvent(new Event("load"));
     await flushAll();
 
-    expect(root.classList.contains("is-navigation-pending")).toBe(false);
-    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
-    expect(links[1]).not.toHaveAttribute("aria-busy");
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "#둘째-섹션");
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
     expect(scrollToMock).toHaveBeenCalledWith({
       top: 676,
       behavior: "smooth",
     });
   });
 
-  it("does not add a long delay when resources above the target are already settled", async () => {
+  it("does not add an extra correction when resources above the target are already settled", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 0,
@@ -582,7 +593,21 @@ describe("toc plugin", () => {
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
     const images = getRequiredElements<HTMLImageElement>(article, "img");
     mockRect(headings[0], { top: 220 });
-    mockRect(headings[1], { top: 760 });
+    let secondHeadingTop = 760;
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
 
     Object.defineProperty(images[0], "complete", {
       configurable: true,
@@ -605,17 +630,98 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(scrollToMock).not.toHaveBeenCalled();
-    vi.advanceTimersByTime(80);
-    await flushAll();
-
     expect(scrollToMock).toHaveBeenCalledWith({
       top: 676,
       behavior: "smooth",
     });
+
+    window.scrollY = 676;
+    secondHeadingTop = 84;
+    vi.advanceTimersByTime(400);
+    await flushAll();
+
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
   });
 
-  it("waits for a lazy iframe above the first target before scrolling", async () => {
+  it("corrects the scroll when the probe observes a one-time heading shift", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/ready.jpg" alt="준비된 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    let secondHeadingTop = 760;
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
+
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => true,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).toHaveBeenNthCalledWith(1, {
+      top: 676,
+      behavior: "smooth",
+    });
+
+    window.scrollY = 676;
+    secondHeadingTop = 164;
+    await flushAll(10);
+
+    expect(scrollToMock).toHaveBeenNthCalledWith(2, {
+      top: 756,
+      behavior: "smooth",
+    });
+  });
+
+  it("starts a single smooth scroll after a short warmup for a lazy iframe above the first target", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 0,
@@ -641,7 +747,21 @@ describe("toc plugin", () => {
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
     const frame = getRequiredElement(article, "iframe", HTMLIFrameElement);
     mockRect(headings[0], { top: 220 });
-    mockRect(headings[1], { top: 760 });
+    const secondHeadingTop = 760;
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
     Object.defineProperty(frame, "loading", {
       configurable: true,
       writable: true,
@@ -667,16 +787,22 @@ describe("toc plugin", () => {
     expect(scrollToMock).not.toHaveBeenCalled();
     expect(frame.loading).toBe("eager");
 
+    vi.advanceTimersByTime(80);
+    await flushMicrotasks();
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+
     frame.dispatchEvent(new Event("load"));
     await flushAll();
 
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
     expect(scrollToMock).toHaveBeenCalledWith({
       top: 676,
       behavior: "smooth",
     });
   });
 
-  it("cancels delayed first navigation after the user scrolls manually", async () => {
+  it("corrects the scroll after resources above the target shift the heading down", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,
       value: 0,
@@ -702,7 +828,21 @@ describe("toc plugin", () => {
     const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
     const images = getRequiredElements<HTMLImageElement>(article, "img");
     mockRect(headings[0], { top: 220 });
-    mockRect(headings[1], { top: 760 });
+    let secondHeadingTop = 760;
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
 
     let isAboveImageLoaded = false;
     Object.defineProperty(images[0], "complete", {
@@ -713,7 +853,6 @@ describe("toc plugin", () => {
     await loadTocPlugin();
     await flushAll();
 
-    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(
       document,
       ".rp-toc-link",
@@ -729,20 +868,106 @@ describe("toc plugin", () => {
 
     expect(scrollToMock).not.toHaveBeenCalled();
 
-    window.scrollY = 120;
-    window.dispatchEvent(new Event("scroll"));
+    vi.advanceTimersByTime(120);
+    await flushMicrotasks();
+
+    expect(scrollToMock).toHaveBeenNthCalledWith(1, {
+      top: 676,
+      behavior: "smooth",
+    });
+
+    window.scrollY = 676;
+    secondHeadingTop = 164;
+    isAboveImageLoaded = true;
+    images[0].dispatchEvent(new Event("load"));
     await flushAll();
 
-    expect(root.classList.contains("is-navigation-pending")).toBe(false);
-    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
-    expect(links[1]).not.toHaveAttribute("aria-busy");
+    expect(scrollToMock).toHaveBeenNthCalledWith(2, {
+      top: 756,
+      behavior: "smooth",
+    });
+  });
+
+  it("starts a single smooth scroll after a short warmup even after the user has scrolled a little", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 40,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/above.jpg" alt="위쪽 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    const secondHeadingTop = 720;
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
+
+    let isAboveImageLoaded = false;
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => isAboveImageLoaded,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(80);
+    await flushMicrotasks();
+
+    expect(scrollToMock).not.toHaveBeenCalled();
 
     isAboveImageLoaded = true;
     images[0].dispatchEvent(new Event("load"));
     await flushAll();
 
-    expect(replaceStateSpy).not.toHaveBeenCalledWith(null, "", "#둘째-섹션");
-    expect(scrollToMock).not.toHaveBeenCalled();
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
+    expect(scrollToMock).toHaveBeenCalledWith({
+      top: 676,
+      behavior: "smooth",
+    });
   });
 
   it("keeps the toc expanded briefly after pointer navigation", async () => {

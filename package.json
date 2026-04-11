@@ -1,7 +1,7 @@
 {
   "name": "tistory-plugins",
   "description": "Tistory blog plugins distributed via jsDelivr CDN",
-  "version": "0.1.74",
+  "version": "0.1.75",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -22,7 +22,7 @@
     "check": "biome check .",
     "check:write": "biome check . --write",
     "build": "node scripts/build-dist.mjs",
-    "preview": "node scripts/preview-dist.mjs --watch",
+    "preview": "node scripts/preview-dist.mjs https://romantech.net/1079 --watch",
     "purge:jsdelivr": "node scripts/purge-jsdelivr.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
