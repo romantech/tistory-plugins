@@ -11,6 +11,8 @@ let originalScrollHeight: PropertyDescriptor | undefined;
 let originalReadyState: PropertyDescriptor | undefined;
 let originalInnerWidth: PropertyDescriptor | undefined;
 let originalClientWidth: PropertyDescriptor | undefined;
+let originalInnerHeight: PropertyDescriptor | undefined;
+let originalClientHeight: PropertyDescriptor | undefined;
 let originalScrollY: PropertyDescriptor | undefined;
 
 let scrollToMock: ReturnType<typeof vi.fn> | undefined;
@@ -163,6 +165,14 @@ export function setupTocTest(): void {
       document.documentElement,
       "clientWidth",
     );
+    originalInnerHeight = Object.getOwnPropertyDescriptor(
+      window,
+      "innerHeight",
+    );
+    originalClientHeight = Object.getOwnPropertyDescriptor(
+      document.documentElement,
+      "clientHeight",
+    );
     originalScrollY = Object.getOwnPropertyDescriptor(window, "scrollY");
 
     scrollToMock = vi.fn();
@@ -251,6 +261,22 @@ export function setupTocTest(): void {
       );
     } else {
       Reflect.deleteProperty(document.documentElement, "clientWidth");
+    }
+
+    if (originalInnerHeight) {
+      Object.defineProperty(window, "innerHeight", originalInnerHeight);
+    } else {
+      Reflect.deleteProperty(window, "innerHeight");
+    }
+
+    if (originalClientHeight) {
+      Object.defineProperty(
+        document.documentElement,
+        "clientHeight",
+        originalClientHeight,
+      );
+    } else {
+      Reflect.deleteProperty(document.documentElement, "clientHeight");
     }
 
     if (originalScrollY) {
