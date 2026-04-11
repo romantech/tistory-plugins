@@ -203,10 +203,10 @@ describe("heading-anchor plugin", () => {
       "https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.css",
     );
 
-    expect(headings[0].id).toBe("첫-번째-섹션");
-    expect(headings[1].id).toBe("첫-번째-섹션-2");
+    expect(headings[0].id).toBe("rp-첫-번째-섹션");
+    expect(headings[1].id).toBe("rp-첫-번째-섹션-2");
     expect(headings[2].id).toBe("custom-id");
-    expect(headings[3].id).toBe("마지막-제목");
+    expect(headings[3].id).toBe("rp-마지막-제목");
 
     for (const heading of headings) {
       const anchor = getRequiredElement(
@@ -225,6 +225,48 @@ describe("heading-anchor plugin", () => {
     }
   });
 
+  it("prefixes generated heading ids to avoid skin id collisions", async () => {
+    const article = renderArticle("<h2>PAGINATION</h2>", {
+      tagName: "article",
+    });
+    const pagination = document.createElement("div");
+    pagination.id = "pagination";
+    document.body.append(pagination);
+
+    await loadHeadingAnchorPlugin();
+
+    const heading = getRequiredElement(article, "h2", HTMLElement);
+    const anchor = getRequiredElement(
+      heading,
+      ".rp-heading-anchor",
+      HTMLAnchorElement,
+    );
+
+    expect(document.getElementById("pagination")).toBe(pagination);
+    expect(heading.id).toBe("rp-pagination");
+    expect(anchor.getAttribute("href")).toBe("#rp-pagination");
+  });
+
+  it("does not use the prefixed hash fallback when the original hash resolves", async () => {
+    const article = renderArticle("<h2>PAGINATION</h2>", {
+      tagName: "article",
+    });
+    const pagination = document.createElement("div");
+    pagination.id = "pagination";
+    document.body.append(pagination);
+    location.hash = "#pagination";
+
+    const heading = getRequiredElement(article, "h2", HTMLElement);
+    mockHeadingTop(heading, 160);
+
+    await loadHeadingAnchorPlugin();
+    await flushAll();
+
+    expect(heading.id).toBe("rp-pagination");
+    expect(document.getElementById("pagination")).toBe(pagination);
+    expect(scrollToMock).not.toHaveBeenCalled();
+  });
+
   it("preserves headings that already contain links and only prepares the id", async () => {
     const article = renderArticle(
       `
@@ -239,7 +281,7 @@ describe("heading-anchor plugin", () => {
     const linkedHeading = getRequiredElement(article, "h2", HTMLElement);
     const normalHeading = getRequiredElement(article, "h3", HTMLElement);
 
-    expect(linkedHeading.id).toBe("기존-링크-제목");
+    expect(linkedHeading.id).toBe("rp-기존-링크-제목");
     expect(linkedHeading.querySelectorAll(".rp-heading-anchor")).toHaveLength(
       0,
     );

@@ -5,6 +5,7 @@ import {
   getDecodedHash,
   getHeaderOffset,
   getHeadingSelector,
+  prefixGeneratedHeadingId,
   scrollElementIntoViewWithOffset,
 } from "@/shared/headings";
 import { getTocConfig } from "@/shared/plugin-config";
@@ -203,7 +204,11 @@ const CURRENT_SCRIPT =
     const initialHash = getDecodedHash();
     if (!initialHash) return undefined;
 
-    return entries.find((entry) => entry.id === initialHash);
+    const prefixedHash = prefixGeneratedHeadingId(initialHash);
+    return (
+      entries.find((entry) => entry.id === initialHash) ??
+      entries.find((entry) => entry.id === prefixedHash)
+    );
   }
 
   function getRootLayout(

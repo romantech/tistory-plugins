@@ -234,10 +234,10 @@ describe("toc plugin", () => {
     await loadTocPlugin();
     await flushAll();
 
-    expect(headings[0].id).toBe("소개");
-    expect(headings[1].id).toBe("소개-2");
-    expect(headings[2].id).toBe("세부-항목");
-    expect(headings[3].id).toBe("더-깊은-항목");
+    expect(headings[0].id).toBe("rp-소개");
+    expect(headings[1].id).toBe("rp-소개-2");
+    expect(headings[2].id).toBe("rp-세부-항목");
+    expect(headings[3].id).toBe("rp-더-깊은-항목");
 
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
@@ -252,12 +252,48 @@ describe("toc plugin", () => {
       "https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.css",
     );
     expect(links).toHaveLength(4);
-    expect(links[0].getAttribute("href")).toBe("#소개");
+    expect(links[0].getAttribute("href")).toBe("#rp-소개");
     expect(links[0].dataset.tooltip).toBe("소개");
     expect(links[0].getAttribute("aria-label")).toBe("소개");
     expect(links[1].dataset.level).toBe("2");
     expect(links[2].dataset.level).toBe("3");
     expect(links[3].dataset.level).toBe("4");
+  });
+
+  it("prefixes generated toc ids to avoid skin id collisions", async () => {
+    const article = renderArticle(
+      `
+      <h2>PAGINATION</h2>
+      <h2>다음 섹션</h2>
+    `,
+      { tagName: "article" },
+    );
+    const pagination = document.createElement("nav");
+    pagination.id = "pagination";
+    document.body.append(pagination);
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 420 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    expect(document.getElementById("pagination")).toBe(pagination);
+    expect(headings[0].id).toBe("rp-pagination");
+    expect(links[0].getAttribute("href")).toBe("#rp-pagination");
   });
 
   it("does not add duplicate toc containers when loaded again", async () => {
@@ -429,6 +465,45 @@ describe("toc plugin", () => {
     expect(root.classList.contains("rp-toc--pending")).toBe(false);
   });
 
+  it("prefers an exact hashed id over a generated prefixed fallback", async () => {
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      value: "interactive",
+    });
+
+    location.hash = "#대상";
+
+    const article = renderArticle(
+      `
+      <h2>대상</h2>
+      <h2 id="대상">명시 대상</h2>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 560 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    expect(headings[0].id).toBe("rp-대상");
+    expect(headings[1].id).toBe("대상");
+    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).not.toHaveAttribute("aria-current");
+  });
+
   it("updates the hash and scroll position when a toc item is clicked", async () => {
     const article = renderArticle(
       `
@@ -466,7 +541,7 @@ describe("toc plugin", () => {
       }),
     );
 
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "#클릭-대상");
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "#rp-클릭-대상");
     expect(scrollToMock).toHaveBeenLastCalledWith({
       top: 396,
       behavior: "smooth",
@@ -1676,10 +1751,10 @@ describe("toc plugin", () => {
 
     expect(root.hidden).toBe(false);
     expect(links).toHaveLength(2);
-    expect(links[0].getAttribute("href")).toBe("#교체된-섹션");
-    expect(links[1].getAttribute("href")).toBe("#교체된-하위-섹션");
-    expect(replacedHeadings[0].id).toBe("교체된-섹션");
-    expect(replacedHeadings[1].id).toBe("교체된-하위-섹션");
+    expect(links[0].getAttribute("href")).toBe("#rp-교체된-섹션");
+    expect(links[1].getAttribute("href")).toBe("#rp-교체된-하위-섹션");
+    expect(replacedHeadings[0].id).toBe("rp-교체된-섹션");
+    expect(replacedHeadings[1].id).toBe("rp-교체된-하위-섹션");
   });
 
   it("auto-scrolls the toc rail when the active item moves below the visible list", async () => {
@@ -2126,8 +2201,8 @@ describe("toc plugin", () => {
     expect(panel.getAttribute("aria-hidden")).toBe("true");
     expect(toggle.textContent).toContain("보일 제목");
     expect(links).toHaveLength(2);
-    expect(links[0].getAttribute("href")).toBe("#보일-제목");
-    expect(links[1].getAttribute("href")).toBe("#또-다른-제목");
+    expect(links[0].getAttribute("href")).toBe("#rp-보일-제목");
+    expect(links[1].getAttribute("href")).toBe("#rp-또-다른-제목");
   });
 
   it("expands the mobile toc from the bottom button and closes it after selecting a section", async () => {
@@ -2192,7 +2267,7 @@ describe("toc plugin", () => {
     expect(panel.getAttribute("aria-hidden")).toBe("true");
     expect(root.dataset.mobileExpanded).toBe("false");
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, "", "#설치");
+    expect(replaceStateSpy).toHaveBeenLastCalledWith(null, "", "#rp-설치");
   });
 
   it("opens the mobile toc panel below the button when there is not enough room above", async () => {

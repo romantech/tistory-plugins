@@ -6,6 +6,7 @@ import {
   ensureHeadingId,
   getDecodedHash,
   getHeaderOffset,
+  prefixGeneratedHeadingId,
   getHeadingSelector as resolveHeadingSelector,
   scrollElementIntoViewWithOffset,
 } from "@/shared/headings";
@@ -189,18 +190,39 @@ const CURRENT_SCRIPT =
     return location.hash.length > 1;
   }
 
+  function findHeadingHashTarget(
+    article: HTMLElement,
+    hash: string,
+  ): HTMLElement | null {
+    const target = document.getElementById(hash);
+    if (target) {
+      return isHeadingHashTarget(article, target) ? target : null;
+    }
+
+    const prefixedTarget = document.getElementById(
+      prefixGeneratedHeadingId(hash),
+    );
+
+    return isHeadingHashTarget(article, prefixedTarget) ? prefixedTarget : null;
+  }
+
+  function isHeadingHashTarget(
+    article: HTMLElement,
+    target: HTMLElement | null,
+  ): target is HTMLElement {
+    return (
+      target instanceof HTMLElement &&
+      article.contains(target) &&
+      target.matches(getHeadingSelector())
+    );
+  }
+
   function scrollToHeadingHash(article: HTMLElement): void {
     const hash = getDecodedHash();
     if (!hash) return;
 
-    const target = document.getElementById(hash);
-    if (
-      !target ||
-      !article.contains(target) ||
-      !target.matches(getHeadingSelector())
-    ) {
-      return;
-    }
+    const target = findHeadingHashTarget(article, hash);
+    if (!target) return;
 
     if (document.fonts?.ready) {
       void document.fonts.ready.then(() => {

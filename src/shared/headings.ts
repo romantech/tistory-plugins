@@ -1,4 +1,5 @@
 const DEFAULT_ID = "section";
+const GENERATED_ID_PREFIX = "rp-";
 const MAX_SUFFIX = 1000;
 
 export const DEFAULT_HEADER_HEIGHT = 84;
@@ -51,6 +52,14 @@ export function slugifyHeading(text: string): string {
     .replace(/^-|-$/g, "");
 }
 
+export function prefixGeneratedHeadingId(base: string): string {
+  const normalizedBase = base || DEFAULT_ID;
+
+  return normalizedBase.startsWith(GENERATED_ID_PREFIX)
+    ? normalizedBase
+    : `${GENERATED_ID_PREFIX}${normalizedBase}`;
+}
+
 export function getUniqueHeadingId(
   base: string,
   usedIds: Set<string>,
@@ -81,7 +90,9 @@ export function ensureHeadingId(
   usedIds: Set<string>,
 ): string {
   const text = heading.textContent?.trim() || "";
-  const baseId = heading.id || slugifyHeading(text) || DEFAULT_ID;
+  const slug = slugifyHeading(text) || DEFAULT_ID;
+  const generatedId = prefixGeneratedHeadingId(slug);
+  const baseId = heading.id || generatedId;
   const id = getUniqueHeadingId(baseId, usedIds, heading);
 
   heading.id = id;
