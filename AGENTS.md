@@ -23,7 +23,7 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 
 - If the worktree is already dirty, leave unrelated changes alone. Do not clean up, restage, or fold them into the current task unless the user asks.
 - Build entries follow `src/plugins/**/index.ts`. Shared test helpers live under `test/`.
-- Avoid opening full diffs for `dist/**/*.min.js`; use `git diff --stat`, `git diff --name-only`, or targeted snippets instead.
+- Avoid inspecting `dist/` contents for source work; use `git diff --stat`, `git diff --name-only`, or targeted snippets only when generated output must be verified.
 
 ## Plugin Rules
 
