@@ -112,7 +112,7 @@
   transition:
     background 0.18s ease,
     box-shadow 0.18s ease,
-    transform 0.12s ease;
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-toggle::before {
@@ -139,6 +139,7 @@
 
 .rp-toc[data-layout="mobile"][data-mobile-expanded="true"] .rp-toc-toggle {
   background: var(--rp-toc-mobile-toggle-bg-expanded);
+  transform: scale(1.06);
   box-shadow:
     0 18px 32px rgb(0 0 0 / 0.22),
     0 8px 18px rgb(0 0 0 / 0.14),
