@@ -667,13 +667,14 @@ const CURRENT_SCRIPT =
     function startInitialNavigationLayoutWait(
       entry: TocEntry,
       resources: HTMLElement[],
+      options: { hasObservedLayoutShift?: boolean } = {},
     ): void {
       const navigationToken = pendingInitialNavigationToken + 1;
       pendingInitialNavigationToken = navigationToken;
       const startTime = performance.now();
       let lastChangeAt = startTime;
       let lastDocumentTop = getEntryDocumentTop(entry);
-      let hasObservedLayoutShift = false;
+      let hasObservedLayoutShift = options.hasObservedLayoutShift ?? false;
       const cleanupCallbacks: Array<() => void> = [];
       let timeoutId = 0;
       let checkTimerId = 0;
@@ -833,6 +834,7 @@ const CURRENT_SCRIPT =
           startInitialNavigationLayoutWait(
             entry,
             getLayoutShiftResourcesBeforeEntry(entry),
+            { hasObservedLayoutShift: true },
           );
           return;
         }
