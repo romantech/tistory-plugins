@@ -17,7 +17,8 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 ## Git And PR
 
 - Never stage unrelated files. Check `git status --short` before staging and `git diff --cached` before commit or PR work.
-- Commit messages and PR titles: Use Conventional Commits in English. Keep subjects concise; for commits, add a body only when extra context is necessary.
+- Commit messages: Use Conventional Commits in English. Keep the subject concise; add a body only when extra context is necessary.
+- PR titles: Also use Conventional Commits in English and keep the subject concise.
 - Same-repo PRs have a workflow that bumps `package.json` and force-adds rebuilt `dist/`; do not preempt that unless the task is explicitly release or generated-output work.
 - Merged PRs are tagged from `package.json` and purge jsDelivr `latest`; run `pnpm purge:jsdelivr` only for explicit cache-purge work, with `JSDELIVR_REFS`/`JSDELIVR_REPO` when needed.
 
