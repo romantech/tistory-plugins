@@ -18,6 +18,8 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 
 - Never stage unrelated files. Check `git status --short` before staging and `git diff --cached` before commit or PR work.
 - Commit messages and PR titles: Use Conventional Commits in English. Keep subjects concise; for commits, add a body only when extra context is necessary.
+- Same-repo PRs have a workflow that bumps `package.json` and force-adds rebuilt `dist/`; do not preempt that unless the task is explicitly release or generated-output work.
+- Merged PRs are tagged from `package.json` and purge jsDelivr `latest`; run `pnpm purge:jsdelivr` only for explicit cache-purge work, with `JSDELIVR_REFS`/`JSDELIVR_REPO` when needed.
 
 ## Source Of Truth
 
@@ -45,6 +47,7 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 - For viewport-, drag-, resize-, or overlay-related UI changes, add automated tests and verify manually with `pnpm preview` on a real mobile-sized viewport when possible. If Playwright Chromium launch is sandbox-blocked, rerun with escalated permissions instead of skipping verification.
 - Before commit, review for regressions, edge cases, and missing tests.
 - Use `pnpm preview --plugin <name>` for plugin-scoped live verification when the target page already loads the plugin. If it does not, use `pnpm preview <url> --inject <plugin>` instead. Do not combine the two modes.
+- `pnpm preview` also accepts `--viewport WIDTHxHEIGHT`, `--headless`, and `--close-after-ms <ms>` for scripted viewport checks; it reuses the last URL when no URL is supplied.
 
 ## Docs
 
