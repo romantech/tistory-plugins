@@ -9,6 +9,9 @@ let originalVisualViewport: PropertyDescriptor | undefined;
 let originalOffsetHeight: PropertyDescriptor | undefined;
 let originalScrollHeight: PropertyDescriptor | undefined;
 let originalReadyState: PropertyDescriptor | undefined;
+let originalInnerWidth: PropertyDescriptor | undefined;
+let originalClientWidth: PropertyDescriptor | undefined;
+let originalScrollY: PropertyDescriptor | undefined;
 
 let scrollToMock: ReturnType<typeof vi.fn> | undefined;
 let replaceStateSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -155,6 +158,12 @@ export function setupTocTest(): void {
       document,
       "readyState",
     );
+    originalInnerWidth = Object.getOwnPropertyDescriptor(window, "innerWidth");
+    originalClientWidth = Object.getOwnPropertyDescriptor(
+      document.documentElement,
+      "clientWidth",
+    );
+    originalScrollY = Object.getOwnPropertyDescriptor(window, "scrollY");
 
     scrollToMock = vi.fn();
 
@@ -226,6 +235,28 @@ export function setupTocTest(): void {
       Object.defineProperty(document, "readyState", originalReadyState);
     } else {
       Reflect.deleteProperty(document, "readyState");
+    }
+
+    if (originalInnerWidth) {
+      Object.defineProperty(window, "innerWidth", originalInnerWidth);
+    } else {
+      Reflect.deleteProperty(window, "innerWidth");
+    }
+
+    if (originalClientWidth) {
+      Object.defineProperty(
+        document.documentElement,
+        "clientWidth",
+        originalClientWidth,
+      );
+    } else {
+      Reflect.deleteProperty(document.documentElement, "clientWidth");
+    }
+
+    if (originalScrollY) {
+      Object.defineProperty(window, "scrollY", originalScrollY);
+    } else {
+      Reflect.deleteProperty(window, "scrollY");
     }
 
     scrollToMock = undefined;
