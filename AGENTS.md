@@ -27,6 +27,9 @@ For coding agents working in this repo. Keep changes practical, source-first, an
 - If the worktree is already dirty, leave unrelated changes alone. Do not clean up, restage, or fold them into the current task unless the user asks.
 - Build entries follow `src/plugins/**/index.ts`. Shared test helpers live under `test/`.
 - Avoid inspecting `dist/` contents for source work; use `git diff --stat`, `git diff --name-only`, or targeted snippets only when generated output must be verified.
+- If `dist/` appears dirty during source-only work, do not open its diff; restore or ignore it by filename only.
+- For small plugin-local changes, start with targeted files and narrow `rg` queries instead of broad repo scans.
+- Do not add brittle tests that read source CSS just to assert constant values; use existing checks unless the behavior changes.
 
 ## Plugin Rules
 
