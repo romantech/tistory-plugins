@@ -247,6 +247,26 @@ describe("heading-anchor plugin", () => {
     expect(anchor.getAttribute("href")).toBe("#rp-pagination");
   });
 
+  it("does not use the prefixed hash fallback when the original hash resolves", async () => {
+    const article = renderArticle("<h2>PAGINATION</h2>", {
+      tagName: "article",
+    });
+    const pagination = document.createElement("div");
+    pagination.id = "pagination";
+    document.body.append(pagination);
+    location.hash = "#pagination";
+
+    const heading = getRequiredElement(article, "h2", HTMLElement);
+    mockHeadingTop(heading, 160);
+
+    await loadHeadingAnchorPlugin();
+    await flushAll();
+
+    expect(heading.id).toBe("rp-pagination");
+    expect(document.getElementById("pagination")).toBe(pagination);
+    expect(scrollToMock).not.toHaveBeenCalled();
+  });
+
   it("preserves headings that already contain links and only prepares the id", async () => {
     const article = renderArticle(
       `

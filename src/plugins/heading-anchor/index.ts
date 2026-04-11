@@ -194,22 +194,27 @@ const CURRENT_SCRIPT =
     article: HTMLElement,
     hash: string,
   ): HTMLElement | null {
-    const targets = [
-      document.getElementById(hash),
-      document.getElementById(prefixGeneratedHeadingId(hash)),
-    ];
-
-    for (const target of targets) {
-      if (
-        target instanceof HTMLElement &&
-        article.contains(target) &&
-        target.matches(getHeadingSelector())
-      ) {
-        return target;
-      }
+    const target = document.getElementById(hash);
+    if (target) {
+      return isHeadingHashTarget(article, target) ? target : null;
     }
 
-    return null;
+    const prefixedTarget = document.getElementById(
+      prefixGeneratedHeadingId(hash),
+    );
+
+    return isHeadingHashTarget(article, prefixedTarget) ? prefixedTarget : null;
+  }
+
+  function isHeadingHashTarget(
+    article: HTMLElement,
+    target: HTMLElement | null,
+  ): target is HTMLElement {
+    return (
+      target instanceof HTMLElement &&
+      article.contains(target) &&
+      target.matches(getHeadingSelector())
+    );
   }
 
   function scrollToHeadingHash(article: HTMLElement): void {
