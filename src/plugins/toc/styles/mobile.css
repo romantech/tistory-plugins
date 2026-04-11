@@ -283,19 +283,19 @@
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-link[data-level="3"] {
-  --rp-toc-mobile-indent: 8px;
+  --rp-toc-mobile-indent: 12px;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-link[data-level="4"] {
-  --rp-toc-mobile-indent: 15px;
+  --rp-toc-mobile-indent: 24px;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-link[data-level="5"] {
-  --rp-toc-mobile-indent: 22px;
+  --rp-toc-mobile-indent: 36px;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-link[data-level="6"] {
-  --rp-toc-mobile-indent: 28px;
+  --rp-toc-mobile-indent: 48px;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-link,
