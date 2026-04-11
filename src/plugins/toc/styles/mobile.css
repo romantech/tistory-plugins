@@ -25,17 +25,17 @@
   );
   --rp-toc-mobile-panel-radius: 20px;
   --rp-toc-mobile-link-radius: 16px;
-  --rp-toc-mobile-glass-top: rgb(255 255 255 / 0.038);
-  --rp-toc-mobile-glass-border: rgb(255 255 255 / 0.058);
+  --rp-toc-mobile-glass-top: rgb(255 255 255 / 0.056);
+  --rp-toc-mobile-glass-border: rgb(255 255 255 / 0.078);
   --rp-toc-mobile-shadow:
     0 24px 50px rgb(0 0 0 / 0.28), 0 10px 20px rgb(0 0 0 / 0.15);
   --rp-toc-mobile-panel-bg:
     linear-gradient(
       180deg,
-      rgb(255 255 255 / 0.04) 0%,
-      rgb(255 255 255 / 0.012) 100%
+      var(--rp-toc-mobile-glass-top) 0%,
+      rgb(255 255 255 / 0.016) 100%
     ),
-    rgb(24 24 24 / 0.84);
+    rgb(24 24 24 / 0.82);
   --rp-toc-mobile-toggle-bg:
     linear-gradient(
       180deg,
@@ -112,7 +112,7 @@
   transition:
     background 0.18s ease,
     box-shadow 0.18s ease,
-    transform 0.12s ease;
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-toggle::before {
@@ -139,6 +139,7 @@
 
 .rp-toc[data-layout="mobile"][data-mobile-expanded="true"] .rp-toc-toggle {
   background: var(--rp-toc-mobile-toggle-bg-expanded);
+  transform: scale(1.06);
   box-shadow:
     0 18px 32px rgb(0 0 0 / 0.22),
     0 8px 18px rgb(0 0 0 / 0.14),
@@ -195,7 +196,8 @@
   background: var(--rp-toc-mobile-panel-bg);
   box-shadow:
     var(--rp-toc-mobile-shadow),
-    inset 0 0.5px 0 rgb(255 255 255 / 0.03);
+    inset 0 0 0 1px var(--rp-toc-mobile-glass-border),
+    inset 0 0.5px 0 rgb(255 255 255 / 0.054);
   -webkit-backdrop-filter: blur(44px) saturate(1.26);
   backdrop-filter: blur(44px) saturate(1.26);
   scrollbar-gutter: stable;
@@ -267,7 +269,7 @@
 .rp-toc[data-layout="mobile"] .rp-toc-list {
   width: auto;
   clip-path: none;
-  gap: 2px;
+  gap: 1px;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-item {
@@ -442,11 +444,17 @@
 }
 
 .rp-toc[data-layout="mobile"][data-surface-tone="light"] {
-  --rp-toc-mobile-glass-top: rgb(255 255 255 / 0.28);
-  --rp-toc-mobile-glass-border: rgb(24 24 27 / 0.09);
+  --rp-toc-mobile-glass-top: rgb(255 255 255 / 0.068);
+  --rp-toc-mobile-glass-border: rgb(255 255 255 / 0.086);
   --rp-toc-mobile-shadow:
     0 20px 38px rgb(15 23 42 / 0.12), 0 8px 16px rgb(15 23 42 / 0.08);
-  --rp-toc-mobile-panel-bg: #181818;
+  --rp-toc-mobile-panel-bg:
+    linear-gradient(
+      180deg,
+      var(--rp-toc-mobile-glass-top) 0%,
+      rgb(255 255 255 / 0.018) 100%
+    ),
+    rgb(24 24 24 / 0.86);
   --rp-toc-mobile-toggle-bg: #181818;
   --rp-toc-mobile-toggle-bg-expanded: var(--rp-toc-mobile-toggle-bg-hover);
   --rp-toc-mobile-link-hover-bg:

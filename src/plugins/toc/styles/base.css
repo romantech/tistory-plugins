@@ -22,7 +22,7 @@
   --rp-toc-link-idle-alpha: 0.45;
   --rp-toc-link-hover-alpha: 0.74;
   --rp-toc-link-active-alpha: 0.96;
-  --rp-toc-link-active-surface-alpha: 0.1;
+  --rp-toc-link-active-surface-alpha: 0.12;
   --rp-toc-bar-idle-alpha: 0.22;
   --rp-toc-bar-hover-alpha: 0.4;
   --rp-toc-bar-active-alpha: 0.82;
@@ -31,7 +31,7 @@
   --rp-toc-focus-surface-alpha: 0.08;
   font-size: var(--rp-toc-font-size);
   line-height: 1.6;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   font-family: var(--rp-toc-font-family);
   -webkit-font-smoothing: antialiased;
 }
@@ -43,7 +43,7 @@
   --rp-toc-link-idle-alpha: 0.62;
   --rp-toc-link-hover-alpha: 0.9;
   --rp-toc-link-active-alpha: 0.98;
-  --rp-toc-link-active-surface-alpha: 0.11;
+  --rp-toc-link-active-surface-alpha: 0.13;
   --rp-toc-bar-idle-alpha: 0.34;
   --rp-toc-bar-hover-alpha: 0.6;
   --rp-toc-bar-active-alpha: 0.95;
