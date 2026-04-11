@@ -268,7 +268,7 @@
 .rp-toc[data-layout="mobile"] .rp-toc-list {
   width: auto;
   clip-path: none;
-  gap: 2px;
+  gap: 1px;
 }
 
 .rp-toc[data-layout="mobile"] .rp-toc-item {
