@@ -465,6 +465,45 @@ describe("toc plugin", () => {
     expect(root.classList.contains("rp-toc--pending")).toBe(false);
   });
 
+  it("prefers an exact hashed id over a generated prefixed fallback", async () => {
+    Object.defineProperty(document, "readyState", {
+      configurable: true,
+      value: "interactive",
+    });
+
+    location.hash = "#대상";
+
+    const article = renderArticle(
+      `
+      <h2>대상</h2>
+      <h2 id="대상">명시 대상</h2>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2");
+    mockRect(headings[0], { top: 220 });
+    mockRect(headings[1], { top: 560 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
+
+    expect(headings[0].id).toBe("rp-대상");
+    expect(headings[1].id).toBe("대상");
+    expect(links[1]).toHaveAttribute("aria-current", "location");
+    expect(links[0]).not.toHaveAttribute("aria-current");
+  });
+
   it("updates the hash and scroll position when a toc item is clicked", async () => {
     const article = renderArticle(
       `

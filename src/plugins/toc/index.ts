@@ -205,8 +205,9 @@ const CURRENT_SCRIPT =
     if (!initialHash) return undefined;
 
     const prefixedHash = prefixGeneratedHeadingId(initialHash);
-    return entries.find(
-      (entry) => entry.id === initialHash || entry.id === prefixedHash,
+    return (
+      entries.find((entry) => entry.id === initialHash) ??
+      entries.find((entry) => entry.id === prefixedHash)
     );
   }
 
