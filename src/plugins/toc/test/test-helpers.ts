@@ -27,6 +27,12 @@ type RectValue = {
   height?: number;
 };
 
+type ElementMetric =
+  | "clientHeight"
+  | "offsetHeight"
+  | "offsetTop"
+  | "scrollHeight";
+
 export async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
@@ -108,6 +114,26 @@ export function mockRect(element: Element, rect: RectValue): void {
       toJSON: () => ({}),
     })),
   });
+}
+
+export function mockElementMetrics(
+  element: Element,
+  metrics: Partial<Record<ElementMetric, number>>,
+): void {
+  for (const property of [
+    "clientHeight",
+    "offsetHeight",
+    "offsetTop",
+    "scrollHeight",
+  ] as const) {
+    const value = metrics[property];
+    if (typeof value !== "number") continue;
+
+    Object.defineProperty(element, property, {
+      configurable: true,
+      value,
+    });
+  }
 }
 
 function requireMock<T>(mock: T | undefined, name: string): T {

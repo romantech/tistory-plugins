@@ -242,9 +242,12 @@ export function bindScrollViewport(
 
   root.dataset.scrollViewportBound = "true";
   root.addEventListener("scroll", handleScroll, { passive: true });
-  getScrollViewport(root, config).addEventListener("scroll", handleScroll, {
-    passive: true,
-  });
+  const scrollViewport = root.querySelector(`.${config.scrollViewportClass}`);
+  if (scrollViewport instanceof HTMLElement) {
+    scrollViewport.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+  }
 }
 
 export function buildEntries({

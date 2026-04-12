@@ -10,6 +10,7 @@ import {
   flushMicrotasks,
   getTocTestMocks,
   loadTocPlugin,
+  mockElementMetrics,
   mockRect,
   setupTocTest,
   setViewportWidth,
@@ -690,34 +691,10 @@ describe("toc plugin navigation", () => {
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
 
-    Object.defineProperty(root, "clientHeight", {
-      configurable: true,
-      value: 120,
+    mockElementMetrics(root, { clientHeight: 120, scrollHeight: 280 });
+    [0, 66, 220].forEach((offsetTop, index) => {
+      mockElementMetrics(links[index], { offsetHeight: 20, offsetTop });
     });
-    Object.defineProperty(root, "scrollHeight", {
-      configurable: true,
-      value: 280,
-    });
-
-    Object.defineProperty(links[0], "offsetTop", {
-      configurable: true,
-      value: 0,
-    });
-    Object.defineProperty(links[1], "offsetTop", {
-      configurable: true,
-      value: 66,
-    });
-    Object.defineProperty(links[2], "offsetTop", {
-      configurable: true,
-      value: 220,
-    });
-
-    for (const link of links) {
-      Object.defineProperty(link, "offsetHeight", {
-        configurable: true,
-        value: 20,
-      });
-    }
 
     root.scrollTop = 40;
 
@@ -762,34 +739,10 @@ describe("toc plugin navigation", () => {
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
 
-    Object.defineProperty(root, "clientHeight", {
-      configurable: true,
-      value: 120,
+    mockElementMetrics(root, { clientHeight: 120, scrollHeight: 280 });
+    [0, 54, 130].forEach((offsetTop, index) => {
+      mockElementMetrics(links[index], { offsetHeight: 20, offsetTop });
     });
-    Object.defineProperty(root, "scrollHeight", {
-      configurable: true,
-      value: 280,
-    });
-
-    Object.defineProperty(links[0], "offsetTop", {
-      configurable: true,
-      value: 0,
-    });
-    Object.defineProperty(links[1], "offsetTop", {
-      configurable: true,
-      value: 54,
-    });
-    Object.defineProperty(links[2], "offsetTop", {
-      configurable: true,
-      value: 130,
-    });
-
-    for (const link of links) {
-      Object.defineProperty(link, "offsetHeight", {
-        configurable: true,
-        value: 20,
-      });
-    }
 
     root.scrollTop = 40;
 
@@ -832,34 +785,10 @@ describe("toc plugin navigation", () => {
     const root = getRequiredElement(document, ".rp-toc", HTMLElement);
     const links = getRequiredElements<HTMLAnchorElement>(root, ".rp-toc-link");
 
-    Object.defineProperty(root, "clientHeight", {
-      configurable: true,
-      value: 120,
+    mockElementMetrics(root, { clientHeight: 120, scrollHeight: 280 });
+    [0, 90, 220].forEach((offsetTop, index) => {
+      mockElementMetrics(links[index], { offsetHeight: 20, offsetTop });
     });
-    Object.defineProperty(root, "scrollHeight", {
-      configurable: true,
-      value: 280,
-    });
-
-    Object.defineProperty(links[0], "offsetTop", {
-      configurable: true,
-      value: 0,
-    });
-    Object.defineProperty(links[1], "offsetTop", {
-      configurable: true,
-      value: 90,
-    });
-    Object.defineProperty(links[2], "offsetTop", {
-      configurable: true,
-      value: 220,
-    });
-
-    for (const link of links) {
-      Object.defineProperty(link, "offsetHeight", {
-        configurable: true,
-        value: 20,
-      });
-    }
 
     root.scrollTop = 80;
 
