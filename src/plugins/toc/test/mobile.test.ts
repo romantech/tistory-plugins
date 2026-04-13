@@ -84,6 +84,50 @@ describe("toc plugin mobile layout", () => {
     expect(links[1].getAttribute("href")).toBe("#rp-또-다른-제목");
   });
 
+  it("skips root height measurement when resolving mobile layout", async () => {
+    let rootHeightReads = 0;
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get() {
+        if (this.classList.contains("rp-toc")) {
+          rootHeightReads += 1;
+          return 447;
+        }
+
+        return 40;
+      },
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <h3>둘째 섹션</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(1180);
+
+    mockRect(article, {
+      top: 100,
+      left: 200,
+      width: 760,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    expect(root.hidden).toBe(false);
+    expect(root.dataset.layout).toBe("mobile");
+    expect(rootHeightReads).toBe(0);
+  });
+
   it("expands the mobile toc from the bottom button and closes it after selecting a section", async () => {
     const article = renderArticle(
       `

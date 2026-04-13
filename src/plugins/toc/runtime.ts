@@ -50,8 +50,8 @@ type ResolveActiveIdOptions = {
 type RootLayoutMetrics = {
   bottomBoundaryRect: DOMRect;
   headerOffset: number;
+  measureRootHeight: () => number;
   mobileAnchorBottom: number;
-  rootHeight: number;
   scopeRect: DOMRect;
   useScopeBottomBoundary: boolean;
   viewportHeight: number;
@@ -100,8 +100,8 @@ export function resolveRootLayout(
   {
     bottomBoundaryRect,
     headerOffset,
+    measureRootHeight,
     mobileAnchorBottom,
-    rootHeight,
     scopeRect,
     useScopeBottomBoundary,
     viewportHeight,
@@ -156,6 +156,7 @@ export function resolveRootLayout(
     };
   }
 
+  const rootHeight = measureRootHeight();
   const desiredTop = Math.max(
     safeTop,
     Math.round(viewportHeight / 2 - rootHeight / 2),

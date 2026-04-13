@@ -219,8 +219,8 @@ const CURRENT_SCRIPT =
             ? scopeRect
             : bottomBoundary.getBoundingClientRect(),
         headerOffset: getResolvedHeaderOffset(),
+        measureRootHeight: () => measureRootHeight(root),
         mobileAnchorBottom: getMobileAnchorBottom(root, viewportHeight),
-        rootHeight: measureRootHeight(root),
         scopeRect,
         useScopeBottomBoundary: bottomBoundary === scope,
         viewportHeight,
