@@ -2,7 +2,7 @@
 
 ![toc-desktop-hover demo](/docs/images/toc-desktop-hover.png)
 
-외부 스크립트 태그만 추가하면 바로 적용할 수 있는 티스토리 블로그용 플러그인 모음입니다. 모든 플러그인은 jsDelivr CDN을 통해 제공되므로 별도 파일 업로드가 필요 없으며, 스킨 HTML 구조를 직접 수정하지 않고 런타임에서 필요한 요소를 탐색해 동작을 추가합니다.
+외부 스크립트 태그만 추가하면 바로 적용할 수 있는 티스토리 블로그용 플러그인 모음입니다. 모든 플러그인은 jsDelivr CDN을 통해 제공되므로 별도 파일 업로드가 필요 없으며, 스킨 HTML 구조를 직접 수정하지 않고, 런타임에 필요한 요소를 탐색하여 기능을 주입합니다.
 
 ## 플러그인 목록
 
@@ -15,7 +15,7 @@
 | [`heading-anchor`](src/plugins/heading-anchor) | JS   | 제목에 앵커 링크를 추가하고 해시 이동 위치를 보정합니다.     | [README](src/plugins/heading-anchor/README.md) |
 | [`toc`](src/plugins/toc)                       | JS   | 데스크톱은 레일형, 모바일은 팝업형 목차를 표시합니다.        | [README](src/plugins/toc/README.md)            |
 
-> 본문 감지 셀렉터, 처리 대상, 주의사항은 플러그인마다 다르므로 적용 전 각 README를 확인해주세요.
+> 본문 컨테이너 감지는 공통 로직을 사용합니다. 처리 대상과 주의사항은 플러그인마다 다르므로 적용 전 각 README를 확인해주세요.
 > `copy-code`, `heading-anchor`, `toc`는 실행 시 동일 경로의 `index.min.css`를 자동으로 로드합니다.
 > `katex`는 별도 companion CSS 대신 KaTeX 스타일시트를 외부 CDN에서 주입합니다.
 
@@ -50,6 +50,33 @@ CSS: https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugi
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.js"></script>
+```
+
+## 본문 컨테이너 감지
+
+본문을 대상으로 동작하는 플러그인은 아래 셀렉터를 순서대로 확인합니다. 각 셀렉터는 kebab-case 기준으로 정의되어 있으며, snake_case 변형도 함께 탐색합니다.
+
+- `.contents-style`
+- `.entry-content`
+- `.area-view`
+- `.post-content`
+- `.article-view`
+- `#article`
+- `.article-cont`
+
+아래 셀렉터는 fallback 후보로 사용하며, 글 분량과 콘텐츠 밀도가 충분한 경우에만 채택합니다.
+
+- `.tt-article-useless-p-margin`
+- `.inner-content`
+
+스킨 구조가 다르면 `window.RPPlugins.articleSelectors`로 우선 탐색할 본문 셀렉터를 지정할 수 있습니다. 지정한 셀렉터를 먼저 확인한 뒤, 기본 후보를 이어서 탐색합니다.
+
+```html
+<script>
+  window.RPPlugins = {
+    articleSelectors: [".my-article", "#main-content"],
+  };
+</script>
 ```
 
 ## 전역 설정
@@ -117,9 +144,9 @@ dist          CDN 배포용 빌드 산출물
 | -------------------------------------- | ------------------------------------------------------------ |
 | `pnpm clean`                           | `dist` 폴더를 초기화합니다.                                  |
 | `pnpm build`                           | `dist`를 초기화한 뒤 배포용 파일을 생성합니다.               |
-| `pnpm preview <url>`                   | 실제 블로그 페이지를 열고 jsDelivr `dist/*` 요청을 로컬 빌드로 override합니다. watch 모드로 동작하며, 첫 실행 이후에는 마지막 URL을 재사용할 수 있습니다. |
+| `pnpm preview <url>`                   | 실제 블로그 페이지를 열고 jsDelivr `dist/*` 요청을 로컬 빌드로 override합니다. watch 모드로 동작하며, 첫 실행 이후에는 마지막 URL을 자동으로 재사용합니다. |
 | `pnpm preview --plugin <plugin>`       | 특정 플러그인만 빌드하고 override 범위를 해당 플러그인으로 제한합니다. |
-| `pnpm preview <url> --inject <plugin>` | 플러그인을 설치하지 않은 블로그에 로컬 `dist` 에셋을 직접 주입해 미리 확인합니다. 여러 플러그인은 쉼표로 구분합니다. |
+| `pnpm preview <url> --inject <plugin>` | 플러그인을 설치하지 않은 블로그에 로컬 `dist` 에셋을 직접 주입하여 동작을 미리 확인합니다. 여러 플러그인은 쉼표로 구분합니다. |
 | `pnpm check`                           | Biome 검사를 읽기 전용으로 실행합니다.                       |
 | `pnpm check:write`                     | Biome 검사 결과를 가능한 범위에서 자동으로 수정합니다.       |
 | `pnpm typecheck`                       | TypeScript 타입 검사를 수행합니다.                           |
