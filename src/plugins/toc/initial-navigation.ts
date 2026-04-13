@@ -436,6 +436,7 @@ export function createInitialNavigationController({
   ): void {
     const navigationToken = pendingNavigationToken + 1;
     pendingNavigationToken = navigationToken;
+    setPendingEntry(entry);
     const cleanupCallbacks: Array<() => void> = [];
     let timeoutId = 0;
     let cleaned = false;

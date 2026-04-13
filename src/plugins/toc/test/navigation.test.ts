@@ -139,6 +139,7 @@ describe("toc plugin navigation", () => {
       document,
       ".rp-toc-link",
     );
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
 
     links[1].dispatchEvent(
       new MouseEvent("click", {
@@ -151,6 +152,9 @@ describe("toc plugin navigation", () => {
     expect(scrollToMock).not.toHaveBeenCalled();
     expect(images[0].loading).toBe("eager");
     expect(images[1].loading).toBe("lazy");
+    expect(root.classList.contains("is-navigation-pending")).toBe(true);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(true);
+    expect(links[1]).toHaveAttribute("aria-busy", "true");
 
     vi.advanceTimersByTime(80);
     await flushMicrotasks();
@@ -166,6 +170,9 @@ describe("toc plugin navigation", () => {
       top: 676,
       behavior: "smooth",
     });
+    expect(root.classList.contains("is-navigation-pending")).toBe(false);
+    expect(links[1].classList.contains("is-pending-navigation")).toBe(false);
+    expect(links[1]).not.toHaveAttribute("aria-busy");
   });
 
   it("does not add an extra correction when resources above the target are already settled", async () => {
