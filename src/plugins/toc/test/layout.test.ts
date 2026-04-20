@@ -9,6 +9,7 @@ import {
   loadTocPlugin,
   mockRect,
   setupTocTest,
+  setViewportHeight,
 } from "./test-helpers";
 
 describe("toc plugin desktop layout", () => {
@@ -94,16 +95,7 @@ describe("toc plugin desktop layout", () => {
       { tagName: "article" },
     );
 
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     mockRect(article, {
       top: -200,
@@ -146,16 +138,7 @@ describe("toc plugin desktop layout", () => {
       },
     });
 
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     const article = renderArticle(
       `
@@ -218,16 +201,7 @@ describe("toc plugin desktop layout", () => {
       { tagName: "article" },
     );
 
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     mockRect(article, {
       top: -200,
@@ -256,16 +230,7 @@ describe("toc plugin desktop layout", () => {
   });
 
   it("moves with the article until it can settle at the viewport center", async () => {
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 960,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 960,
-    });
+    setViewportHeight(960);
 
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,

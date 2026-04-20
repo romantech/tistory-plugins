@@ -10,6 +10,21 @@ import {
 import { getTocConfig } from "@/shared/plugin-config";
 import { ensurePluginStylesheet } from "@/shared/stylesheet";
 import { createTocState } from "./article-state";
+import {
+  ACTIVE_OFFSET,
+  BLOCKED_HEADING_ANCESTOR_SELECTOR,
+  BOTTOM_BOUNDARY_SELECTOR,
+  CLICK_NAVIGATION_LOCK_MS,
+  CLICK_NAVIGATION_SETTLE_MS,
+  CLICK_TARGET_FREEZE_MS,
+  LAYOUT_CONSTRAINTS,
+  NAVIGATION_LOCK_CLASS,
+  PENDING_NAVIGATION_CLASS,
+  PENDING_NAVIGATION_ROOT_CLASS,
+  ROOT_CLASS,
+  TOGGLE_BUTTON_CLASS,
+  VIEW_CONFIG,
+} from "./config";
 import { createInitialNavigationController } from "./initial-navigation";
 import { bindMobileDragging } from "./mobile-drag";
 import {
@@ -42,7 +57,6 @@ import {
   syncMobileToggleSummary,
   syncScrollFadeState,
   syncTooltipState,
-  type TocViewConfig,
 } from "./view";
 
 const CURRENT_SCRIPT =
@@ -53,70 +67,10 @@ const CURRENT_SCRIPT =
 (() => {
   ensurePluginStylesheet("toc", CURRENT_SCRIPT);
 
-  const ROOT_CLASS = "rp-toc";
-  const PENDING_CLASS = `${ROOT_CLASS}--pending`;
-  const PANEL_CLASS = `${ROOT_CLASS}-panel`;
-  const SCROLL_VIEWPORT_CLASS = `${ROOT_CLASS}-scroll-viewport`;
-  const LIST_CLASS = `${ROOT_CLASS}-list`;
-  const LINK_CLASS = `${ROOT_CLASS}-link`;
-  const LABEL_CLASS = `${ROOT_CLASS}-label`;
-  const TOOLTIP_CLASS = `${ROOT_CLASS}-tooltip`;
-  const TOGGLE_BUTTON_CLASS = `${ROOT_CLASS}-toggle`;
-  const TOGGLE_LABEL_CLASS = `${ROOT_CLASS}-toggle-label`;
-  const TOGGLE_SUMMARY_CLASS = `${ROOT_CLASS}-toggle-summary`;
-  const TOOLTIP_VISIBLE_CLASS = "is-visible";
-  const TRUNCATED_CLASS = "is-truncated";
-  const ACTIVE_CLASS = "is-active";
-  const NAVIGATION_LOCK_CLASS = "is-navigation-locked";
-  const PENDING_NAVIGATION_CLASS = "is-pending-navigation";
-  const PENDING_NAVIGATION_ROOT_CLASS = "is-navigation-pending";
-  const DEFAULT_PANEL_WIDTH = 252;
-  const MIN_PANEL_WIDTH = 172;
-  const MIN_DESKTOP_WIDTH = 1280;
-  const MIN_MOBILE_WIDTH = 320;
-  const MIN_MOBILE_SCOPE_WIDTH = 220;
-  const MIN_SCOPE_WIDTH = 480;
-  const SCROLL_FADE_EPSILON = 1;
-  const RELATED_CATEGORY_SELECTORS = [".another-category", ".another_category"];
-  const BLOCKED_HEADING_ANCESTOR_SELECTOR = [
-    ...RELATED_CATEGORY_SELECTORS,
-    ".container_postbtn",
-    "#comments",
-    ".comments",
-    ".comment-wrap",
-    ".tt-box-comment",
-    ".reply",
-  ].join(", ");
-  const BOTTOM_BOUNDARY_SELECTOR = RELATED_CATEGORY_SELECTORS.join(", ");
-  const PANEL_GAP = 68;
-  const VIEWPORT_GUTTER = 24;
-  const RIGHT_RAIL_GUTTER = 32;
-  const ACTIVE_OFFSET = 16;
-  const SAFE_TOP_GAP = 24;
-  const CLICK_NAVIGATION_LOCK_MS = 1400;
-  const CLICK_TARGET_FREEZE_MS = 220;
-  const CLICK_NAVIGATION_SETTLE_MS = 100;
-
   let initialized = false;
   let scheduledFrame = 0;
 
-  const viewConfig: TocViewConfig = {
-    activeClass: ACTIVE_CLASS,
-    labelClass: LABEL_CLASS,
-    linkClass: LINK_CLASS,
-    listClass: LIST_CLASS,
-    panelClass: PANEL_CLASS,
-    pendingClass: PENDING_CLASS,
-    rootClass: ROOT_CLASS,
-    scrollViewportClass: SCROLL_VIEWPORT_CLASS,
-    scrollFadeEpsilon: SCROLL_FADE_EPSILON,
-    tooltipClass: TOOLTIP_CLASS,
-    tooltipVisibleClass: TOOLTIP_VISIBLE_CLASS,
-    toggleButtonClass: TOGGLE_BUTTON_CLASS,
-    toggleLabelClass: TOGGLE_LABEL_CLASS,
-    toggleSummaryClass: TOGGLE_SUMMARY_CLASS,
-    truncatedClass: TRUNCATED_CLASS,
-  };
+  const viewConfig = VIEW_CONFIG;
 
   function getResolvedHeadingSelector(): string {
     return getHeadingSelector(getTocConfig().levels, DEFAULT_HEADING_SELECTOR);
@@ -226,18 +180,7 @@ const CURRENT_SCRIPT =
         viewportHeight,
         viewportWidth: getViewportWidth(),
       },
-      {
-        defaultPanelWidth: DEFAULT_PANEL_WIDTH,
-        minDesktopWidth: MIN_DESKTOP_WIDTH,
-        minMobileScopeWidth: MIN_MOBILE_SCOPE_WIDTH,
-        minMobileWidth: MIN_MOBILE_WIDTH,
-        minPanelWidth: MIN_PANEL_WIDTH,
-        minScopeWidth: MIN_SCOPE_WIDTH,
-        panelGap: PANEL_GAP,
-        rightRailGutter: RIGHT_RAIL_GUTTER,
-        safeTopGap: SAFE_TOP_GAP,
-        viewportGutter: VIEWPORT_GUTTER,
-      },
+      LAYOUT_CONSTRAINTS,
     );
   }
 

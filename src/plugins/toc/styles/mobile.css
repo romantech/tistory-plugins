@@ -2,7 +2,11 @@
   --rp-toc-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
   --rp-toc-mobile-panel-gap: 10px;
   --rp-toc-mobile-panel-viewport-block-chrome: 24px;
-  --rp-toc-mobile-panel-max-height: min(39vh, 292px);
+  --rp-toc-mobile-panel-max-block-size: 292px;
+  --rp-toc-mobile-panel-max-height: min(
+    39vh,
+    var(--rp-toc-mobile-panel-max-block-size)
+  );
   --rp-toc-mobile-ink: 255 255 255;
   --rp-toc-mobile-link-idle-alpha: 0.62;
   --rp-toc-mobile-link-active-alpha: 0.88;
