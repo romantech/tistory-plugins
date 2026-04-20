@@ -15,6 +15,12 @@ type CreateInitialNavigationControllerOptions = {
   viewConfig: TocViewConfig;
 };
 
+type PendingNavigationRun = {
+  addCleanup: (callback: () => void) => void;
+  cleanup: () => void;
+  isCurrent: () => boolean;
+};
+
 export type InitialNavigationController = {
   getPendingEntryId: () => string | undefined;
   handleLinkActivation: (entry: TocEntry) => void;
@@ -45,6 +51,37 @@ export function createInitialNavigationController({
   let pendingNavigationToken = 0;
   let pendingNavigationEntryId: string | undefined;
   let cancelPendingNavigation: (() => void) | null = null;
+
+  function startPendingNavigationRun(): PendingNavigationRun {
+    const navigationToken = pendingNavigationToken + 1;
+    pendingNavigationToken = navigationToken;
+    const cleanupCallbacks: Array<() => void> = [];
+    let cleaned = false;
+
+    const cleanup = (): void => {
+      if (cleaned) return;
+      cleaned = true;
+
+      for (const callback of cleanupCallbacks) {
+        callback();
+      }
+
+      cleanupCallbacks.length = 0;
+      if (cancelPendingNavigation === cleanup) {
+        cancelPendingNavigation = null;
+      }
+    };
+
+    cancelPendingNavigation = cleanup;
+
+    return {
+      addCleanup(callback: () => void): void {
+        cleanupCallbacks.push(callback);
+      },
+      cleanup,
+      isCurrent: () => pendingNavigationToken === navigationToken,
+    };
+  }
 
   function clear(): void {
     cancelPendingNavigation?.();
@@ -190,25 +227,20 @@ export function createInitialNavigationController({
     resources: HTMLElement[],
     options: { hasObservedLayoutShift?: boolean } = {},
   ): void {
-    const navigationToken = pendingNavigationToken + 1;
-    pendingNavigationToken = navigationToken;
+    if (resources.length === 0) {
+      pendingNavigationToken += 1;
+      return;
+    }
+
+    const run = startPendingNavigationRun();
     const startTime = performance.now();
     let lastChangeAt = startTime;
     let lastDocumentTop = getEntryDocumentTop(entry);
     let hasObservedLayoutShift = options.hasObservedLayoutShift ?? false;
-    const cleanupCallbacks: Array<() => void> = [];
     let timeoutId = 0;
     let checkTimerId = 0;
-    let cleaned = false;
 
-    if (resources.length === 0) {
-      return;
-    }
-
-    const cleanup = (): void => {
-      if (cleaned) return;
-      cleaned = true;
-
+    run.addCleanup(() => {
       if (timeoutId) {
         window.clearTimeout(timeoutId);
         timeoutId = 0;
@@ -218,28 +250,19 @@ export function createInitialNavigationController({
         window.clearTimeout(checkTimerId);
         checkTimerId = 0;
       }
-
-      for (const removeListener of cleanupCallbacks) {
-        removeListener();
-      }
-
-      cleanupCallbacks.length = 0;
-      if (cancelPendingNavigation === cleanup) {
-        cancelPendingNavigation = null;
-      }
-    };
+    });
 
     const finish = (): void => {
-      if (pendingNavigationToken !== navigationToken) {
-        cleanup();
+      if (!run.isCurrent()) {
+        run.cleanup();
         return;
       }
 
-      cleanup();
+      run.cleanup();
       if (!hasObservedLayoutShift) return;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (pendingNavigationToken !== navigationToken) return;
+          if (!run.isCurrent()) return;
           correctLinkActivation(entry);
         });
       });
@@ -251,13 +274,13 @@ export function createInitialNavigationController({
     };
 
     const check = (): void => {
-      if (pendingNavigationToken !== navigationToken) {
-        cleanup();
+      if (!run.isCurrent()) {
+        run.cleanup();
         return;
       }
 
       if (!document.contains(entry.heading)) {
-        cleanup();
+        run.cleanup();
         return;
       }
 
@@ -284,11 +307,9 @@ export function createInitialNavigationController({
       );
     };
 
-    cancelPendingNavigation = cleanup;
-
     for (const resource of resources) {
       primeInitialNavigationResource(resource);
-      cleanupCallbacks.push(
+      run.addCleanup(
         bindInitialNavigationResourceSettle(resource, markLayoutChanged),
       );
     }
@@ -302,44 +323,35 @@ export function createInitialNavigationController({
   }
 
   function probeInitialNavigationLayout(entry: TocEntry): void {
-    const navigationToken = pendingNavigationToken + 1;
-    pendingNavigationToken = navigationToken;
+    const run = startPendingNavigationRun();
     let frameId = 0;
     let probeCount = 0;
-    let cleaned = false;
     let lastDocumentTop = getEntryDocumentTop(entry);
 
-    const cleanup = (): void => {
-      if (cleaned) return;
-      cleaned = true;
-
+    run.addCleanup(() => {
       if (frameId) {
         cancelAnimationFrame(frameId);
         frameId = 0;
       }
-
-      if (cancelPendingNavigation === cleanup) {
-        cancelPendingNavigation = null;
-      }
-    };
+    });
 
     const finish = (): void => {
-      if (pendingNavigationToken !== navigationToken) {
-        cleanup();
+      if (!run.isCurrent()) {
+        run.cleanup();
         return;
       }
 
-      cleanup();
+      run.cleanup();
     };
 
     const sample = (): void => {
-      if (pendingNavigationToken !== navigationToken) {
-        cleanup();
+      if (!run.isCurrent()) {
+        run.cleanup();
         return;
       }
 
       if (!document.contains(entry.heading)) {
-        cleanup();
+        run.cleanup();
         return;
       }
 
@@ -348,7 +360,7 @@ export function createInitialNavigationController({
         Math.abs(nextDocumentTop - lastDocumentTop) >
         INITIAL_CLICK_LAYOUT_STABLE_TOLERANCE
       ) {
-        cleanup();
+        run.cleanup();
         startInitialNavigationLayoutWait(
           entry,
           getLayoutShiftResourcesBeforeEntry(entry),
@@ -368,7 +380,6 @@ export function createInitialNavigationController({
       frameId = requestAnimationFrame(sample);
     };
 
-    cancelPendingNavigation = cleanup;
     frameId = requestAnimationFrame(sample);
   }
 
@@ -434,49 +445,32 @@ export function createInitialNavigationController({
     entry: TocEntry,
     resources: HTMLElement[],
   ): void {
-    const navigationToken = pendingNavigationToken + 1;
-    pendingNavigationToken = navigationToken;
+    const run = startPendingNavigationRun();
     setPendingEntry(entry);
-    const cleanupCallbacks: Array<() => void> = [];
     let timeoutId = 0;
-    let cleaned = false;
     let settledCount = 0;
 
-    const cleanup = (): void => {
-      if (cleaned) return;
-      cleaned = true;
-
+    run.addCleanup(() => {
       if (timeoutId) {
         window.clearTimeout(timeoutId);
         timeoutId = 0;
       }
-
-      for (const removeListener of cleanupCallbacks) {
-        removeListener();
-      }
-
-      cleanupCallbacks.length = 0;
-      if (cancelPendingNavigation === cleanup) {
-        cancelPendingNavigation = null;
-      }
-    };
+    });
 
     const activate = (): void => {
-      if (pendingNavigationToken !== navigationToken) {
-        cleanup();
+      if (!run.isCurrent()) {
+        run.cleanup();
         return;
       }
 
-      cleanup();
+      run.cleanup();
       performLinkActivation(entry);
       waitForInitialNavigationLayout(entry);
     };
 
-    cancelPendingNavigation = cleanup;
-
     for (const resource of resources) {
       primeInitialNavigationResource(resource);
-      cleanupCallbacks.push(
+      run.addCleanup(
         bindInitialNavigationResourceSettle(resource, () => {
           settledCount += 1;
           if (settledCount >= resources.length) {

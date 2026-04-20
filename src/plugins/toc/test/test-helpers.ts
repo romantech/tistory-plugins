@@ -94,6 +94,19 @@ export function setViewportWidth(width: number): void {
   });
 }
 
+export function setViewportHeight(height: number): void {
+  Object.defineProperty(window, "innerHeight", {
+    configurable: true,
+    value: height,
+    writable: true,
+  });
+
+  Object.defineProperty(document.documentElement, "clientHeight", {
+    configurable: true,
+    value: height,
+  });
+}
+
 export function mockRect(element: Element, rect: RectValue): void {
   const left = rect.left ?? 0;
   const width = rect.width ?? 100;

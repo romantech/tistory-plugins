@@ -44,11 +44,13 @@ type TooltipBindingsOptions = {
   tooltip: HTMLElement;
 };
 
-const MOBILE_PANEL_MAX_HEIGHT = 292;
+const MOBILE_PANEL_MAX_HEIGHT_FALLBACK = 292;
 const MOBILE_PANEL_EDGE_PADDING = 12;
 const MOBILE_PANEL_DIRECTION_UP = "up";
 const MOBILE_PANEL_DIRECTION_DOWN = "down";
 const MOBILE_PANEL_VIEWPORT_BLOCK_CHROME = 24;
+const MOBILE_PANEL_MAX_BLOCK_SIZE_PROPERTY =
+  "--rp-toc-mobile-panel-max-block-size";
 
 export function createRoot(config: TocViewConfig): CreatedElement<HTMLElement> {
   const existingRoot = document.querySelector<HTMLElement>(
@@ -650,20 +652,25 @@ function syncMobilePanelPlacement(
       ? visualViewport.height
       : fallbackViewportHeight;
   const viewportBottom = viewportTop + viewportHeight;
+  const rootStyle = getComputedStyle(root);
   const panelGap = Number.parseFloat(
-    getComputedStyle(root).getPropertyValue("--rp-toc-mobile-panel-gap"),
+    rootStyle.getPropertyValue("--rp-toc-mobile-panel-gap"),
   );
   const resolvedPanelGap = Number.isFinite(panelGap) ? panelGap : 10;
   const scrollViewportBlockChrome = Number.parseFloat(
-    getComputedStyle(root).getPropertyValue(
-      "--rp-toc-mobile-panel-viewport-block-chrome",
-    ),
+    rootStyle.getPropertyValue("--rp-toc-mobile-panel-viewport-block-chrome"),
   );
   const resolvedScrollViewportBlockChrome = Number.isFinite(
     scrollViewportBlockChrome,
   )
     ? scrollViewportBlockChrome
     : MOBILE_PANEL_VIEWPORT_BLOCK_CHROME;
+  const panelMaxHeight = Number.parseFloat(
+    rootStyle.getPropertyValue(MOBILE_PANEL_MAX_BLOCK_SIZE_PROPERTY),
+  );
+  const resolvedPanelMaxHeight = Number.isFinite(panelMaxHeight)
+    ? panelMaxHeight
+    : MOBILE_PANEL_MAX_HEIGHT_FALLBACK;
   const toggleRect = toggleButton.getBoundingClientRect();
   const panelHeight = Math.max(
     panel.offsetHeight,
@@ -671,7 +678,7 @@ function syncMobilePanelPlacement(
     panel.clientHeight,
   );
   const targetPanelHeight = Math.min(
-    MOBILE_PANEL_MAX_HEIGHT,
+    resolvedPanelMaxHeight,
     Math.max(panelHeight, panel.clientHeight),
   );
   const availableAbove = Math.max(
@@ -701,7 +708,7 @@ function syncMobilePanelPlacement(
   );
   panel.style.setProperty(
     "--rp-toc-mobile-panel-max-height",
-    `min(${availableContentSpace}px, 39vh, ${MOBILE_PANEL_MAX_HEIGHT}px)`,
+    `min(${availableContentSpace}px, 39vh, ${resolvedPanelMaxHeight}px)`,
   );
 }
 

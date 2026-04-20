@@ -11,6 +11,7 @@ import {
   loadTocPlugin,
   mockRect,
   setupTocTest,
+  setViewportHeight,
   setViewportWidth,
   setVisualViewport,
 } from "./test-helpers";
@@ -194,16 +195,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("opens the mobile toc panel below the button when there is not enough room above", async () => {
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     const article = renderArticle(
       `
@@ -268,16 +260,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("clamps the mobile toc panel height to fit the available downward space", async () => {
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 220,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 220,
-    });
+    setViewportHeight(220);
 
     const article = renderArticle(
       `
@@ -349,16 +332,7 @@ describe("toc plugin mobile layout", () => {
       width: 390,
     });
 
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     const article = renderArticle(
       `
@@ -710,16 +684,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("restores the desktop toc position and interactivity after resizing up from mobile", async () => {
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 960,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 960,
-    });
+    setViewportHeight(960);
 
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,
@@ -785,16 +750,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("hides the mobile toc when the related-category boundary reaches the button zone", async () => {
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
       configurable: true,
@@ -869,16 +825,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("updates the mobile boundary threshold after dragging the toc button", async () => {
-    Object.defineProperty(window, "innerHeight", {
-      configurable: true,
-      value: 900,
-      writable: true,
-    });
-
-    Object.defineProperty(document.documentElement, "clientHeight", {
-      configurable: true,
-      value: 900,
-    });
+    setViewportHeight(900);
 
     const article = renderArticle(
       `
