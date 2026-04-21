@@ -324,18 +324,7 @@ const CURRENT_SCRIPT =
       });
     }
 
-    function rebuildState(): boolean {
-      const nextState = createState(root);
-      if (!nextState) {
-        navigationLock.clear();
-        root.hidden = true;
-        syncScrollFadeState(root, viewConfig);
-        hideTooltip(tooltip, viewConfig);
-        return false;
-      }
-
-      state = nextState;
-      hideTooltip(tooltip, viewConfig);
+    function bindStateInteractions(): void {
       bindLinkInteractions(
         state.entries,
         initialNavigation.handleLinkActivation,
@@ -347,15 +336,17 @@ const CURRENT_SCRIPT =
         root,
         tooltip,
       });
-      initialNavigation.restorePendingEntry();
-      return true;
     }
 
-    function sync(): void {
-      if (hasDetachedTargets(state) && !rebuildState()) {
-        return;
-      }
+    function syncHiddenRootState(): void {
+      closeMobileExpansion();
+      navigationLock.clear();
+      setPendingVisibility(root, isInitialLayoutPending, viewConfig);
+      syncScrollFadeState(root, viewConfig);
+      hideTooltip(tooltip, viewConfig);
+    }
 
+    function applyRootLayoutWithDesktopRefinement(): void {
       const previousLayout = root.dataset.layout;
       const layout = getRootLayout(root, state.scope, state.bottomBoundary);
       applyResolvedRootLayout(root, layout);
@@ -373,14 +364,12 @@ const CURRENT_SCRIPT =
           applyResolvedRootLayout(root, refinedLayout);
         }
       }
+    }
 
+    function syncLayoutModeState(): boolean {
       if (root.hidden) {
-        closeMobileExpansion();
-        navigationLock.clear();
-        setPendingVisibility(root, isInitialLayoutPending, viewConfig);
-        syncScrollFadeState(root, viewConfig);
-        hideTooltip(tooltip, viewConfig);
-        return;
+        syncHiddenRootState();
+        return false;
       }
 
       if (root.dataset.layout !== "mobile") {
@@ -389,6 +378,10 @@ const CURRENT_SCRIPT =
         syncMobileExpansion();
       }
 
+      return true;
+    }
+
+    function resolveVisibleActiveEntry(): TocEntry | undefined {
       syncTooltipState(state.entries, viewConfig);
       const activeId = resolveActiveId({
         activeId: findActiveId(state.entries),
@@ -396,13 +389,15 @@ const CURRENT_SCRIPT =
         isInitialLayoutPending,
         lockedTargetId: navigationLock.getFrozenActiveId(),
       });
-      const activeEntry = setActive(
+
+      return setActive(
         state.entries,
         initialNavigation.getPendingEntryId() || activeId,
         viewConfig,
       );
-      if (!activeEntry) return;
+    }
 
+    function syncVisibleRootState(activeEntry: TocEntry): void {
       syncMobileToggleSummary(root, viewConfig, {
         activeText: activeEntry.text,
         entryCount: state.entries.length,
@@ -423,6 +418,39 @@ const CURRENT_SCRIPT =
       }
     }
 
+    function rebuildState(): boolean {
+      const nextState = createState(root);
+      if (!nextState) {
+        navigationLock.clear();
+        root.hidden = true;
+        syncScrollFadeState(root, viewConfig);
+        hideTooltip(tooltip, viewConfig);
+        return false;
+      }
+
+      state = nextState;
+      hideTooltip(tooltip, viewConfig);
+      bindStateInteractions();
+      initialNavigation.restorePendingEntry();
+      return true;
+    }
+
+    function sync(): void {
+      if (hasDetachedTargets(state) && !rebuildState()) {
+        return;
+      }
+
+      applyRootLayoutWithDesktopRefinement();
+      if (!syncLayoutModeState()) {
+        return;
+      }
+
+      const activeEntry = resolveVisibleActiveEntry();
+      if (!activeEntry) return;
+
+      syncVisibleRootState(activeEntry);
+    }
+
     function markInitialLayoutReady(): void {
       if (!isInitialLayoutPending) return;
 
@@ -430,17 +458,7 @@ const CURRENT_SCRIPT =
       scheduleSync();
     }
 
-    bindLinkInteractions(
-      state.entries,
-      initialNavigation.handleLinkActivation,
-      initialNavigation.primeLinkActivation,
-    );
-    bindTooltipInteractions({
-      config: viewConfig,
-      entries: state.entries,
-      root,
-      tooltip,
-    });
+    bindStateInteractions();
     bindMobileToggle(root, viewConfig, toggleMobileExpansion);
     bindMobileDragging({
       getHeaderOffset: getResolvedHeaderOffset,
