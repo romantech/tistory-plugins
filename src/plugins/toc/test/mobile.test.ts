@@ -397,6 +397,85 @@ describe("toc plugin mobile layout", () => {
     ).toBe("min(74px, 39vh, 292px)");
   });
 
+  it("uses the visual viewport bottom as the drag boundary", async () => {
+    setVisualViewport({
+      height: 240,
+      offsetTop: 120,
+      width: 390,
+    });
+    setViewportHeight(900);
+
+    const article = renderArticle(
+      `
+      <h2>소개</h2>
+      <h3>설치</h3>
+      <h3>설정</h3>
+    `,
+      { tagName: "article" },
+    );
+
+    setViewportWidth(390);
+
+    mockRect(article, {
+      top: 100,
+      left: 20,
+      width: 350,
+      height: 1200,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    mockRect(headings[0], { top: 120 });
+    mockRect(headings[1], { top: 360 });
+    mockRect(headings[2], { top: 620 });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const toggle = getRequiredElement(
+      root,
+      ".rp-toc-toggle",
+      HTMLButtonElement,
+    );
+
+    mockRect(root, {
+      top: 240,
+      left: 98,
+      width: 280,
+      height: 64,
+    });
+
+    toggle.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        clientX: 350,
+        clientY: 260,
+      }),
+    );
+    toggle.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 350,
+        clientY: 460,
+      }),
+    );
+    toggle.dispatchEvent(
+      new MouseEvent("pointerup", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 350,
+        clientY: 460,
+      }),
+    );
+
+    expect(root.style.getPropertyValue("--rp-toc-mobile-offset-y")).toBe(
+      "44px",
+    );
+  });
+
   it("lets the mobile toc button move vertically without toggling the panel after a drag", async () => {
     const article = renderArticle(
       `

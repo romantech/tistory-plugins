@@ -58,6 +58,7 @@ import {
   syncScrollFadeState,
   syncTooltipState,
 } from "./view";
+import { getTocViewport } from "./viewport";
 
 const CURRENT_SCRIPT =
   document.currentScript instanceof HTMLScriptElement
@@ -86,18 +87,6 @@ const CURRENT_SCRIPT =
     );
   }
 
-  function getViewportWidth(): number {
-    return Math.max(window.innerWidth, document.documentElement.clientWidth, 0);
-  }
-
-  function getViewportHeight(): number {
-    return Math.max(
-      window.innerHeight,
-      document.documentElement.clientHeight,
-      0,
-    );
-  }
-
   function parsePixelValue(value: string, fallback = 0): number {
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -120,18 +109,16 @@ const CURRENT_SCRIPT =
     return Math.max(toggleButton.offsetHeight, toggleButton.clientHeight, 44);
   }
 
-  function getMobileAnchorBottom(
-    root: HTMLElement,
-    viewportHeight: number,
-  ): number {
+  function getMobileAnchorBottom(root: HTMLElement): number {
     const bottomInset = parsePixelValue(getComputedStyle(root).bottom, 32);
     const offsetY = parsePixelValue(
       root.style.getPropertyValue("--rp-toc-mobile-offset-y"),
       0,
     );
     const anchorHeight = getMobileAnchorHeight(root);
+    const viewport = getTocViewport();
 
-    return viewportHeight - bottomInset + anchorHeight + offsetY;
+    return viewport.visibleBottom - bottomInset + anchorHeight + offsetY;
   }
 
   function findActiveId(entries: TocEntry[]): string {
@@ -164,7 +151,7 @@ const CURRENT_SCRIPT =
     bottomBoundary: HTMLElement,
   ): RootLayout {
     const scopeRect = scope.getBoundingClientRect();
-    const viewportHeight = getViewportHeight();
+    const viewport = getTocViewport();
 
     return resolveRootLayout(
       {
@@ -174,11 +161,12 @@ const CURRENT_SCRIPT =
             : bottomBoundary.getBoundingClientRect(),
         headerOffset: getResolvedHeaderOffset(),
         measureRootHeight: () => measureRootHeight(root),
-        mobileAnchorBottom: getMobileAnchorBottom(root, viewportHeight),
+        mobileAnchorBottom: getMobileAnchorBottom(root),
         scopeRect,
         useScopeBottomBoundary: bottomBoundary === scope,
-        viewportHeight,
-        viewportWidth: getViewportWidth(),
+        viewportHeight: viewport.visibleHeight,
+        viewportTop: viewport.visibleTop,
+        viewportWidth: viewport.layoutWidth,
       },
       LAYOUT_CONSTRAINTS,
     );
@@ -456,7 +444,7 @@ const CURRENT_SCRIPT =
     bindMobileToggle(root, viewConfig, toggleMobileExpansion);
     bindMobileDragging({
       getHeaderOffset: getResolvedHeaderOffset,
-      getViewportHeight,
+      getViewport: getTocViewport,
       root,
       toggleButtonClass: TOGGLE_BUTTON_CLASS,
     });

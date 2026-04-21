@@ -329,6 +329,115 @@ describe("toc plugin navigation", () => {
     });
   });
 
+  it("cancels a queued correction when another toc entry is clicked first", async () => {
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    const article = renderArticle(
+      `
+      <h2>첫 섹션</h2>
+      <img src="/ready.jpg" alt="준비된 이미지" loading="lazy" />
+      <h3>둘째 섹션</h3>
+      <h3>셋째 섹션</h3>
+      `,
+      { tagName: "article" },
+    );
+
+    mockRect(article, {
+      top: 120,
+      left: 260,
+      width: 820,
+      height: 1800,
+    });
+
+    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
+    const images = getRequiredElements<HTMLImageElement>(article, "img");
+    mockRect(headings[0], { top: 220 });
+    let secondHeadingTop = 760;
+    const thirdHeadingTop = 1120;
+
+    Object.defineProperty(headings[1], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: secondHeadingTop,
+        bottom: secondHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: secondHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
+    Object.defineProperty(headings[2], "getBoundingClientRect", {
+      configurable: true,
+      value: vi.fn(() => ({
+        top: thirdHeadingTop,
+        bottom: thirdHeadingTop + 40,
+        left: 0,
+        right: 100,
+        width: 100,
+        height: 40,
+        x: 0,
+        y: thirdHeadingTop,
+        toJSON: () => ({}),
+      })),
+    });
+
+    Object.defineProperty(images[0], "complete", {
+      configurable: true,
+      get: () => true,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const links = getRequiredElements<HTMLAnchorElement>(
+      document,
+      ".rp-toc-link",
+    );
+
+    links[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).toHaveBeenNthCalledWith(1, {
+      top: 676,
+      behavior: "smooth",
+    });
+
+    window.scrollY = 676;
+    secondHeadingTop = 164;
+    await flushAnimationFrame();
+    vi.advanceTimersByTime(300);
+    await flushMicrotasks();
+
+    links[2].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(scrollToMock).toHaveBeenNthCalledWith(2, {
+      top: 1712,
+      behavior: "smooth",
+    });
+
+    await flushAll(10);
+
+    expect(scrollToMock).toHaveBeenCalledTimes(2);
+  });
+
   it("starts a single smooth scroll after a short warmup for a lazy iframe above the first target", async () => {
     Object.defineProperty(window, "scrollY", {
       configurable: true,

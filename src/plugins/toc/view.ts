@@ -1,4 +1,5 @@
 import type { RootLayout, TocEntry } from "./runtime";
+import { getTocViewport } from "./viewport";
 
 export type HeadingItem = {
   heading: HTMLElement;
@@ -640,18 +641,9 @@ function syncMobilePanelPlacement(
   panel: HTMLElement,
   toggleButton: HTMLButtonElement,
 ): void {
-  const visualViewport = window.visualViewport;
-  const viewportTop = Math.max(0, visualViewport?.offsetTop ?? 0);
-  const fallbackViewportHeight = Math.max(
-    window.innerHeight,
-    document.documentElement.clientHeight,
-    0,
-  );
-  const viewportHeight =
-    visualViewport && visualViewport.height > 0
-      ? visualViewport.height
-      : fallbackViewportHeight;
-  const viewportBottom = viewportTop + viewportHeight;
+  const viewport = getTocViewport();
+  const viewportTop = viewport.visibleTop;
+  const viewportBottom = viewport.visibleBottom;
   const rootStyle = getComputedStyle(root);
   const panelGap = Number.parseFloat(
     rootStyle.getPropertyValue("--rp-toc-mobile-panel-gap"),
