@@ -1,15 +1,11 @@
 import type { RootLayout, TocEntry } from "./runtime";
+import {
+  getPanel,
+  getScrollViewport,
+  getToggleButton,
+  getToggleSummary,
+} from "./view-dom";
 import { getTocViewport } from "./viewport";
-
-export type HeadingItem = {
-  heading: HTMLElement;
-  text: string;
-};
-
-export type CreatedElement<T extends HTMLElement> = {
-  element: T;
-  created: boolean;
-};
 
 export type TocViewConfig = {
   activeClass: string;
@@ -29,22 +25,6 @@ export type TocViewConfig = {
   truncatedClass: string;
 };
 
-type CreateEntryOptions = {
-  config: TocViewConfig;
-  getHeadingLevel: (heading: HTMLElement) => number;
-  headingItems: HeadingItem[];
-  root: HTMLElement;
-  usedIds: Set<string>;
-  ensureHeadingId: (heading: HTMLElement, usedIds: Set<string>) => string;
-};
-
-type TooltipBindingsOptions = {
-  config: TocViewConfig;
-  entries: TocEntry[];
-  root: HTMLElement;
-  tooltip: HTMLElement;
-};
-
 const MOBILE_PANEL_MAX_HEIGHT_FALLBACK = 292;
 const MOBILE_PANEL_EDGE_PADDING = 12;
 const MOBILE_PANEL_DIRECTION_UP = "up";
@@ -52,267 +32,6 @@ const MOBILE_PANEL_DIRECTION_DOWN = "down";
 const MOBILE_PANEL_VIEWPORT_BLOCK_CHROME = 24;
 const MOBILE_PANEL_MAX_BLOCK_SIZE_PROPERTY =
   "--rp-toc-mobile-panel-max-block-size";
-
-export function createRoot(config: TocViewConfig): CreatedElement<HTMLElement> {
-  const existingRoot = document.querySelector<HTMLElement>(
-    `.${config.rootClass}`,
-  );
-  const root = existingRoot ?? document.createElement("nav");
-  const created = !existingRoot;
-
-  root.className = config.rootClass;
-  root.hidden = true;
-  root.setAttribute("aria-label", "본문 목차");
-
-  let panel = root.querySelector<HTMLElement>(`.${config.panelClass}`);
-  const existingList = root.querySelector<HTMLOListElement>(
-    `.${config.listClass}`,
-  );
-  if (!panel) {
-    panel = document.createElement("div");
-    panel.className = config.panelClass;
-    panel.hidden = true;
-    root.append(panel);
-  }
-
-  let scrollViewport = panel.querySelector<HTMLElement>(
-    `.${config.scrollViewportClass}`,
-  );
-  if (!scrollViewport) {
-    scrollViewport = document.createElement("div");
-    scrollViewport.className = config.scrollViewportClass;
-    if (existingList) {
-      scrollViewport.append(existingList);
-    }
-    panel.append(scrollViewport);
-  }
-
-  let list = scrollViewport.querySelector<HTMLOListElement>(
-    `.${config.listClass}`,
-  );
-  if (!list) {
-    list = existingList ?? document.createElement("ol");
-    list.className = config.listClass;
-    scrollViewport.append(list);
-  }
-
-  let toggleButton = root.querySelector<HTMLButtonElement>(
-    `.${config.toggleButtonClass}`,
-  );
-  if (!toggleButton) {
-    toggleButton = document.createElement("button");
-    toggleButton.className = config.toggleButtonClass;
-    toggleButton.type = "button";
-    root.append(toggleButton);
-  }
-
-  toggleButton.hidden = true;
-
-  let toggleLabel = toggleButton.querySelector<HTMLSpanElement>(
-    `.${config.toggleLabelClass}`,
-  );
-  if (!toggleLabel) {
-    toggleLabel = document.createElement("span");
-    toggleLabel.className = config.toggleLabelClass;
-    toggleLabel.textContent = "목차";
-    toggleButton.append(toggleLabel);
-  }
-
-  let toggleSummary = toggleButton.querySelector<HTMLSpanElement>(
-    `.${config.toggleSummaryClass}`,
-  );
-  if (!toggleSummary) {
-    toggleSummary = document.createElement("span");
-    toggleSummary.className = config.toggleSummaryClass;
-    toggleButton.append(toggleSummary);
-  }
-
-  const panelId = panel.id || `${config.rootClass}-panel`;
-  panel.id = panelId;
-  toggleButton.setAttribute("aria-controls", panelId);
-  toggleButton.setAttribute("aria-expanded", "false");
-  toggleButton.setAttribute("aria-label", "목차 펼치기");
-
-  if (created) {
-    document.body.append(root);
-  }
-
-  return { element: root, created };
-}
-
-export function createTooltip(
-  config: TocViewConfig,
-): CreatedElement<HTMLElement> {
-  const existingTooltip = document.querySelector<HTMLElement>(
-    `.${config.tooltipClass}`,
-  );
-  if (existingTooltip) {
-    return { element: existingTooltip, created: false };
-  }
-
-  const tooltip = document.createElement("div");
-  tooltip.className = config.tooltipClass;
-  tooltip.hidden = true;
-  tooltip.setAttribute("role", "tooltip");
-
-  document.body.append(tooltip);
-  return { element: tooltip, created: true };
-}
-
-export function cleanupCreatedElements(
-  root: HTMLElement,
-  tooltip: HTMLElement,
-  options: {
-    rootCreated: boolean;
-    tooltipCreated: boolean;
-  },
-): void {
-  if (options.rootCreated) {
-    root.remove();
-  }
-
-  if (options.tooltipCreated) {
-    tooltip.remove();
-  }
-}
-
-function getList(root: HTMLElement, config: TocViewConfig): HTMLOListElement {
-  const list = root.querySelector(`.${config.listClass}`);
-  if (!(list instanceof HTMLOListElement)) {
-    throw new Error("TOC list not found");
-  }
-
-  return list;
-}
-
-function getPanel(root: HTMLElement, config: TocViewConfig): HTMLElement {
-  const panel = root.querySelector(`.${config.panelClass}`);
-  if (!(panel instanceof HTMLElement)) {
-    throw new Error("TOC panel not found");
-  }
-
-  return panel;
-}
-
-function getToggleButton(
-  root: HTMLElement,
-  config: TocViewConfig,
-): HTMLButtonElement {
-  const toggleButton = root.querySelector(`.${config.toggleButtonClass}`);
-  if (!(toggleButton instanceof HTMLButtonElement)) {
-    throw new Error("TOC toggle button not found");
-  }
-
-  return toggleButton;
-}
-
-function getToggleSummary(
-  root: HTMLElement,
-  config: TocViewConfig,
-): HTMLSpanElement {
-  const toggleSummary = root.querySelector(`.${config.toggleSummaryClass}`);
-  if (!(toggleSummary instanceof HTMLSpanElement)) {
-    throw new Error("TOC toggle summary not found");
-  }
-
-  return toggleSummary;
-}
-
-function getScrollViewport(
-  root: HTMLElement,
-  config: TocViewConfig,
-): HTMLElement {
-  if (root.dataset.layout !== "mobile") {
-    return root;
-  }
-
-  const scrollViewport = root.querySelector(`.${config.scrollViewportClass}`);
-  if (!(scrollViewport instanceof HTMLElement)) {
-    throw new Error("TOC scroll viewport not found");
-  }
-
-  return scrollViewport;
-}
-
-export function bindScrollViewport(
-  root: HTMLElement,
-  config: TocViewConfig,
-  handleScroll: () => void,
-): void {
-  if (root.dataset.scrollViewportBound === "true") {
-    return;
-  }
-
-  root.dataset.scrollViewportBound = "true";
-  root.addEventListener("scroll", handleScroll, { passive: true });
-  const scrollViewport = root.querySelector(`.${config.scrollViewportClass}`);
-  if (scrollViewport instanceof HTMLElement) {
-    scrollViewport.addEventListener("scroll", handleScroll, {
-      passive: true,
-    });
-  }
-}
-
-export function buildEntries({
-  config,
-  ensureHeadingId,
-  getHeadingLevel,
-  headingItems,
-  root,
-  usedIds,
-}: CreateEntryOptions): TocEntry[] {
-  const list = getList(root, config);
-  list.innerHTML = "";
-
-  return headingItems.map(({ heading, text }) => {
-    const id = ensureHeadingId(heading, usedIds);
-    const level = getHeadingLevel(heading);
-
-    const item = document.createElement("li");
-    item.className = `${config.rootClass}-item`;
-
-    const link = document.createElement("a");
-    link.className = config.linkClass;
-    link.href = `#${id}`;
-    link.dataset.level = `${level}`;
-    link.dataset.tooltip = text;
-    link.setAttribute("aria-label", text);
-
-    const label = document.createElement("span");
-    label.className = config.labelClass;
-    label.textContent = text;
-
-    link.append(label);
-
-    item.append(link);
-    list.append(item);
-
-    return {
-      heading,
-      id,
-      level,
-      link,
-      label,
-      text,
-    };
-  });
-}
-
-export function syncTooltipState(
-  entries: TocEntry[],
-  config: TocViewConfig,
-): void {
-  for (const entry of entries) {
-    const isTruncated = entry.label.scrollWidth > entry.label.clientWidth + 1;
-    entry.link.classList.toggle(config.truncatedClass, isTruncated);
-  }
-}
-
-export function hideTooltip(tooltip: HTMLElement, config: TocViewConfig): void {
-  tooltip.hidden = true;
-  tooltip.classList.remove(config.tooltipVisibleClass);
-  tooltip.textContent = "";
-}
 
 export function setPendingVisibility(
   root: HTMLElement,
@@ -405,116 +124,6 @@ export function measureRootHeight(root: HTMLElement): number {
   }
 
   return height;
-}
-
-function positionTooltip(
-  tooltip: HTMLElement,
-  link: HTMLAnchorElement,
-  root: HTMLElement,
-): void {
-  const linkRect = link.getBoundingClientRect();
-  const viewportWidth = Math.max(
-    window.innerWidth,
-    document.documentElement.clientWidth,
-    0,
-  );
-  const viewportHeight = Math.max(
-    window.innerHeight,
-    document.documentElement.clientHeight,
-    0,
-  );
-  const gap = 6;
-  const padding = 16;
-  const rootLeft = Number.parseFloat(
-    root.style.getPropertyValue("--rp-toc-left") || "0",
-  );
-  const maxWidth = Math.min(320, Math.max(180, viewportWidth - padding * 2));
-
-  tooltip.style.setProperty("--rp-toc-tooltip-max-width", `${maxWidth}px`);
-  tooltip.style.left = "0px";
-  tooltip.style.top = "0px";
-
-  const tooltipWidth = tooltip.offsetWidth;
-  const tooltipHeight = tooltip.offsetHeight;
-  const spaceRight = viewportWidth - linkRect.right - padding;
-  const placeRight = spaceRight >= tooltipWidth || rootLeft <= tooltipWidth;
-  const left = placeRight
-    ? Math.min(linkRect.right + gap, viewportWidth - tooltipWidth - padding)
-    : Math.max(padding, linkRect.left - tooltipWidth - gap);
-  const top = Math.min(
-    Math.max(padding, linkRect.top + linkRect.height / 2 - tooltipHeight / 2),
-    viewportHeight - tooltipHeight - padding,
-  );
-
-  tooltip.dataset.side = placeRight ? "right" : "left";
-  tooltip.style.left = `${Math.round(left)}px`;
-  tooltip.style.top = `${Math.round(top)}px`;
-}
-
-export function bindTooltipInteractions({
-  config,
-  entries,
-  root,
-  tooltip,
-}: TooltipBindingsOptions): void {
-  const syncTooltipPalette = (): void => {
-    tooltip.style.setProperty(
-      "--rp-toc-font-family",
-      root.style.getPropertyValue("--rp-toc-font-family"),
-    );
-    tooltip.style.setProperty(
-      "--rp-toc-ink",
-      root.style.getPropertyValue("--rp-toc-ink"),
-    );
-    tooltip.style.setProperty(
-      "--rp-toc-surface",
-      root.style.getPropertyValue("--rp-toc-surface"),
-    );
-    tooltip.dataset.surfaceTone = root.dataset.surfaceTone || "light";
-  };
-
-  const showTooltip = (entry: TocEntry): void => {
-    if (root.dataset.layout === "mobile") {
-      hideTooltip(tooltip, config);
-      return;
-    }
-
-    if (!entry.link.classList.contains(config.truncatedClass)) {
-      hideTooltip(tooltip, config);
-      return;
-    }
-
-    syncTooltipPalette();
-    tooltip.textContent = entry.text;
-    tooltip.hidden = false;
-    tooltip.classList.add(config.tooltipVisibleClass);
-    positionTooltip(tooltip, entry.link, root);
-  };
-
-  for (const entry of entries) {
-    entry.link.addEventListener("mouseenter", () => {
-      showTooltip(entry);
-    });
-    entry.link.addEventListener("focus", () => {
-      showTooltip(entry);
-    });
-    entry.link.addEventListener("mouseleave", () => {
-      hideTooltip(tooltip, config);
-    });
-    entry.link.addEventListener("blur", () => {
-      hideTooltip(tooltip, config);
-    });
-    entry.link.addEventListener("click", () => {
-      hideTooltip(tooltip, config);
-    });
-  }
-
-  if (root.dataset.tooltipBound !== "true") {
-    root.dataset.tooltipBound = "true";
-    root.addEventListener("mouseleave", () => {
-      hideTooltip(tooltip, config);
-    });
-  }
 }
 
 export function setActive(
@@ -763,6 +372,20 @@ export function bindMobileToggle(
   toggleButton.dataset.bound = "true";
   toggleButton.addEventListener("click", handleToggle);
 }
+
+export type { CreatedElement, HeadingItem } from "./view-dom";
+export {
+  bindScrollViewport,
+  buildEntries,
+  cleanupCreatedElements,
+  createRoot,
+  createTooltip,
+} from "./view-dom";
+export {
+  bindTooltipInteractions,
+  hideTooltip,
+  syncTooltipState,
+} from "./view-tooltip";
 
 export function bindLinkInteractions(
   entries: TocEntry[],
