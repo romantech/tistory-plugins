@@ -19,6 +19,7 @@ type PendingNavigationRun = {
   addCleanup: (callback: () => void) => void;
   cleanup: () => void;
   isCurrent: () => boolean;
+  token: number;
 };
 
 export type InitialNavigationController = {
@@ -52,9 +53,13 @@ export function createInitialNavigationController({
   let pendingNavigationEntryId: string | undefined;
   let cancelPendingNavigation: (() => void) | null = null;
 
+  function invalidatePendingNavigation(): number {
+    pendingNavigationToken += 1;
+    return pendingNavigationToken;
+  }
+
   function startPendingNavigationRun(): PendingNavigationRun {
-    const navigationToken = pendingNavigationToken + 1;
-    pendingNavigationToken = navigationToken;
+    const navigationToken = invalidatePendingNavigation();
     const cleanupCallbacks: Array<() => void> = [];
     let cleaned = false;
 
@@ -80,10 +85,12 @@ export function createInitialNavigationController({
       },
       cleanup,
       isCurrent: () => pendingNavigationToken === navigationToken,
+      token: navigationToken,
     };
   }
 
   function clear(): void {
+    invalidatePendingNavigation();
     cancelPendingNavigation?.();
     cancelPendingNavigation = null;
     pendingNavigationEntryId = undefined;
@@ -222,13 +229,28 @@ export function createInitialNavigationController({
     );
   }
 
+  function queueLinkActivationCorrection(
+    entry: TocEntry,
+    navigationToken: number,
+  ): void {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (pendingNavigationToken !== navigationToken) return;
+        correctLinkActivation(entry);
+      });
+    });
+  }
+
   function startInitialNavigationLayoutWait(
     entry: TocEntry,
     resources: HTMLElement[],
     options: { hasObservedLayoutShift?: boolean } = {},
   ): void {
     if (resources.length === 0) {
-      pendingNavigationToken += 1;
+      const navigationToken = invalidatePendingNavigation();
+      if (options.hasObservedLayoutShift) {
+        queueLinkActivationCorrection(entry, navigationToken);
+      }
       return;
     }
 
@@ -258,14 +280,10 @@ export function createInitialNavigationController({
         return;
       }
 
+      const correctionToken = run.token;
       run.cleanup();
       if (!hasObservedLayoutShift) return;
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (!run.isCurrent()) return;
-          correctLinkActivation(entry);
-        });
-      });
+      queueLinkActivationCorrection(entry, correctionToken);
     };
 
     const markLayoutChanged = (): void => {
@@ -505,7 +523,10 @@ export function createInitialNavigationController({
     );
     if (pendingEntry) {
       setPendingEntry(pendingEntry);
+      return;
     }
+
+    clear();
   }
 
   return {

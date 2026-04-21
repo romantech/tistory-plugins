@@ -1,6 +1,8 @@
+import type { TocViewport } from "./viewport";
+
 type BindMobileDraggingOptions = {
   getHeaderOffset: () => number;
-  getViewportHeight: () => number;
+  getViewport: () => TocViewport;
   root: HTMLElement;
   toggleButtonClass: string;
 };
@@ -21,7 +23,7 @@ function setMobileOffset(root: HTMLElement, x: number, y: number): void {
 
 export function bindMobileDragging({
   getHeaderOffset,
-  getViewportHeight,
+  getViewport,
   root,
   toggleButtonClass,
 }: BindMobileDraggingOptions): void {
@@ -100,22 +102,17 @@ export function bindMobileDragging({
     root.dataset.mobilePressed = "false";
     root.dataset.mobileDragging = "true";
 
-    const visualViewport = window.visualViewport;
-    const viewportHeight = Math.max(
-      visualViewport?.height ?? 0,
-      getViewportHeight(),
-    );
-    const viewportTopInset = Math.max(0, visualViewport?.offsetTop ?? 0);
+    const viewport = getViewport();
     const minTopBoundary = Math.max(
       MOBILE_DRAG_GUTTER,
-      viewportTopInset + getHeaderOffset(),
+      viewport.visibleTop + getHeaderOffset(),
     );
     const nextTop = dragState.baseTop + deltaY;
     const clampedTop = Math.min(
       Math.max(minTopBoundary, nextTop),
       Math.max(
         minTopBoundary,
-        viewportHeight - dragState.height - MOBILE_DRAG_GUTTER,
+        viewport.visibleBottom - dragState.height - MOBILE_DRAG_GUTTER,
       ),
     );
 

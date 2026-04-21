@@ -389,6 +389,118 @@ describe("toc plugin", () => {
     expect(replacedHeadings[1].id).toBe("rp-교체된-하위-섹션");
   });
 
+  it("clears stale pending navigation when the article is rebuilt mid-warmup", async () => {
+    const { scrollToMock } = getTocTestMocks();
+
+    setBodyHtml(`
+      <div id="mount">
+        <div class="tt_article_useless_p_margin contents_style">
+          <h2>초기 섹션</h2>
+          <img src="/above.jpg" alt="위쪽 이미지" loading="lazy" />
+          <h3>이동 대상</h3>
+        </div>
+      </div>
+    `);
+
+    const initialArticle = getRequiredElement(
+      document,
+      ".contents_style",
+      HTMLElement,
+    );
+    mockRect(initialArticle, {
+      top: 120,
+      left: 240,
+      width: 820,
+      height: 1600,
+    });
+
+    const initialHeadings = getRequiredElements<HTMLElement>(
+      initialArticle,
+      "h2, h3",
+    );
+    const initialImage = getRequiredElement(
+      initialArticle,
+      "img",
+      HTMLImageElement,
+    );
+    mockRect(initialHeadings[0], { top: 120 });
+    mockRect(initialHeadings[1], { top: 420 });
+    Object.defineProperty(initialImage, "complete", {
+      configurable: true,
+      get: () => false,
+    });
+
+    await loadTocPlugin();
+    await flushAll();
+
+    const root = getRequiredElement(document, ".rp-toc", HTMLElement);
+    const initialLinks = getRequiredElements<HTMLAnchorElement>(
+      root,
+      ".rp-toc-link",
+    );
+
+    initialLinks[1].dispatchEvent(
+      new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        detail: 1,
+      }),
+    );
+
+    expect(root.classList.contains("is-navigation-pending")).toBe(true);
+    expect(initialLinks[1].classList.contains("is-pending-navigation")).toBe(
+      true,
+    );
+    expect(scrollToMock).not.toHaveBeenCalled();
+
+    const mount = getRequiredElement(document, "#mount", HTMLElement);
+    mount.innerHTML = `
+      <div id="article">
+        <h2>교체된 섹션</h2>
+        <h3>교체된 하위 섹션</h3>
+      </div>
+    `;
+
+    const replacedArticle = getRequiredElement(
+      document,
+      "#article",
+      HTMLElement,
+    );
+    mockRect(replacedArticle, {
+      top: 160,
+      left: 360,
+      width: 820,
+      height: 1700,
+    });
+
+    const replacedHeadings = getRequiredElements<HTMLElement>(
+      replacedArticle,
+      "h2, h3",
+    );
+    mockRect(replacedHeadings[0], { top: 180 });
+    mockRect(replacedHeadings[1], { top: 520 });
+
+    window.dispatchEvent(new Event("scroll"));
+    await flushAll();
+
+    const replacedLinks = getRequiredElements<HTMLAnchorElement>(
+      root,
+      ".rp-toc-link",
+    );
+    expect(root.classList.contains("is-navigation-pending")).toBe(false);
+    expect(
+      replacedLinks.some((link) =>
+        link.classList.contains("is-pending-navigation"),
+      ),
+    ).toBe(false);
+    expect(replacedLinks[0]).toHaveAttribute("aria-current", "location");
+
+    initialImage.dispatchEvent(new Event("load"));
+    await flushAll();
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+  });
+
   it("strips heading-anchor markers and ignores related-post headings", async () => {
     const article = renderArticle(
       `

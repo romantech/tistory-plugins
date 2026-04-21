@@ -58,6 +58,7 @@ import {
   syncScrollFadeState,
   syncTooltipState,
 } from "./view";
+import { getTocViewport } from "./viewport";
 
 const CURRENT_SCRIPT =
   document.currentScript instanceof HTMLScriptElement
@@ -86,18 +87,6 @@ const CURRENT_SCRIPT =
     );
   }
 
-  function getViewportWidth(): number {
-    return Math.max(window.innerWidth, document.documentElement.clientWidth, 0);
-  }
-
-  function getViewportHeight(): number {
-    return Math.max(
-      window.innerHeight,
-      document.documentElement.clientHeight,
-      0,
-    );
-  }
-
   function parsePixelValue(value: string, fallback = 0): number {
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? parsed : fallback;
@@ -120,18 +109,16 @@ const CURRENT_SCRIPT =
     return Math.max(toggleButton.offsetHeight, toggleButton.clientHeight, 44);
   }
 
-  function getMobileAnchorBottom(
-    root: HTMLElement,
-    viewportHeight: number,
-  ): number {
+  function getMobileAnchorBottom(root: HTMLElement): number {
     const bottomInset = parsePixelValue(getComputedStyle(root).bottom, 32);
     const offsetY = parsePixelValue(
       root.style.getPropertyValue("--rp-toc-mobile-offset-y"),
       0,
     );
     const anchorHeight = getMobileAnchorHeight(root);
+    const viewport = getTocViewport();
 
-    return viewportHeight - bottomInset + anchorHeight + offsetY;
+    return viewport.visibleBottom - bottomInset + anchorHeight + offsetY;
   }
 
   function findActiveId(entries: TocEntry[]): string {
@@ -164,7 +151,7 @@ const CURRENT_SCRIPT =
     bottomBoundary: HTMLElement,
   ): RootLayout {
     const scopeRect = scope.getBoundingClientRect();
-    const viewportHeight = getViewportHeight();
+    const viewport = getTocViewport();
 
     return resolveRootLayout(
       {
@@ -174,11 +161,12 @@ const CURRENT_SCRIPT =
             : bottomBoundary.getBoundingClientRect(),
         headerOffset: getResolvedHeaderOffset(),
         measureRootHeight: () => measureRootHeight(root),
-        mobileAnchorBottom: getMobileAnchorBottom(root, viewportHeight),
+        mobileAnchorBottom: getMobileAnchorBottom(root),
         scopeRect,
         useScopeBottomBoundary: bottomBoundary === scope,
-        viewportHeight,
-        viewportWidth: getViewportWidth(),
+        viewportHeight: viewport.visibleHeight,
+        viewportTop: viewport.visibleTop,
+        viewportWidth: viewport.layoutWidth,
       },
       LAYOUT_CONSTRAINTS,
     );
@@ -336,18 +324,7 @@ const CURRENT_SCRIPT =
       });
     }
 
-    function rebuildState(): boolean {
-      const nextState = createState(root);
-      if (!nextState) {
-        navigationLock.clear();
-        root.hidden = true;
-        syncScrollFadeState(root, viewConfig);
-        hideTooltip(tooltip, viewConfig);
-        return false;
-      }
-
-      state = nextState;
-      hideTooltip(tooltip, viewConfig);
+    function bindStateInteractions(): void {
       bindLinkInteractions(
         state.entries,
         initialNavigation.handleLinkActivation,
@@ -359,15 +336,17 @@ const CURRENT_SCRIPT =
         root,
         tooltip,
       });
-      initialNavigation.restorePendingEntry();
-      return true;
     }
 
-    function sync(): void {
-      if (hasDetachedTargets(state) && !rebuildState()) {
-        return;
-      }
+    function syncHiddenRootState(): void {
+      closeMobileExpansion();
+      navigationLock.clear();
+      setPendingVisibility(root, isInitialLayoutPending, viewConfig);
+      syncScrollFadeState(root, viewConfig);
+      hideTooltip(tooltip, viewConfig);
+    }
 
+    function applyRootLayoutWithDesktopRefinement(): void {
       const previousLayout = root.dataset.layout;
       const layout = getRootLayout(root, state.scope, state.bottomBoundary);
       applyResolvedRootLayout(root, layout);
@@ -385,14 +364,12 @@ const CURRENT_SCRIPT =
           applyResolvedRootLayout(root, refinedLayout);
         }
       }
+    }
 
+    function syncLayoutModeState(): boolean {
       if (root.hidden) {
-        closeMobileExpansion();
-        navigationLock.clear();
-        setPendingVisibility(root, isInitialLayoutPending, viewConfig);
-        syncScrollFadeState(root, viewConfig);
-        hideTooltip(tooltip, viewConfig);
-        return;
+        syncHiddenRootState();
+        return false;
       }
 
       if (root.dataset.layout !== "mobile") {
@@ -401,6 +378,10 @@ const CURRENT_SCRIPT =
         syncMobileExpansion();
       }
 
+      return true;
+    }
+
+    function resolveVisibleActiveEntry(): TocEntry | undefined {
       syncTooltipState(state.entries, viewConfig);
       const activeId = resolveActiveId({
         activeId: findActiveId(state.entries),
@@ -408,13 +389,15 @@ const CURRENT_SCRIPT =
         isInitialLayoutPending,
         lockedTargetId: navigationLock.getFrozenActiveId(),
       });
-      const activeEntry = setActive(
+
+      return setActive(
         state.entries,
         initialNavigation.getPendingEntryId() || activeId,
         viewConfig,
       );
-      if (!activeEntry) return;
+    }
 
+    function syncVisibleRootState(activeEntry: TocEntry): void {
       syncMobileToggleSummary(root, viewConfig, {
         activeText: activeEntry.text,
         entryCount: state.entries.length,
@@ -435,6 +418,39 @@ const CURRENT_SCRIPT =
       }
     }
 
+    function rebuildState(): boolean {
+      const nextState = createState(root);
+      if (!nextState) {
+        navigationLock.clear();
+        root.hidden = true;
+        syncScrollFadeState(root, viewConfig);
+        hideTooltip(tooltip, viewConfig);
+        return false;
+      }
+
+      state = nextState;
+      hideTooltip(tooltip, viewConfig);
+      bindStateInteractions();
+      initialNavigation.restorePendingEntry();
+      return true;
+    }
+
+    function sync(): void {
+      if (hasDetachedTargets(state) && !rebuildState()) {
+        return;
+      }
+
+      applyRootLayoutWithDesktopRefinement();
+      if (!syncLayoutModeState()) {
+        return;
+      }
+
+      const activeEntry = resolveVisibleActiveEntry();
+      if (!activeEntry) return;
+
+      syncVisibleRootState(activeEntry);
+    }
+
     function markInitialLayoutReady(): void {
       if (!isInitialLayoutPending) return;
 
@@ -442,21 +458,11 @@ const CURRENT_SCRIPT =
       scheduleSync();
     }
 
-    bindLinkInteractions(
-      state.entries,
-      initialNavigation.handleLinkActivation,
-      initialNavigation.primeLinkActivation,
-    );
-    bindTooltipInteractions({
-      config: viewConfig,
-      entries: state.entries,
-      root,
-      tooltip,
-    });
+    bindStateInteractions();
     bindMobileToggle(root, viewConfig, toggleMobileExpansion);
     bindMobileDragging({
       getHeaderOffset: getResolvedHeaderOffset,
-      getViewportHeight,
+      getViewport: getTocViewport,
       root,
       toggleButtonClass: TOGGLE_BUTTON_CLASS,
     });

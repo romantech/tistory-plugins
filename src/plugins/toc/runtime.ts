@@ -55,6 +55,7 @@ type RootLayoutMetrics = {
   scopeRect: DOMRect;
   useScopeBottomBoundary: boolean;
   viewportHeight: number;
+  viewportTop: number;
   viewportWidth: number;
 };
 
@@ -105,6 +106,7 @@ export function resolveRootLayout(
     scopeRect,
     useScopeBottomBoundary,
     viewportHeight,
+    viewportTop,
     viewportWidth,
   }: RootLayoutMetrics,
   {
@@ -120,10 +122,11 @@ export function resolveRootLayout(
     viewportGutter,
   }: RootLayoutConstraints,
 ): RootLayout {
+  const viewportBottom = viewportTop + viewportHeight;
   const isScopeVisible =
     scopeRect.right > 0 &&
-    scopeRect.bottom > 0 &&
-    scopeRect.top < viewportHeight;
+    scopeRect.bottom > viewportTop &&
+    scopeRect.top < viewportBottom;
   if (!isScopeVisible) {
     return { hidden: true };
   }
@@ -159,7 +162,7 @@ export function resolveRootLayout(
   const rootHeight = measureRootHeight();
   const desiredTop = Math.max(
     safeTop,
-    Math.round(viewportHeight / 2 - rootHeight / 2),
+    Math.round(viewportTop + viewportHeight / 2 - rootHeight / 2),
   );
   const clampEdge = useScopeBottomBoundary
     ? scopeRect.bottom
@@ -170,7 +173,7 @@ export function resolveRootLayout(
   const resolvedTop =
     maxTop < revealTop ? maxTop : Math.max(revealTop, centeredTop);
 
-  if (resolvedTop + rootHeight <= 0) {
+  if (resolvedTop + rootHeight <= viewportTop) {
     return { hidden: true };
   }
 
