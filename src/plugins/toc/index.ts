@@ -60,13 +60,8 @@ import {
 } from "./view";
 import { getTocViewport } from "./viewport";
 
-const CURRENT_SCRIPT =
-  document.currentScript instanceof HTMLScriptElement
-    ? document.currentScript
-    : null;
-
 (() => {
-  ensurePluginStylesheet("toc", CURRENT_SCRIPT);
+  ensurePluginStylesheet("toc");
 
   let initialized = false;
   let scheduledFrame = 0;
