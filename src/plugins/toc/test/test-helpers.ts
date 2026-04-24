@@ -1,4 +1,8 @@
-import { appendPluginScript } from "@test/dom";
+import {
+  appendPluginScript,
+  getRequiredElements,
+  renderArticle,
+} from "@test/dom";
 import { createPluginLoader } from "@test/load-plugin";
 import { afterEach, beforeEach, vi } from "vitest";
 
@@ -27,11 +31,41 @@ type RectValue = {
   height?: number;
 };
 
+type TocArticleFixtureOptions = {
+  articleRect?: RectValue;
+  headingSelector?: string;
+  headingTops?: readonly number[];
+  tagName?: keyof HTMLElementTagNameMap;
+};
+
+type MobileTocFixtureOptions = TocArticleFixtureOptions & {
+  markup?: string;
+  viewportWidth?: number;
+};
+
+type TocArticleFixture = {
+  article: HTMLElement;
+  headings: HTMLElement[];
+};
+
 type ElementMetric =
   | "clientHeight"
   | "offsetHeight"
   | "offsetTop"
   | "scrollHeight";
+
+const DEFAULT_MOBILE_TOC_MARKUP = `
+  <h2>소개</h2>
+  <h3>설치</h3>
+  <h3>설정</h3>
+`;
+const DEFAULT_MOBILE_ARTICLE_RECT: RectValue = {
+  top: 100,
+  left: 20,
+  width: 350,
+  height: 1200,
+};
+const DEFAULT_MOBILE_HEADING_TOPS = [120, 360, 620] as const;
 
 export async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
@@ -126,6 +160,53 @@ export function mockRect(element: Element, rect: RectValue): void {
       y: top,
       toJSON: () => ({}),
     })),
+  });
+}
+
+export function renderTocArticleFixture(
+  markup: string,
+  {
+    articleRect,
+    headingSelector = "h2, h3",
+    headingTops = [],
+    tagName = "article",
+  }: TocArticleFixtureOptions = {},
+): TocArticleFixture {
+  const article = renderArticle(markup, { tagName });
+
+  if (articleRect) {
+    mockRect(article, articleRect);
+  }
+
+  const headings = getRequiredElements<HTMLElement>(article, headingSelector);
+
+  headingTops.forEach((top, index) => {
+    const heading = headings[index];
+    if (!heading) {
+      throw new Error(`Heading not found at index ${index}`);
+    }
+
+    mockRect(heading, { top });
+  });
+
+  return { article, headings };
+}
+
+export function renderMobileTocFixture({
+  markup = DEFAULT_MOBILE_TOC_MARKUP,
+  articleRect = DEFAULT_MOBILE_ARTICLE_RECT,
+  headingSelector = "h2, h3",
+  headingTops = DEFAULT_MOBILE_HEADING_TOPS,
+  tagName = "article",
+  viewportWidth = 390,
+}: MobileTocFixtureOptions = {}): TocArticleFixture {
+  setViewportWidth(viewportWidth);
+
+  return renderTocArticleFixture(markup, {
+    articleRect,
+    headingSelector,
+    headingTops,
+    tagName,
   });
 }
 
