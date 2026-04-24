@@ -1,5 +1,9 @@
 import { runOnDocumentReady } from "@/shared/dom-ready";
 
+type FocusGuardState = typeof globalThis & {
+  __tistoryPluginsFocusGuardReady?: boolean;
+};
+
 (() => {
   const SELECTOR =
     'button[data-func="close-sidebar"], button[data-func="open-sidebar"]';
@@ -53,6 +57,11 @@ import { runOnDocumentReady } from "@/shared/dom-ready";
   }
 
   function init(): void {
+    const state = globalThis as FocusGuardState;
+    if (state.__tistoryPluginsFocusGuardReady) return;
+
+    state.__tistoryPluginsFocusGuardReady = true;
+
     window.addEventListener("pointerdown", handlePointerDown, {
       capture: true,
       passive: false,

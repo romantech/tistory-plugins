@@ -8,6 +8,22 @@ describe("focus-guard plugin", () => {
     () => import("@/plugins/focus-guard"),
   );
 
+  it("does not register duplicate global listeners when loaded more than once", async () => {
+    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
+    const observeSpy = vi.spyOn(MutationObserver.prototype, "observe");
+
+    await loadFocusGuardPlugin();
+    await loadFocusGuardPlugin();
+
+    expect(
+      addEventListenerSpy.mock.calls.filter(([type]) => type === "pointerdown"),
+    ).toHaveLength(1);
+    expect(
+      addEventListenerSpy.mock.calls.filter(([type]) => type === "click"),
+    ).toHaveLength(1);
+    expect(observeSpy).toHaveBeenCalledTimes(1);
+  });
+
   it("prevents focus on sidebar toggle buttons on pointerdown", async () => {
     setBodyHtml(`
       <button data-func="open-sidebar">Open</button>
