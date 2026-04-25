@@ -13,13 +13,8 @@ import {
 import { getHeadingAnchorConfig } from "@/shared/plugin-config";
 import { ensurePluginStylesheet } from "@/shared/stylesheet";
 
-const CURRENT_SCRIPT =
-  document.currentScript instanceof HTMLScriptElement
-    ? document.currentScript
-    : null;
-
 (() => {
-  ensurePluginStylesheet("heading-anchor", CURRENT_SCRIPT);
+  ensurePluginStylesheet("heading-anchor");
 
   const LINK_CLASS = "rp-heading-anchor";
   const TARGET_CLASS = "rp-heading-target";

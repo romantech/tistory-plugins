@@ -25,6 +25,7 @@ import {
   TOGGLE_BUTTON_CLASS,
   VIEW_CONFIG,
 } from "./config";
+import { bindTocEvents } from "./event-bindings";
 import { createInitialNavigationController } from "./initial-navigation";
 import { bindMobileDragging } from "./mobile-drag";
 import {
@@ -43,7 +44,6 @@ import {
   applyRootLayout as applyViewLayout,
   bindLinkInteractions,
   bindMobileToggle,
-  bindScrollViewport,
   bindTooltipInteractions,
   cleanupCreatedElements,
   createRoot,
@@ -60,13 +60,8 @@ import {
 } from "./view";
 import { getTocViewport } from "./viewport";
 
-const CURRENT_SCRIPT =
-  document.currentScript instanceof HTMLScriptElement
-    ? document.currentScript
-    : null;
-
 (() => {
-  ensurePluginStylesheet("toc", CURRENT_SCRIPT);
+  ensurePluginStylesheet("toc");
 
   let initialized = false;
   let scheduledFrame = 0;
@@ -481,57 +476,15 @@ const CURRENT_SCRIPT =
       scheduleSync();
     };
 
-    window.addEventListener(
-      "scroll",
-      () => {
-        navigationLock.touchSettle();
-        scheduleSync();
-      },
-      { passive: true },
-    );
-    window.addEventListener("resize", scheduleSync, { passive: true });
-    window.addEventListener("load", handleLoad, { once: true });
-    window.addEventListener("pageshow", scheduleSync);
-    window.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      if (
-        !isMobileExpanded ||
-        root.hidden ||
-        root.dataset.layout !== "mobile"
-      ) {
-        return;
-      }
-
-      closeMobileExpansion({ focusToggle: true });
+    bindTocEvents({
+      closeMobileExpansion,
+      getIsMobileExpanded: () => isMobileExpanded,
+      handleLoad,
+      navigationLock,
+      root,
+      scheduleSync,
+      viewConfig,
     });
-    document.addEventListener("pointerdown", (event) => {
-      if (
-        !isMobileExpanded ||
-        root.hidden ||
-        root.dataset.layout !== "mobile"
-      ) {
-        return;
-      }
-
-      if (event.target instanceof Node && root.contains(event.target)) {
-        return;
-      }
-
-      closeMobileExpansion();
-    });
-    bindScrollViewport(root, viewConfig, () => {
-      syncScrollFadeState(root, viewConfig);
-    });
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", scheduleSync, {
-        passive: true,
-      });
-    }
-
-    if (document.fonts?.ready) {
-      void document.fonts.ready.then(scheduleSync);
-    }
   }
 
   runOnDocumentReady(init);

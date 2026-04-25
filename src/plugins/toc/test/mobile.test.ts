@@ -1,8 +1,4 @@
-import {
-  getRequiredElement,
-  getRequiredElements,
-  renderArticle,
-} from "@test/dom";
+import { getRequiredElement, getRequiredElements } from "@test/dom";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   flushAll,
@@ -10,6 +6,7 @@ import {
   getTocTestMocks,
   loadTocPlugin,
   mockRect,
+  renderMobileTocFixture,
   setupTocTest,
   setViewportHeight,
   setViewportWidth,
@@ -26,15 +23,6 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("switches to a mobile toc on narrower viewports and respects configured levels", async () => {
-    const article = renderArticle(
-      `
-      <h2>숨겨질 제목</h2>
-      <h3>보일 제목</h3>
-      <h4>또 다른 제목</h4>
-    `,
-      { tagName: "article" },
-    );
-
     (
       window as typeof window & {
         RPPlugins?: Record<string, unknown>;
@@ -46,19 +34,22 @@ describe("toc plugin mobile layout", () => {
       },
     };
 
-    setViewportWidth(1180);
-
-    mockRect(article, {
-      top: 100,
-      left: 200,
-      width: 760,
-      height: 1200,
+    renderMobileTocFixture({
+      markup: `
+        <h2>숨겨질 제목</h2>
+        <h3>보일 제목</h3>
+        <h4>또 다른 제목</h4>
+      `,
+      articleRect: {
+        top: 100,
+        left: 200,
+        width: 760,
+        height: 1200,
+      },
+      headingSelector: "h2, h3, h4",
+      headingTops: [120, 360, 620],
+      viewportWidth: 1180,
     });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3, h4");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
 
     await loadTocPlugin();
     await flushAll();
@@ -99,26 +90,20 @@ describe("toc plugin mobile layout", () => {
       },
     });
 
-    const article = renderArticle(
-      `
-      <h2>첫 섹션</h2>
-      <h3>둘째 섹션</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(1180);
-
-    mockRect(article, {
-      top: 100,
-      left: 200,
-      width: 760,
-      height: 1200,
+    renderMobileTocFixture({
+      markup: `
+        <h2>첫 섹션</h2>
+        <h3>둘째 섹션</h3>
+      `,
+      articleRect: {
+        top: 100,
+        left: 200,
+        width: 760,
+        height: 1200,
+      },
+      headingTops: [120, 360],
+      viewportWidth: 1180,
     });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
 
     await loadTocPlugin();
     await flushAll();
@@ -130,28 +115,15 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("expands the mobile toc from the bottom button and closes it after selecting a section", async () => {
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(1180);
-
-    mockRect(article, {
-      top: 100,
-      left: 200,
-      width: 760,
-      height: 1200,
+    renderMobileTocFixture({
+      articleRect: {
+        top: 100,
+        left: 200,
+        width: 760,
+        height: 1200,
+      },
+      viewportWidth: 1180,
     });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
 
     await loadTocPlugin();
     await flushAll();
@@ -197,28 +169,7 @@ describe("toc plugin mobile layout", () => {
   it("opens the mobile toc panel below the button when there is not enough room above", async () => {
     setViewportHeight(900);
 
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 100,
-      left: 20,
-      width: 350,
-      height: 1200,
-    });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
+    renderMobileTocFixture();
 
     await loadTocPlugin();
     await flushAll();
@@ -262,28 +213,14 @@ describe("toc plugin mobile layout", () => {
   it("clamps the mobile toc panel height to fit the available downward space", async () => {
     setViewportHeight(220);
 
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 0,
-      left: 20,
-      width: 350,
-      height: 1200,
+    renderMobileTocFixture({
+      articleRect: {
+        top: 0,
+        left: 20,
+        width: 350,
+        height: 1200,
+      },
     });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
 
     await loadTocPlugin();
     await flushAll();
@@ -334,28 +271,14 @@ describe("toc plugin mobile layout", () => {
 
     setViewportHeight(900);
 
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 0,
-      left: 20,
-      width: 350,
-      height: 1200,
+    renderMobileTocFixture({
+      articleRect: {
+        top: 0,
+        left: 20,
+        width: 350,
+        height: 1200,
+      },
     });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
 
     await loadTocPlugin();
     await flushAll();
@@ -405,28 +328,7 @@ describe("toc plugin mobile layout", () => {
     });
     setViewportHeight(900);
 
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 100,
-      left: 20,
-      width: 350,
-      height: 1200,
-    });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
+    renderMobileTocFixture();
 
     await loadTocPlugin();
     await flushAll();
@@ -477,28 +379,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("lets the mobile toc button move vertically without toggling the panel after a drag", async () => {
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 100,
-      left: 20,
-      width: 350,
-      height: 1200,
-    });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
+    renderMobileTocFixture();
 
     await loadTocPlugin();
     await flushAll();
@@ -562,28 +443,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("does not treat horizontal-only movement as a drag", async () => {
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 100,
-      left: 20,
-      width: 350,
-      height: 1200,
-    });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
+    renderMobileTocFixture();
 
     await loadTocPlugin();
     await flushAll();
@@ -640,28 +500,7 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("resets stale horizontal mobile offset on resize", async () => {
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 100,
-      left: 20,
-      width: 350,
-      height: 1200,
-    });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
+    renderMobileTocFixture();
 
     await loadTocPlugin();
     await flushAll();
@@ -681,15 +520,6 @@ describe("toc plugin mobile layout", () => {
   });
 
   it("does not let the mobile toc button enter the header area while dragging", async () => {
-    const article = renderArticle(
-      `
-      <h2>소개</h2>
-      <h3>설치</h3>
-      <h3>설정</h3>
-    `,
-      { tagName: "article" },
-    );
-
     (
       window as typeof window & {
         RPPlugins?: Record<string, unknown>;
@@ -700,19 +530,7 @@ describe("toc plugin mobile layout", () => {
       },
     };
 
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: 100,
-      left: 20,
-      width: 350,
-      height: 1200,
-    });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 120 });
-    mockRect(headings[1], { top: 360 });
-    mockRect(headings[2], { top: 620 });
+    renderMobileTocFixture();
 
     await loadTocPlugin();
     await flushAll();
@@ -787,28 +605,21 @@ describe("toc plugin mobile layout", () => {
       },
     });
 
-    const article = renderArticle(
-      `
-      <h2>첫 섹션</h2>
-      <h2>둘째 섹션</h2>
-      <h3>셋째 섹션</h3>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(1180);
-
-    mockRect(article, {
-      top: 320,
-      left: 240,
-      width: 820,
-      height: 2400,
+    renderMobileTocFixture({
+      markup: `
+        <h2>첫 섹션</h2>
+        <h2>둘째 섹션</h2>
+        <h3>셋째 섹션</h3>
+      `,
+      articleRect: {
+        top: 320,
+        left: 240,
+        width: 820,
+        height: 2400,
+      },
+      headingTops: [520, 860, 1240],
+      viewportWidth: 1180,
     });
-
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
-    mockRect(headings[0], { top: 520 });
-    mockRect(headings[1], { top: 860 });
-    mockRect(headings[2], { top: 1240 });
 
     await loadTocPlugin();
     await flushAll();
@@ -842,33 +653,27 @@ describe("toc plugin mobile layout", () => {
       },
     });
 
-    const article = renderArticle(
-      `
-      <h2>첫 섹션</h2>
-      <h3>둘째 섹션</h3>
-      <div class="another-category">관련 글</div>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: -180,
-      left: 20,
-      width: 350,
-      height: 1800,
+    const { article } = renderMobileTocFixture({
+      markup: `
+        <h2>첫 섹션</h2>
+        <h3>둘째 섹션</h3>
+        <div class="another-category">관련 글</div>
+      `,
+      articleRect: {
+        top: -180,
+        left: 20,
+        width: 350,
+        height: 1800,
+      },
+      headingTops: [-120, 120],
     });
 
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
     const relatedCategory = getRequiredElement(
       article,
       ".another-category",
       HTMLElement,
     );
 
-    mockRect(headings[0], { top: -120 });
-    mockRect(headings[1], { top: 120 });
     mockRect(relatedCategory, {
       top: 980,
       left: 20,
@@ -906,33 +711,27 @@ describe("toc plugin mobile layout", () => {
   it("updates the mobile boundary threshold after dragging the toc button", async () => {
     setViewportHeight(900);
 
-    const article = renderArticle(
-      `
-      <h2>첫 섹션</h2>
-      <h3>둘째 섹션</h3>
-      <div class="another-category">관련 글</div>
-    `,
-      { tagName: "article" },
-    );
-
-    setViewportWidth(390);
-
-    mockRect(article, {
-      top: -180,
-      left: 20,
-      width: 350,
-      height: 1800,
+    const { article } = renderMobileTocFixture({
+      markup: `
+        <h2>첫 섹션</h2>
+        <h3>둘째 섹션</h3>
+        <div class="another-category">관련 글</div>
+      `,
+      articleRect: {
+        top: -180,
+        left: 20,
+        width: 350,
+        height: 1800,
+      },
+      headingTops: [-120, 120],
     });
 
-    const headings = getRequiredElements<HTMLElement>(article, "h2, h3");
     const relatedCategory = getRequiredElement(
       article,
       ".another-category",
       HTMLElement,
     );
 
-    mockRect(headings[0], { top: -120 });
-    mockRect(headings[1], { top: 120 });
     mockRect(relatedCategory, {
       top: 940,
       left: 20,
