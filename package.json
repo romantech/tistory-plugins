@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/romantech/tistory-plugins/issues"
   },
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@11.21.0",
   "engines": {
     "node": ">=22"
   },
@@ -29,15 +29,15 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.11",
+    "@biomejs/biome": "2.5.7",
     "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.0",
     "@types/katex": "^0.16.8",
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.2.0",
     "esbuild": "^0.28.1",
-    "happy-dom": "^20.10.5",
-    "playwright": "^1.61.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "happy-dom": "^20.11.2",
+    "playwright": "^1.62.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   }
 }
