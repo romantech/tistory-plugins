@@ -1,2 +1,6 @@
 [ignore]
 glob = ["dist/**"]
+
+[config]
+model = "gpt-6.1-sol"
+fallback_models = ["gpt-5.4-mini"]
