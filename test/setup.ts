@@ -1,5 +1,12 @@
-import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeEach, vi } from "vitest";
+import * as matchers from "@testing-library/jest-dom/matchers";
+import { afterEach, beforeEach, expect, vi } from "vitest";
+
+// jest-dom의 Vitest 어댑터는 아직 Vitest 5의 matcher 타입을 지원하지 않습니다.
+declare module "vitest" {
+  interface Matchers<R, T> extends matchers.TestingLibraryMatchers<T, R> {}
+}
+
+expect.extend(matchers);
 
 const RESET_GLOBAL_KEYS = [
   "RPPlugins",
