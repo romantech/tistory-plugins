@@ -448,7 +448,7 @@ describe("toc plugin navigation", () => {
     const article = renderArticle(
       `
       <h2>첫 섹션</h2>
-      <iframe src="about:blank" title="임베드" loading="lazy"></iframe>
+      <iframe srcdoc="" title="임베드" loading="lazy"></iframe>
       <h3>둘째 섹션</h3>
       `,
       { tagName: "article" },
