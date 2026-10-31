@@ -1,0 +1,41 @@
+.rp-mermaid {
+  color-scheme: light dark;
+  --pele-bg: light-dark(#ffffff, #181a1f);
+  --pele-fg: light-dark(#24292f, #e6edf3);
+  --pele-muted: light-dark(#57606a, #a6b0bc);
+  --pele-line: light-dark(#424a53, #b6c2cf);
+  --pele-surface: light-dark(#f3f5f7, #242930);
+  --pele-surface-alt: light-dark(#e8ecf0, #303741);
+  --pele-border: light-dark(#6e7781, #84909e);
+  --pele-accent: light-dark(#0969da, #79b8ff);
+  --pele-critical: light-dark(#b42318, #ff8a80);
+  --pele-error: var(--pele-critical);
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 1.5em 0;
+  padding: 1rem;
+  overflow-x: auto;
+  background: var(--pele-bg);
+  color: var(--pele-fg);
+  font-family: inherit;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.rp-mermaid[data-mermaid-theme="light"] {
+  color-scheme: light;
+}
+
+.rp-mermaid[data-mermaid-theme="dark"] {
+  color-scheme: dark;
+}
+
+.rp-mermaid > svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}

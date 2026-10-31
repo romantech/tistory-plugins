@@ -6,6 +6,7 @@
 
 ## 주요 기능
 
+- Mermaid로 표시한 코드블록(`.mermaid`, `data-ke-language="mermaid"`, `code.language-mermaid`, `code.lang-mermaid`)은 복사 버튼을 추가하지 않습니다.
 - `<code>`를 포함한 `pre` 블록에만 복사 버튼을 추가하며, 중복 초기화를 방지합니다.
 - 기본 상태에서는 복사 버튼 대신 언어 축약 라벨을 표시합니다. 언어를 감지하지 못하면 `Code`를 표시합니다.
 - 보안 컨텍스트에서는 `Clipboard API`를 우선 사용하고, 사용할 수 없으면 `execCommand("copy")`로 폴백합니다.
