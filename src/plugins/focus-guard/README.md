@@ -1,33 +1,28 @@
 # focus-guard
 
-티스토리 스킨의 사이드바 토글 과정에서 발생할 수 있는 `aria-hidden` 포커스 경고를 완화하는 플러그인입니다.
+티스토리 스킨의 사이드바를 열고 닫을 때 발생하는 `aria-hidden` 포커스 경고를 줄입니다.
 
-일부 스킨은 사이드바를 열거나 닫을 때 포커스가 남아 있는 버튼이나 그 조상 요소에 `aria-hidden="true"`를 적용합니다. 이 경우 브라우저 콘솔에 다음과 같은 접근성 경고가 나타날 수 있습니다.
+일부 스킨은 버튼에 포커스가 남아 있는 상태에서 그 버튼이나 상위 요소에 `aria-hidden="true"`를 적용합니다. 이때 브라우저 콘솔에 다음 경고가 나타날 수 있습니다.
 
 > Blocked aria-hidden on an element because its descendant retained focus.
 
-## 동작 방식
+## 설치
 
-- 사이드바 열기/닫기 버튼의 `pointerdown` 단계에서 기본 포커스 이동을 막습니다.
-- 클릭 이후 토글 버튼에 포커스가 남아 있으면 `blur()` 처리합니다.
-- 문서 전체에서 `aria-hidden` 속성 변화를 감시하다가, 숨겨진 영역 안에 활성 요소가 남아 있으면 `blur()` 처리합니다.
-
-## 대상 버튼
-
-- `button[data-func="open-sidebar"]`
-- `button[data-func="close-sidebar"]`
-
-## 설치 방법
-
-티스토리 HTML 편집 페이지에서 아래 코드를 `</body>` 위에 삽입합니다.
+스킨 HTML 편집에서 `</body>` 바로 위에 스크립트를 추가합니다. 별도 설정은 없습니다.
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/focus-guard/index.min.js"></script>
 ```
 
-## 주의 사항
+## 처리 대상
 
-- 이 플러그인은 스킨 원본을 수정하지 않고 런타임에서 포커스 흐름만 보조합니다.
-- 경고를 줄이는 용도이지, 접근성 구조 자체를 완전히 교정하는 플러그인은 아닙니다.
-- 스킨이 포커스를 강제로 다시 이동시키거나, `aria-hidden` 적용 순서가 더 복잡하면 경고가 일부 남을 수 있습니다.
-- 근본적인 해결은 스킨 원본에서 포커스 이동과 `aria-hidden` 적용 순서를 함께 조정하는 것입니다.
+다음 버튼을 누를 때 기본 포커스 이동을 막고, 클릭 후에도 포커스가 남아 있으면 `blur()`로 해제합니다.
+
+- `button[data-func="open-sidebar"]`
+- `button[data-func="close-sidebar"]`
+
+문서 전체의 `aria-hidden` 변경도 감시합니다. `aria-hidden="true"`가 된 영역 안에 포커스가 남아 있으면 해제합니다.
+
+## 제한사항
+
+포커스를 해제할 뿐, 사이드바를 닫은 뒤 어느 요소로 포커스를 옮길지는 지정하지 않습니다. 키보드 탐색 경로와 `aria-hidden` 적용 순서는 스킨에서 조정해야 합니다. 스킨이 포커스를 다시 옮기는 경우에는 경고가 남을 수 있습니다.

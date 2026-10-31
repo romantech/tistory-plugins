@@ -1,37 +1,37 @@
 # katex
 
-![katex demo](/docs/images/katex.png)
+![KaTeX로 렌더링한 본문 수식](/docs/images/katex.png)
 
-티스토리 본문의 `$...$`, `$$...$$` 수식을 KaTeX로 렌더링하는 플러그인입니다.
+티스토리 본문의 수식을 KaTeX로 렌더링합니다.
 
-## 주요 기능
+## 설치
 
-- 인라인 수식 구분자 `$...$` 및 블록 수식 구분자 `$$...$$`를 렌더링합니다.
-- 렌더링 완료 후 본문에 `data-katex-rendered="true"` 속성을 추가해 중복 실행을 방지합니다.
-- `throwOnError: false`, `strict: false` 설정으로 수식 오류가 있어도 렌더링이 중단되지 않습니다.
+스킨 HTML 편집에서 `</body>` 바로 위에 스크립트를 추가합니다. KaTeX 스크립트와 CSS는 CDN에서 자동으로 불러옵니다.
 
-## 본문 컨테이너 감지
+```html
+<script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
+```
 
-본문 컨테이너 감지 방식(셀렉터, `window.RPPlugins.articleSelectors`)은 [링크](../../../README.md#본문-컨테이너-감지)를 참고해주세요.
+## 작성 방법
 
-## 구분자
+| 유형 | 구분자 | 예시 |
+| --- | --- | --- |
+| 인라인 수식 | `$...$` | `$\alpha + \beta$` |
+| 블록 수식 | `$$...$$` | `$$\int_0^1 x^2\,dx$$` |
 
-| 유형 | 구분자 |
-|------|--------|
-| 인라인 수식 | `$...$` |
-| 블록 수식 | `$$...$$` |
+KaTeX 명령어의 백슬래시(`\`)를 빠뜨리지 마세요. 아래처럼 가격으로 쓰인 `$`는 수식으로 처리하지 않습니다.
 
-## 렌더링 제외 태그
+```text
+$14 · $12.99 · $1,299 · $1,299.99 · $ 99 · $12~$20
+```
 
-`script` `noscript` `style` `textarea` `pre` `code`
+기본적으로 `script`, `noscript`, `style`, `textarea`, `pre`, `code` 안의 텍스트를 제외합니다. Mermaid 원본과 렌더링 결과도 수식 변환과 가격 처리에서 제외하며, 이 규칙은 제외 태그·클래스를 바꿔도 유지됩니다.
 
-코드 블록 및 인라인 코드 안의 `$` 기호는 수식으로 해석하지 않습니다.
+본문을 찾는 방식과 스킨별 설정은 [본문 컨테이너 감지](../../../README.md#본문-컨테이너-감지)를 참고하세요.
 
-Mermaid 원본(`.mermaid`)과 렌더링 컨테이너(`.rp-mermaid`)도 수식·통화 전처리에서 제외합니다. 이 두 클래스는 사용자 지정 `ignoredClasses`와 병합됩니다. `data-ke-language="mermaid"`, `code.language-mermaid`, `code.lang-mermaid` 등으로 지정한 요소에는 스타일 없는 내부 제외 클래스(`tistory-plugins-katex-mermaid`)를 추가하여, `ignoredTags`를 변경해도 원본을 보호합니다.
+## 설정
 
-## 선택 설정
-
-`window.RPPlugins.katex` 속성으로 KaTeX 옵션을 조정할 수 있습니다. 설정 코드는 스크립트보다 먼저 선언해야 합니다.
+플러그인 스크립트 앞에 선언합니다. 아래 예시는 인라인 수식 구분자를 `\(...\)`로 바꿉니다.
 
 ```html
 <script>
@@ -43,34 +43,21 @@ Mermaid 원본(`.mermaid`)과 렌더링 컨테이너(`.rp-mermaid`)도 수식·�
       ],
       ignoredClasses: ["math-ignore", "no-katex"],
       ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
-      // 추가 KaTeX 옵션...
     },
   };
 </script>
 ```
 
-| 옵션 | 설명 |
-|------|------|
-| `delimiters` | 수식 구분자 목록 |
-| `ignoredClasses` | 렌더링 제외 클래스 |
-| `ignoredTags` | 렌더링 제외 태그 (지정 시 기본값을 덮어씁니다) |
+| 옵션 | 기본값 | 설명 |
+| --- | --- | --- |
+| `delimiters` | `$$...$$`, `$...$` | 비어 있지 않은 목록을 지정하면 기본 구분자를 대체 |
+| `ignoredClasses` | 사용자 지정 없음 | 기본 제외 클래스에 추가할 클래스 이름 |
+| `ignoredTags` | 위의 제외 태그 목록 | 비어 있지 않은 목록을 지정하면 기본 태그를 대체 |
+| `throwOnError` | `false` | 수식 오류 시 예외 발생 여부 |
+| `strict` | `false` | 엄격한 문법 검사 여부 |
 
-## 설치
+지원하는 옵션은 위 다섯 가지입니다.
 
-티스토리 HTML 편집 페이지에서 아래 코드를 `</body>` 바로 위에 삽입합니다.
+## 참고
 
-```html
-<script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
-```
-
-## 참고 사항
-
-- CSS를 별도로 추가할 필요가 없습니다. 플러그인이 KaTeX `stylesheet`를 자동으로 삽입합니다.
-- KaTeX 자산 로드에 실패하면 렌더링을 중단하고 콘솔에 오류를 출력합니다.
-- 그리스 문자·적분 기호 등 KaTeX 명령어에는 백슬래시(`\`)가 필요합니다.
-  - 예: `$\alpha + \beta$`, `$$\int_0^1 x^2\,dx$$`
-- 아래 패턴은 가격 표기로 간주하여 수식으로 해석하지 않습니다.
-
-```
-  $14 · $12.99 · $1,299 · $1,299.99 · $ 99 · $12~$20
-```
+한 번 렌더링한 본문은 다시 처리하지 않습니다. KaTeX 파일을 불러오지 못하면 변환을 중단하고 콘솔에 오류를 남깁니다.
