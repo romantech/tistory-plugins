@@ -1,5 +1,6 @@
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { MERMAID_SELECTOR } from "@/shared/mermaid";
 import { getInlineCodeConfig } from "@/shared/plugin-config";
 
 (() => {
@@ -23,7 +24,9 @@ import { getInlineCodeConfig } from "@/shared/plugin-config";
         if (!parent) return NodeFilter.FILTER_SKIP;
 
         const inTarget = parent.closest(getTargetSelector());
-        const inBlocked = parent.closest(getBlockedSelector());
+        const inBlocked =
+          parent.closest(getBlockedSelector()) ||
+          parent.closest(MERMAID_SELECTOR);
 
         return inTarget && !inBlocked
           ? NodeFilter.FILTER_ACCEPT

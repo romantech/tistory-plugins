@@ -1,7 +1,7 @@
 import { getRequiredElement, renderArticle } from "@test/dom";
 import { createPluginLoader } from "@test/load-plugin";
 import { screen } from "@testing-library/dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("inline-code plugin", () => {
   const loadInlineCodePlugin = createPluginLoader(
@@ -68,6 +68,22 @@ describe("inline-code plugin", () => {
     expect(
       getRequiredElement(article, "div", HTMLDivElement),
     ).toHaveTextContent("Use `const x = 1` in div.");
+  });
+
+  it("leaves Mermaid sources and rendered labels untouched", async () => {
+    const article = renderArticle(
+      '<p class="mermaid">flowchart LR\n A["`label`"] --> B</p><div class="rp-mermaid"><svg><text>`label`</text></svg></div><p>`inline`</p>',
+    );
+    vi.stubGlobal("RPPlugins", { inlineCode: { targetSelector: "*" } });
+
+    await loadInlineCodePlugin();
+
+    expect(article.querySelectorAll("code")).toHaveLength(1);
+    expect(article.querySelector("code")).toHaveTextContent("inline");
+    expect(article.querySelector(".mermaid")?.textContent).toContain(
+      'A["`label`"]',
+    );
+    expect(article.querySelector("text")?.textContent).toBe("`label`");
   });
 
   it("does not wrap backtick-delimited text containing line breaks", async () => {

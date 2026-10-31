@@ -27,6 +27,8 @@
 
 코드 블록 및 인라인 코드 안의 `$` 기호는 수식으로 해석하지 않습니다.
 
+Mermaid 원본(`.mermaid`)과 렌더링 컨테이너(`.rp-mermaid`)도 수식·통화 전처리에서 제외합니다. 이 두 클래스는 사용자 지정 `ignoredClasses`와 병합됩니다. `data-ke-language="mermaid"`, `code.language-mermaid`, `code.lang-mermaid` 등으로 지정한 요소에는 스타일 없는 내부 제외 클래스(`tistory-plugins-katex-mermaid`)를 추가하여, `ignoredTags`를 변경해도 원본을 보호합니다.
+
 ## 선택 설정
 
 `window.RPPlugins.katex` 속성으로 KaTeX 옵션을 조정할 수 있습니다. 설정 코드는 스크립트보다 먼저 선언해야 합니다.

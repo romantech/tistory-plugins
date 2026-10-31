@@ -1,6 +1,7 @@
 import "./style.css";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { MERMAID_SELECTOR } from "@/shared/mermaid";
 import { getCopyCodeConfig } from "@/shared/plugin-config";
 import { ensurePluginStylesheet } from "@/shared/stylesheet";
 import { getLanguageLabel } from "./language";
@@ -280,7 +281,12 @@ import { getLanguageLabel } from "./language";
 
   function enhanceCodeBlocks(article: HTMLElement): void {
     article.querySelectorAll<HTMLElement>("pre").forEach((pre) => {
-      if (pre.dataset.copyCodeReady === "true" || !pre.querySelector("code")) {
+      if (
+        pre.dataset.copyCodeReady === "true" ||
+        !pre.querySelector("code") ||
+        pre.closest(MERMAID_SELECTOR) ||
+        pre.querySelector(MERMAID_SELECTOR)
+      ) {
         return;
       }
 

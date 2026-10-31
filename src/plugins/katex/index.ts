@@ -1,6 +1,7 @@
 import type renderMathInElement from "katex/contrib/auto-render";
 import { getTistoryArticle } from "@/shared/article-selector";
 import { runOnDocumentReady } from "@/shared/dom-ready";
+import { MERMAID_CLASSES, MERMAID_SELECTOR } from "@/shared/mermaid";
 import { getKatexConfig } from "@/shared/plugin-config";
 import { PROTECTED_CURRENCY_CLASS, protectInlineCurrency } from "./currency";
 
@@ -23,6 +24,7 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
   const KATEX_SCRIPT_ID = "tistory-plugins-katex-js";
   const AUTO_RENDER_SCRIPT_ID = "tistory-plugins-katex-auto-render-js";
   const LOAD_PROMISE_KEY = "__tistoryPluginsKatexLoadPromise";
+  const PROTECTED_MERMAID_CLASS = "tistory-plugins-katex-mermaid";
   const DEFAULT_DELIMITERS: readonly KatexDelimiter[] = [
     { left: "$$", right: "$$", display: true },
     { left: "$", right: "$", display: false },
@@ -72,7 +74,14 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
           .filter(Boolean)
       : [];
 
-    return [...new Set([PROTECTED_CURRENCY_CLASS, ...userIgnoredClasses])];
+    return [
+      ...new Set([
+        PROTECTED_CURRENCY_CLASS,
+        PROTECTED_MERMAID_CLASS,
+        ...MERMAID_CLASSES,
+        ...userIgnoredClasses,
+      ]),
+    ];
   }
 
   function getRenderOptions(): KatexRenderOptions {
@@ -192,6 +201,11 @@ type KatexIgnoredTag = keyof HTMLElementTagNameMap;
     if (typeof state.renderMathInElement !== "function") return;
 
     const renderOptions = getRenderOptions();
+
+    // Attribute-based sources must stay excluded even with custom ignoredTags.
+    article.querySelectorAll(MERMAID_SELECTOR).forEach((element) => {
+      element.classList.add(PROTECTED_MERMAID_CLASS);
+    });
 
     if (hasSingleDollarDelimiter(renderOptions.delimiters)) {
       protectInlineCurrency(

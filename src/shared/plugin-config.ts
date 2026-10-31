@@ -34,12 +34,17 @@ type TocConfig = {
   levels?: number[];
 };
 
+type MermaidConfig = {
+  theme?: "auto" | "light" | "dark";
+};
+
 type RPPluginsConfig = {
   articleSelectors?: string[];
   copyCode?: CopyCodeConfig;
   headingAnchor?: HeadingAnchorConfig;
   inlineCode?: InlineCodeConfig;
   katex?: KatexConfig;
+  mermaid?: MermaidConfig;
   toc?: TocConfig;
 };
 
@@ -79,4 +84,8 @@ export function getKatexConfig(): KatexConfig {
 
 export function getTocConfig(): TocConfig {
   return getGlobalConfig().toc ?? {};
+}
+
+export function getMermaidConfig(): MermaidConfig {
+  return getGlobalConfig().mermaid ?? {};
 }

@@ -117,6 +117,9 @@ describe("katex plugin", () => {
         delimiters: [{ left: "\\(", right: "\\)", display: false }],
         ignoredClasses: [
           "tistory-plugins-katex-currency",
+          "tistory-plugins-katex-mermaid",
+          "mermaid",
+          "rp-mermaid",
           "math-ignore",
           "skip-katex",
         ],
@@ -125,6 +128,30 @@ describe("katex plugin", () => {
         throwOnError: true,
       }),
     );
+  });
+
+  it("ignores Mermaid source and output during math rendering and currency protection", async () => {
+    let textRuns: string[] = [];
+    const renderMathInElement = vi.fn((element: HTMLElement, options) => {
+      textRuns = collectRenderableTextRuns(element, options);
+    });
+    vi.stubGlobal("katex", {});
+    vi.stubGlobal("renderMathInElement", renderMathInElement);
+    vi.stubGlobal("RPPlugins", { katex: { ignoredTags: ["script", "style"] } });
+    const article = renderArticleView(
+      '<div class="mermaid">flowchart LR\n A[$14 and $x$]</div><div class="rp-mermaid"><svg><text>$14 and $x$</text></svg></div><pre data-ke-language="mermaid"><code>flowchart LR\n A[$14 and $x$]</code></pre><pre><code class="language-mermaid">flowchart LR\n A[$14 and $x$]</code></pre><pre><code class="lang-mermaid">flowchart LR\n A[$14 and $x$]</code></pre><p>$y$</p>',
+    );
+
+    await loadKatexPlugin();
+
+    expect(textRuns).toEqual(["$y$"]);
+    expect(article.querySelector(".mermaid")?.textContent).toContain(
+      "$14 and $x$",
+    );
+    expect(article.querySelector(".tistory-plugins-katex-currency")).toBeNull();
+    expect(
+      article.querySelector('pre[data-ke-language="mermaid"]'),
+    ).not.toHaveClass("mermaid");
   });
 
   it("merges configured ignoredClasses and respects them during the pre-pass", async () => {
@@ -180,6 +207,9 @@ describe("katex plugin", () => {
       expect.objectContaining({
         ignoredClasses: [
           "tistory-plugins-katex-currency",
+          "tistory-plugins-katex-mermaid",
+          "mermaid",
+          "rp-mermaid",
           "math-ignore",
           "skip-katex",
         ],
@@ -312,7 +342,12 @@ describe("katex plugin", () => {
     expect(renderMathInElement).toHaveBeenCalledWith(
       article,
       expect.objectContaining({
-        ignoredClasses: ["tistory-plugins-katex-currency"],
+        ignoredClasses: [
+          "tistory-plugins-katex-currency",
+          "tistory-plugins-katex-mermaid",
+          "mermaid",
+          "rp-mermaid",
+        ],
       }),
     );
   });

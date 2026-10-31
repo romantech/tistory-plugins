@@ -61,6 +61,24 @@ describe("copy-code plugin", () => {
     expect(buttons[1]).toHaveTextContent("Copy");
   });
 
+  it("leaves Mermaid blocks untouched", async () => {
+    const article = renderArticle(`
+      <pre class="mermaid"><code>flowchart LR\n A --&gt; B</code></pre>
+      <pre data-ke-language="mermaid"><code>flowchart LR\n A --&gt; B</code></pre>
+      <pre><code class="language-mermaid">flowchart LR\n A --&gt; B</code></pre>
+      <pre><code class="lang-mermaid">flowchart LR\n A --&gt; B</code></pre>
+      <div class="mermaid"><pre><code>flowchart LR\n A --&gt; B</code></pre></div>
+      <pre><code>const a = 1;</code></pre>
+    `);
+
+    await loadCopyCodePlugin();
+
+    expect(article.querySelectorAll(".rp-copy-code-wrapper")).toHaveLength(1);
+    expect(
+      article.querySelector(".rp-copy-code-wrapper code"),
+    ).toHaveTextContent("const a = 1;");
+  });
+
   it("renders a detected language label when language metadata exists", async () => {
     renderArticle(`
       <pre data-ke-language="javascript"><code>const a = 1;</code></pre>

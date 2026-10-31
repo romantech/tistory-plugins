@@ -11,8 +11,10 @@ expect.extend(matchers);
 const RESET_GLOBAL_KEYS = [
   "RPPlugins",
   "__tistoryPluginsKatexLoadPromise",
+  "__tistoryPluginsPeleLoadPromise",
   "katex",
   "renderMathInElement",
+  "pele",
 ] as const;
 
 function resetDom(): void {

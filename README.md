@@ -10,14 +10,16 @@
 | ---------------------------------------------- | ---- | ------------------------------------------------------------ | ---------------------------------------------- |
 | [`inline-code`](src/plugins/inline-code)       | JS   | 백틱으로 감싼 인라인 텍스트를 `<code>`로 변환합니다.         | [README](src/plugins/inline-code/README.md)    |
 | [`katex`](src/plugins/katex)                   | JS   | `$...$`, `$$...$$` 수식을 KaTeX로 렌더링합니다.              | [README](src/plugins/katex/README.md)          |
+| [`mermaid`](src/plugins/mermaid)               | JS   | Mermaid 문법을 라이트·다크모드에 맞는 SVG로 렌더링합니다.   | [README](src/plugins/mermaid/README.md)        |
 | [`copy-code`](src/plugins/copy-code)           | JS   | 코드 블록 우측 상단에 복사 버튼을 추가합니다.                | [README](src/plugins/copy-code/README.md)      |
 | [`focus-guard`](src/plugins/focus-guard)       | JS   | 사이드바 토글 시 발생하는 `aria-hidden` 포커스 경고를 완화합니다. | [README](src/plugins/focus-guard/README.md)    |
 | [`heading-anchor`](src/plugins/heading-anchor) | JS   | 제목에 앵커 링크를 추가하고 해시 이동 위치를 보정합니다.     | [README](src/plugins/heading-anchor/README.md) |
 | [`toc`](src/plugins/toc)                       | JS   | 데스크톱은 레일형, 모바일은 팝업형 목차를 표시합니다.        | [README](src/plugins/toc/README.md)            |
 
 > 본문 컨테이너 감지는 공통 로직을 사용합니다. 처리 대상과 주의사항은 플러그인마다 다르므로 적용 전 각 README를 확인해주세요.
-> `copy-code`, `heading-anchor`, `toc`는 실행 시 동일 경로의 `index.min.css`를 자동으로 로드합니다.
+> `copy-code`, `heading-anchor`, `mermaid`, `toc`는 실행 시 동일 경로의 `index.min.css`를 자동으로 로드합니다.
 > `katex`는 별도 companion CSS 대신 KaTeX 스타일시트를 외부 CDN에서 주입합니다.
+> `mermaid`는 다이어그램이 있는 글에서만 Pele 렌더러를 외부 CDN에서 불러옵니다.
 
 ---
 
@@ -37,16 +39,17 @@ JS:  https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugi
 CSS: https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugin>/index.min.css
 ```
 
-- CSS 경로는 companion CSS가 있는 플러그인(`copy-code`, `heading-anchor`, `toc`)에만 해당합니다.
+- CSS 경로는 companion CSS가 있는 플러그인(`copy-code`, `heading-anchor`, `mermaid`, `toc`)에만 해당합니다.
 - `<version>` 자리에는 `latest`(최신 릴리즈), `main`(브랜치), `0.1.27`(태그) 형식을 사용합니다.
 
 ## 조합 예시
 
-인라인 코드, 수식, 코드 복사 버튼, 제목 앵커, 목차를 함께 사용하려면 아래와 같이 추가합니다.
+인라인 코드, 수식, Mermaid 다이어그램, 코드 복사 버튼, 제목 앵커, 목차를 함께 사용하려면 아래와 같이 추가합니다.
 
 ```html
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/inline-code/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/katex/index.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/mermaid/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/copy-code/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/heading-anchor/index.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@latest/dist/toc/index.min.js"></script>
@@ -109,6 +112,9 @@ CSS: https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugi
       ignoredClasses: ["math-ignore", "no-katex"],
       ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"]
     },
+    mermaid: {
+      theme: "auto"
+    },
     toc: {
       levels: [2, 3, 4],
       headerOffset: 64
@@ -124,6 +130,7 @@ CSS: https://cdn.jsdelivr.net/gh/romantech/tistory-plugins@<version>/dist/<plugi
 | `headingAnchor`    | 처리할 제목 레벨과 해시 이동 오프셋     |
 | `inlineCode`       | 인라인 코드 변환 대상 및 제외 셀렉터    |
 | `katex`            | 수식 구분자, 무시할 클래스·태그         |
+| `mermaid`          | 다이어그램 테마 (`auto`, `light`, `dark`) |
 | `toc`              | 목차에 포함할 제목 레벨과 스크롤 오프셋 |
 
 ---
